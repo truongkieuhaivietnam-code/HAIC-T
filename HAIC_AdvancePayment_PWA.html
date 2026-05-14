@@ -1,0 +1,827 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="HAIC Pay"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<title>HAIC – Advance Payment</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --green:#0F6E56;--green-light:#E1F5EE;--green-mid:#1D9E75;
+  --amber:#BA7517;--amber-light:#FAEEDA;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --bg:#ffffff;--bg2:#f7f7f5;--bg3:#f1efe8;
+  --text1:#1a1a1a;--text2:#5f5e5a;--text3:#888780;
+  --border1:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);
+  --radius-md:10px;--radius-lg:14px;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1c1c1a;--bg2:#252523;--bg3:#2c2c2a;
+    --text1:#f0ede8;--text2:#b4b2a9;--text3:#888780;
+    --border1:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);
+  }
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text1)}
+.app{max-width:430px;margin:0 auto;background:var(--bg);height:100%;display:flex;flex-direction:column;position:relative}
+
+/* INSTALL BANNER */
+#install-banner{background:var(--green);color:#fff;padding:10px 14px;font-size:12px;display:none;align-items:center;gap:10px;flex-shrink:0}
+#install-banner.show{display:flex}
+#install-banner b{flex:1}
+#install-banner button{background:rgba(255,255,255,0.25);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer}
+
+/* HEADER */
+.hdr{background:var(--green);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.logo-box{background:rgba(255,255,255,0.18);border-radius:8px;padding:6px 10px;font-size:14px;font-weight:700;letter-spacing:1px;flex-shrink:0}
+.hdr-text h1{font-size:13px;font-weight:600;line-height:1.3}
+.hdr-text p{font-size:10px;opacity:0.75;margin-top:1px}
+.hdr-code{margin-left:auto;text-align:right;font-size:10px;opacity:0.75;line-height:1.7;flex-shrink:0}
+
+/* TABS */
+.tabbar{display:flex;border-bottom:0.5px solid var(--border1);background:var(--bg);flex-shrink:0}
+.tab{flex:1;padding:9px 4px;font-size:11px;border:none;background:transparent;cursor:pointer;color:var(--text2);display:flex;flex-direction:column;align-items:center;gap:3px;border-bottom:2.5px solid transparent}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+/* SCREENS */
+.screen{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;flex-direction:column;gap:10px}
+.screen.active{display:flex}
+
+/* SECTIONS */
+.sec{border:0.5px solid var(--border1);border-radius:var(--radius-lg);overflow:hidden;flex-shrink:0}
+.sec-hdr{background:var(--green);color:#fff;padding:9px 13px}
+.sec-hdr .en{font-size:12px;font-weight:600}
+.sec-hdr .vn{font-size:10px;opacity:0.8;margin-top:1px}
+.sec-body{padding:12px;background:var(--bg)}
+
+/* FIELDS */
+.field{margin-bottom:10px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500}
+.field input,.field select,.field textarea{
+  font-size:16px;padding:12px 13px;
+  border:1px solid var(--border2);border-radius:var(--radius-md);
+  background:var(--bg2);color:var(--text1);width:100%;
+  -webkit-appearance:none;appearance:none;
+  min-height:48px;
+}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--green);
+  box-shadow:0 0 0 3px rgba(29,158,117,0.18);
+  background:var(--bg);
+}
+.field textarea{resize:none;height:70px;font-size:15px}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ROW CARDS for Section I & II */
+.row-card{border:1px solid var(--border1);border-radius:var(--radius-md);padding:13px;margin-bottom:10px;background:var(--bg);position:relative}
+.row-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.row-card-num{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
+.del-row-btn{background:var(--red-light);border:none;color:var(--red);padding:6px 10px;border-radius:8px;font-size:13px;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center}
+.del-row-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.row-card .field{margin-bottom:10px}
+.row-card .field:last-child{margin-bottom:0}
+.amt-display{background:var(--green-light);border-radius:var(--radius-md);padding:10px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.amt-display span:first-child{font-size:12px;color:var(--text2)}
+.amt-display span.amt-val{font-size:18px;font-weight:700;color:var(--green)}
+
+/* TOTAL BAR */
+.total-bar{background:var(--green-light);border-radius:var(--radius-md);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:2px;flex-shrink:0}
+.total-bar .tl{font-size:12px;color:var(--text2)}
+.total-bar .tv{font-size:18px;font-weight:700;color:var(--green)}
+
+/* ADD ROW BUTTON */
+.add-row-btn{background:var(--bg2);border:1.5px dashed var(--border2);border-radius:var(--radius-md);width:100%;padding:14px;font-size:14px;font-weight:600;color:var(--green);cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px}
+.add-row-btn:active{opacity:0.7}
+.add-row-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+
+/* CALC BOX */
+.calc-box{border:0.5px solid var(--border1);border-radius:var(--radius-md);overflow:hidden}
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-bottom:0.5px solid var(--border1)}
+.calc-row:last-child{border-bottom:none}
+.cl .en{font-size:13px;font-weight:500;color:var(--text1)}
+.cl .vn{font-size:10px;color:var(--text2);margin-top:1px}
+.cv{font-weight:700;font-size:16px}
+.cv.amber{color:var(--amber)}
+.cv.green{color:var(--green)}
+.cv.red{color:var(--red)}
+.result-row{padding:14px;display:flex;justify-content:space-between;align-items:center}
+.result-row.payme{background:var(--green-light)}
+.result-row.returnme{background:var(--amber-light)}
+.result-row.balanced{background:var(--bg2)}
+.rl .en{font-size:13px;font-weight:600}
+.rl .vn{font-size:10px;opacity:0.7;margin-top:2px}
+.rv{font-size:22px;font-weight:700}
+.rv.green{color:var(--green)}
+.rv.amber{color:var(--amber)}
+
+/* BUTTONS */
+.btn{padding:14px 16px;border-radius:var(--radius-md);font-size:14px;font-weight:600;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;transition:opacity 0.15s;min-height:50px}
+.btn:active{opacity:0.75}
+.btn-primary{background:var(--green);color:#fff;width:100%}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text1);width:100%}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto;border-radius:20px;min-height:36px}
+.btn-row{display:flex;gap:10px;margin-top:12px}
+.btn-row .btn{flex:1}
+.btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* STATUS */
+.status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.status.pending{background:var(--amber-light);color:var(--amber)}
+.status.approved{background:var(--green-light);color:var(--green)}
+.status.rejected{background:var(--red-light);color:var(--red)}
+.status.settled{background:var(--bg2);color:var(--text2)}
+
+/* LIST */
+.list-card{border:0.5px solid var(--border1);border-radius:var(--radius-lg);padding:13px;margin-bottom:9px;cursor:pointer;background:var(--bg);transition:background 0.12s}
+.list-card:active{background:var(--bg2)}
+.lc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.lc-name{font-size:14px;font-weight:600}
+.lc-amount{font-size:15px;font-weight:700;color:var(--amber)}
+.lc-project{font-size:12px;color:var(--text2);margin-bottom:4px}
+.lc-sub{font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.diff-chip{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.diff-over{background:var(--red-light);color:var(--red)}
+.diff-under{background:var(--green-light);color:var(--green)}
+.diff-even{background:var(--bg2);color:var(--text2)}
+.sum-bar{background:var(--bg2);border-radius:0 0 var(--radius-md) var(--radius-md);padding:8px 13px;display:flex;gap:16px;font-size:11px;justify-content:flex-end;flex-wrap:wrap}
+
+/* SUBTABS */
+.subtabs{display:flex;gap:6px;flex-wrap:wrap}
+.stab{padding:7px 13px;border-radius:20px;font-size:12px;border:0.5px solid var(--border1);background:transparent;cursor:pointer;color:var(--text2);font-weight:500;min-height:36px}
+.stab.active{background:var(--green);color:#fff;border-color:var(--green)}
+.month-sel{display:flex;align-items:center;gap:8px}
+.month-sel select{font-size:12px;padding:7px 12px;border:0.5px solid var(--border1);border-radius:20px;background:var(--bg);color:var(--text1);-webkit-appearance:none;appearance:none;min-height:36px}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-sheet{background:var(--bg);border-radius:20px 20px 0 0;padding:18px;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.mh-title .en{font-size:15px;font-weight:700}
+.mh-title .vn{font-size:10px;color:var(--text2);margin-top:2px}
+.close-btn{background:var(--bg2);border:none;cursor:pointer;color:var(--text2);padding:7px;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.close-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border1);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--text2)}
+.kv .v{font-weight:600;text-align:right;max-width:60%;word-break:break-word}
+.section-label{margin:14px 0 5px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
+.stat-card{background:var(--bg2);border-radius:var(--radius-md);padding:13px}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:700}
+
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:50px 0}
+.empty svg{width:48px;height:48px;stroke:var(--border2);fill:none;stroke-width:1.2;stroke-linecap:round;display:block;margin:0 auto 12px}
+
+.bottom-safe{height:calc(env(safe-area-inset-bottom,0px) + 8px);flex-shrink:0}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.25s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1}
+
+/* LOADING */
+#loading{position:fixed;inset:0;background:var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;color:#fff}
+#loading .logo{font-size:32px;font-weight:800;letter-spacing:2px;margin-bottom:8px}
+#loading p{font-size:13px;opacity:0.8}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="logo">HAIC</div>
+  <p>Advance Payment</p>
+</div>
+
+<div class="app" id="app" style="display:none">
+
+  <!-- INSTALL BANNER -->
+  <div id="install-banner">
+    <b>📲 Add to Home Screen để dùng offline!</b>
+    <button onclick="document.getElementById('install-banner').style.display='none'">Đã hiểu</button>
+  </div>
+
+  <div class="hdr">
+    <div class="logo-box">HAIC</div>
+    <div class="hdr-text">
+      <h1>Procedure Advance Payment</h1>
+      <p>Quy trình Tạm ứng – Thanh toán</p>
+    </div>
+    <div class="hdr-code">Code: HAIC<br>Issued: 02<br>Jun/2020</div>
+  </div>
+
+  <div class="tabbar">
+    <button class="tab active" onclick="goTab('new')" id="tab-new">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      New Form
+    </button>
+    <button class="tab" onclick="goTab('list')" id="tab-list">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Records
+    </button>
+    <button class="tab" onclick="goTab('summary')" id="tab-summary">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Summary
+    </button>
+  </div>
+
+  <!-- ===== NEW FORM ===== -->
+  <div class="screen active" id="screen-new">
+
+    <div class="sec">
+      <div class="sec-hdr"><div class="en">Proposal for Payment of Project</div><div class="vn">Giấy Đề nghị Thanh Quyết toán Công trình</div></div>
+      <div class="sec-body">
+        <div class="field"><label>Project name / Tên công trình</label><input id="f-project" placeholder="e.g. CBC PS Farm" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Location / Địa điểm</label><input id="f-location" placeholder="e.g. Kampong Chhnang, Cambodia" autocomplete="off" autocorrect="off"/></div>
+        <div class="row2">
+          <div class="field"><label>My name / Họ tên</label><input id="f-name" placeholder="Full name" autocomplete="off" autocorrect="off"/></div>
+          <div class="field"><label>Department / Bộ phận</label>
+            <select id="f-dept"><option>Survey</option><option>Construction</option><option>Engineering</option><option>Admin</option><option>Management</option><option>Other</option></select>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Form date / Ngày lập</label><input type="date" id="f-formdate"/></div>
+          <div class="field"><label>Currency</label>
+            <select id="f-currency" onchange="calcAll()"><option value="USD">USD ($)</option><option value="KHR">KHR (រ)</option><option value="VND">VND (đ)</option></select>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SECTION I -->
+    <div class="sec">
+      <div class="sec-hdr"><div class="en">I. Advance Details</div><div class="vn">Chi tiết tạm ứng</div></div>
+      <div class="sec-body">
+        <div id="adv-cards"></div>
+        <div class="total-bar">
+          <span class="tl">Total advance / Tổng cộng</span>
+          <span class="tv" id="adv-total">0</span>
+        </div>
+        <button class="add-row-btn" onclick="addAdvRow()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add row / Thêm dòng
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION II -->
+    <div class="sec">
+      <div class="sec-hdr"><div class="en">II. Detail Advance Using</div><div class="vn">Chi tiết sử dụng tạm ứng</div></div>
+      <div class="sec-body">
+        <div id="use-cards"></div>
+        <div class="total-bar">
+          <span class="tl">Total used / Tổng cộng</span>
+          <span class="tv" id="use-total">0</span>
+        </div>
+        <button class="add-row-btn" onclick="addUseRow()">
+          <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Add row / Thêm dòng
+        </button>
+      </div>
+    </div>
+
+    <!-- SECTION III -->
+    <div class="sec">
+      <div class="sec-hdr"><div class="en">III. Final Payment</div><div class="vn">Thanh quyết toán tạm ứng</div></div>
+      <div class="sec-body">
+        <div class="calc-box">
+          <div class="calc-row">
+            <div class="cl"><div class="en">Total Amount advance</div><div class="vn">Tổng tạm ứng</div></div>
+            <div class="cv amber" id="calc-adv">$ 0</div>
+          </div>
+          <div class="calc-row">
+            <div class="cl"><div class="en">Total amount used</div><div class="vn">Tổng chi phí thực tế</div></div>
+            <div class="cv green" id="calc-used">$ 0</div>
+          </div>
+          <div class="calc-row">
+            <div class="cl"><div class="en">Difference</div><div class="vn">Chênh lệch</div></div>
+            <div class="cv" id="calc-diff" style="color:var(--text2)">$ 0</div>
+          </div>
+        </div>
+        <div class="calc-box" style="margin-top:10px;overflow:hidden">
+          <div class="result-row balanced" id="result-row">
+            <div class="rl"><div class="en" id="result-en">Balanced ✓</div><div class="vn" id="result-vn">Khớp số — không cần thu chi thêm</div></div>
+            <div class="rv" id="result-val" style="color:var(--text2)">$ 0</div>
+          </div>
+        </div>
+        <div class="field" style="margin-top:14px"><label>Prepared by / Người lập</label><input id="f-preparer" placeholder="Name of preparer" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Note / Ghi chú</label><textarea id="f-note" placeholder="Additional remarks..."></textarea></div>
+        <div class="btn-row">
+          <button class="btn btn-outline" onclick="clearForm()">
+            <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>
+            Clear
+          </button>
+          <button class="btn btn-primary" onclick="saveForm()">
+            <svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+            Save Record
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="bottom-safe"></div>
+  </div>
+
+  <!-- ===== RECORDS ===== -->
+  <div class="screen" id="screen-list">
+    <div style="display:flex;gap:8px;flex-shrink:0">
+      <button class="btn btn-outline btn-sm" onclick="exportData()" style="flex:1">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Export JSON
+      </button>
+      <button class="btn btn-outline btn-sm" onclick="importData()" style="flex:1">
+        <svg viewBox="0 0 24 24" style="width:15px;height:15px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Import JSON
+      </button>
+    </div>
+    <div class="subtabs" style="flex-shrink:0">
+      <button class="stab active" onclick="switchListTab('pending')" id="ltab-pending">Pending</button>
+      <button class="stab" onclick="switchListTab('approved')" id="ltab-approved">Approved</button>
+      <button class="stab" onclick="switchListTab('settled')" id="ltab-settled">Settled</button>
+      <button class="stab" onclick="switchListTab('all')" id="ltab-all">All</button>
+    </div>
+    <div class="month-sel" style="flex-shrink:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      <select id="list-month" onchange="renderList()"></select>
+    </div>
+    <div id="list-content"></div>
+    <div class="bottom-safe"></div>
+  </div>
+
+  <!-- ===== SUMMARY ===== -->
+  <div class="screen" id="screen-summary">
+    <div class="month-sel" style="flex-shrink:0">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <select id="sum-month" onchange="renderSummary()"></select>
+    </div>
+    <div id="summary-content"></div>
+    <div class="bottom-safe"></div>
+  </div>
+
+  <!-- MODAL -->
+  <div class="modal-bg" id="modal-bg" onclick="bgClose(event)">
+    <div class="modal-sheet">
+      <div class="modal-hdr">
+        <div class="mh-title"><div class="en">Advance Payment Record</div><div class="vn">HAIC – Quy trình Tạm ứng / Thanh toán</div></div>
+        <button class="close-btn" onclick="closeModal()">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== HELPERS ====================
+const escH=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const getCur=()=>document.getElementById('f-currency')?.value||'USD';
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtD=d=>{if(!d)return'—';try{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}catch(e){return d;}};
+const sym=c=>({USD:'$',KHR:'រ',VND:'đ'}[c]||'$');
+const fmtN=(n,c)=>sym(c||getCur())+' '+new Intl.NumberFormat().format(Math.round(n||0));
+
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ==================== INDEXEDDB ====================
+let db_store=[];
+let idb=null;
+
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    // Fallback: if IndexedDB not available, use in-memory only
+    if(!window.indexedDB){resolve(null);return;}
+    const req=indexedDB.open('haic_app',1);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains('records')){
+        db.createObjectStore('records',{keyPath:'id'});
+      }
+    };
+    req.onsuccess=e=>{resolve(e.target.result);};
+    req.onerror=()=>{resolve(null);}; // silent fallback
+  });
+}
+
+async function loadAllRecords(){
+  if(!idb){
+    // Try localStorage as fallback
+    try{const s=localStorage.getItem('haic_v4');if(s)db_store=JSON.parse(s);}catch(e){}
+    return;
+  }
+  return new Promise(resolve=>{
+    const tx=idb.transaction('records','readonly');
+    const store=tx.objectStore('records');
+    const req=store.getAll();
+    req.onsuccess=()=>{db_store=req.result||[];resolve();};
+    req.onerror=()=>{resolve();};
+  });
+}
+
+function saveRecord(rec){
+  // Always keep in memory
+  const idx=db_store.findIndex(r=>r.id===rec.id);
+  if(idx>=0)db_store[idx]=rec; else db_store.push(rec);
+
+  if(idb){
+    const tx=idb.transaction('records','readwrite');
+    tx.objectStore('records').put(rec);
+  } else {
+    try{localStorage.setItem('haic_v4',JSON.stringify(db_store));}catch(e){}
+  }
+}
+
+function deleteRecord(id){
+  db_store=db_store.filter(r=>r.id!==id);
+  if(idb){
+    const tx=idb.transaction('records','readwrite');
+    tx.objectStore('records').delete(id);
+  } else {
+    try{localStorage.setItem('haic_v4',JSON.stringify(db_store));}catch(e){}
+  }
+}
+
+function updateRecord(id,changes){
+  const r=db_store.find(x=>x.id===id);
+  if(!r)return;
+  Object.assign(r,changes);
+  saveRecord(r);
+}
+
+// ==================== FORM STATE ====================
+let advRows=[{desc:'',date:'',amount:''}];
+let useRows=[{date:'',desc:'',price:'',qty:1,amount:0}];
+
+// ==================== RENDER ADV ROWS ====================
+function renderAdvRows(){
+  document.getElementById('adv-cards').innerHTML=advRows.map((r,i)=>`
+    <div class="row-card">
+      <div class="row-card-hdr">
+        <span class="row-card-num">Row ${i+1}</span>
+        ${advRows.length>1?`<button class="del-row-btn" onclick="delAdvRow(${i})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
+      </div>
+      <div class="field">
+        <label>Description / Nội dung</label>
+        <input value="${escH(r.desc)}" oninput="advRows[${i}].desc=this.value" placeholder="Mô tả nội dung tạm ứng..." autocomplete="off" autocorrect="off"/>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Date / Ngày tạm ứng</label>
+          <input type="date" value="${r.date}" oninput="advRows[${i}].date=this.value"/>
+        </div>
+        <div class="field">
+          <label>Amount / Số tiền</label>
+          <input type="number" inputmode="decimal" value="${r.amount||''}" oninput="advRows[${i}].amount=+this.value;calcAll()" placeholder="0" style="text-align:right"/>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function addAdvRow(){advRows.push({desc:'',date:today(),amount:''});renderAdvRows();}
+function delAdvRow(i){advRows.splice(i,1);renderAdvRows();calcAll();}
+
+// ==================== RENDER USE ROWS ====================
+function renderUseRows(){
+  document.getElementById('use-cards').innerHTML=useRows.map((r,i)=>`
+    <div class="row-card">
+      <div class="row-card-hdr">
+        <span class="row-card-num">Row ${i+1}</span>
+        ${useRows.length>1?`<button class="del-row-btn" onclick="delUseRow(${i})"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
+      </div>
+      <div class="field">
+        <label>Date / Ngày</label>
+        <input type="date" value="${r.date}" oninput="useRows[${i}].date=this.value"/>
+      </div>
+      <div class="field">
+        <label>Description / Nội dung chi tiêu</label>
+        <input value="${escH(r.desc)}" oninput="useRows[${i}].desc=this.value" placeholder="Mô tả chi tiết sử dụng..." autocomplete="off" autocorrect="off"/>
+      </div>
+      <div class="row2">
+        <div class="field">
+          <label>Unit price / Đơn giá</label>
+          <input type="number" inputmode="decimal" value="${r.price||''}" oninput="useRows[${i}].price=+this.value;autoCalc(${i})" placeholder="0" style="text-align:right"/>
+        </div>
+        <div class="field">
+          <label>Qty / Số lượng</label>
+          <input type="number" inputmode="decimal" value="${r.qty||1}" oninput="useRows[${i}].qty=+this.value;autoCalc(${i})" placeholder="1" style="text-align:right"/>
+        </div>
+      </div>
+      <div class="amt-display">
+        <span>Amount / Thành tiền</span>
+        <span class="amt-val" id="ua-${i}">${Math.round(r.amount||0)}</span>
+      </div>
+    </div>`).join('');
+}
+
+function autoCalc(i){
+  const p=parseFloat(useRows[i].price)||0;
+  const q=parseFloat(useRows[i].qty)||1;
+  useRows[i].amount=p*q;
+  const el=document.getElementById('ua-'+i);
+  if(el)el.textContent=Math.round(p*q);
+  calcAll();
+}
+function addUseRow(){useRows.push({date:today(),desc:'',price:'',qty:1,amount:0});renderUseRows();}
+function delUseRow(i){useRows.splice(i,1);renderUseRows();calcAll();}
+
+// ==================== CALCULATE ====================
+function calcAll(){
+  const advT=advRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const useT=useRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const f=n=>fmtN(n);
+
+  document.getElementById('adv-total').textContent=new Intl.NumberFormat().format(Math.round(advT));
+  document.getElementById('use-total').textContent=new Intl.NumberFormat().format(Math.round(useT));
+  document.getElementById('calc-adv').textContent=f(advT);
+  document.getElementById('calc-used').textContent=f(useT);
+
+  const diff=useT-advT;
+  const de=document.getElementById('calc-diff');
+  de.textContent=(diff>0?'+':'')+f(diff);
+  de.className='cv '+(diff>0?'red':diff<0?'green':'');
+
+  const rr=document.getElementById('result-row');
+  rr.className='result-row '+(diff>0?'payme':diff<0?'returnme':'balanced');
+  document.getElementById('result-en').textContent=diff>0?'Amount HAIC must pay to me':diff<0?'Amount I must return to HAIC':'Balanced ✓';
+  document.getElementById('result-vn').textContent=diff>0?'Công ty HAIC còn phải thanh toán thêm':diff<0?'Số tiền phải hoàn trả lại công ty':'Khớp số — không cần thu chi thêm';
+  const rv=document.getElementById('result-val');
+  rv.textContent=f(Math.abs(diff));
+  rv.className='rv '+(diff>0?'green':diff<0?'amber':'');
+  rv.style.color=diff===0?'var(--text2)':'';
+}
+
+// ==================== SAVE / CLEAR ====================
+function clearForm(){
+  ['f-project','f-location','f-name','f-preparer','f-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-formdate').value=today();
+  advRows=[{desc:'',date:today(),amount:''}];
+  useRows=[{date:today(),desc:'',price:'',qty:1,amount:0}];
+  renderAdvRows();renderUseRows();calcAll();
+}
+
+async function saveForm(){
+  const name=document.getElementById('f-name').value.trim();
+  const project=document.getElementById('f-project').value.trim();
+  if(!name||!project){showToast('⚠️ Nhập Project name và Your name!');return;}
+  const advT=advRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const useT=useRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const rec={
+    id:Date.now(),
+    date:document.getElementById('f-formdate').value,
+    project,location:document.getElementById('f-location').value,
+    name,dept:document.getElementById('f-dept').value,
+    currency:getCur(),
+    preparer:document.getElementById('f-preparer').value,
+    note:document.getElementById('f-note').value,
+    advRows:JSON.parse(JSON.stringify(advRows)),
+    useRows:JSON.parse(JSON.stringify(useRows)),
+    advTotal:advT,useTotal:useT,diff:useT-advT,
+    status:'pending'
+  };
+  saveRecord(rec);
+  showToast('✓ Record saved!');
+  clearForm();
+}
+
+// ==================== EXPORT / IMPORT ====================
+function exportData(){
+  if(!db_store.length){showToast('No records to export');return;}
+  const blob=new Blob([JSON.stringify(db_store,null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='HAIC_data_'+today()+'.json';
+  a.click();
+  showToast('✓ Exported '+db_store.length+' records');
+}
+
+function importData(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.json,application/json';
+  input.onchange=async e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+      try{
+        const imported=JSON.parse(ev.target.result);
+        if(!Array.isArray(imported))throw new Error();
+        const existingIds=new Set(db_store.map(r=>r.id));
+        let added=0;
+        for(const r of imported){
+          if(!existingIds.has(r.id)){saveRecord(r);added++;}
+        }
+        renderList();
+        showToast('✓ Imported '+added+' new records');
+      }catch(err){showToast('❌ Invalid JSON file');}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ==================== LIST ====================
+let listTab='pending';
+function switchListTab(t){
+  listTab=t;
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ltab-'+t).classList.add('active');
+  renderList();
+}
+
+function buildMonthOpts(selId){
+  const sel=document.getElementById(selId);
+  const now=new Date();
+  sel.innerHTML='<option value="all">All months</option>';
+  for(let i=0;i<8;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const o=document.createElement('option');
+    o.value=val;o.textContent=lbl;if(i===0)o.selected=true;
+    sel.appendChild(o);
+  }
+}
+
+function renderList(){
+  const mo=document.getElementById('list-month').value;
+  let list=db_store.filter(r=>listTab==='all'||r.status===listTab);
+  if(mo!=='all')list=list.filter(r=>r.date&&r.date.startsWith(mo));
+  list=list.slice().reverse();
+  const el=document.getElementById('list-content');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>No records found</div>';
+    return;
+  }
+  const total=list.reduce((s,r)=>s+r.advTotal,0);
+  const cur=list[0]?.currency||'USD';
+  const s=sym(cur);
+  el.innerHTML=list.map(r=>`
+    <div class="list-card" onclick="showDetail(${r.id})">
+      <div class="lc-top">
+        <div style="flex:1;min-width:0">
+          <div class="lc-name">${escH(r.name)}</div>
+          <div class="lc-project">${escH(r.project)}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px">
+          <div class="lc-amount">${s} ${new Intl.NumberFormat().format(Math.round(r.advTotal))}</div>
+          <span class="status ${r.status}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span>
+        </div>
+      </div>
+      <div class="lc-sub">
+        <span>📅 ${fmtD(r.date)}</span>
+        <span>🏢 ${r.dept}</span>
+        <span class="diff-chip ${r.diff>0?'diff-under':r.diff<0?'diff-over':'diff-even'}">${r.diff>0?'HAIC pays +'+s+Math.round(r.diff):r.diff<0?'Return '+s+Math.round(-r.diff):'Balanced ✓'}</span>
+      </div>
+    </div>`).join('')+
+    `<div class="sum-bar"><span>Records: </span><b>${list.length}</b>&nbsp;&nbsp;<span>Total advance: </span><b style="color:var(--amber)">${s} ${new Intl.NumberFormat().format(Math.round(total))}</b></div>`;
+}
+
+function showDetail(id){
+  const r=db_store.find(x=>x.id===id);if(!r)return;
+  const f=n=>fmtN(n,r.currency);
+  document.getElementById('modal-body').innerHTML=`
+    <div class="kv"><span class="k">Date</span><span class="v">${fmtD(r.date)}</span></div>
+    <div class="kv"><span class="k">Project</span><span class="v">${escH(r.project)}</span></div>
+    <div class="kv"><span class="k">Location</span><span class="v">${escH(r.location)||'—'}</span></div>
+    <div class="kv"><span class="k">Name</span><span class="v">${escH(r.name)}</span></div>
+    <div class="kv"><span class="k">Department</span><span class="v">${r.dept}</span></div>
+    <div class="kv"><span class="k">Status</span><span class="v"><span class="status ${r.status}">${r.status.charAt(0).toUpperCase()+r.status.slice(1)}</span></span></div>
+    <div class="section-label">I. Advance Details</div>
+    ${r.advRows.map((a,i)=>`<div class="kv"><span class="k">${i+1}. ${escH(a.desc)||'—'} <span style="opacity:0.55">${fmtD(a.date)}</span></span><span class="v" style="color:var(--amber)">${f(a.amount)}</span></div>`).join('')}
+    <div class="kv" style="font-weight:700"><span class="k">Total advance</span><span class="v" style="color:var(--amber)">${f(r.advTotal)}</span></div>
+    <div class="section-label">II. Advance Used</div>
+    ${r.useRows.map((u,i)=>`<div class="kv"><span class="k">${i+1}. ${escH(u.desc)||'—'} <span style="opacity:0.55">${fmtD(u.date)}</span></span><span class="v" style="color:var(--green)">${f(u.amount)}</span></div>`).join('')}
+    <div class="kv" style="font-weight:700"><span class="k">Total used</span><span class="v" style="color:var(--green)">${f(r.useTotal)}</span></div>
+    <div class="section-label">III. Final Payment</div>
+    <div class="kv"><span class="k">Advance</span><span class="v">${f(r.advTotal)}</span></div>
+    <div class="kv"><span class="k">Used</span><span class="v">${f(r.useTotal)}</span></div>
+    <div class="kv" style="font-weight:700"><span class="k">${r.diff>0?'HAIC pays me':r.diff<0?'I return to HAIC':'Balanced ✓'}</span><span class="v" style="color:${r.diff>0?'var(--green)':r.diff<0?'var(--amber)':'var(--text2)'}">${f(Math.abs(r.diff))}</span></div>
+    ${r.note?`<div class="kv"><span class="k">Note</span><span class="v">${escH(r.note)}</span></div>`:''}
+    ${r.preparer?`<div class="kv"><span class="k">Prepared by</span><span class="v">${escH(r.preparer)}</span></div>`:''}
+    <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${r.status==='pending'?`
+        <button class="btn btn-outline btn-sm" style="background:var(--red-light);color:var(--red);border-color:var(--red)" onclick="updStatus(${r.id},'rejected');closeModal()">✗ Reject</button>
+        <button class="btn btn-primary" style="flex:1" onclick="updStatus(${r.id},'approved');closeModal()">✓ Approve</button>`:''}
+      ${r.status==='approved'?`<button class="btn btn-primary" onclick="updStatus(${r.id},'settled');closeModal()">✓ Mark as Settled</button>`:''}
+      <button class="btn btn-outline btn-sm" onclick="delRec(${r.id})" style="background:var(--red-light);color:var(--red);border-color:var(--red)">🗑</button>
+    </div>`;
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function updStatus(id,s){updateRecord(id,{status:s});renderList();}
+function delRec(id){if(!confirm('Delete this record?'))return;deleteRecord(id);closeModal();renderList();}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+function bgClose(e){if(e.target.id==='modal-bg')closeModal();}
+
+// ==================== SUMMARY ====================
+function renderSummary(){
+  const mo=document.getElementById('sum-month').value;
+  let list=mo==='all'?db_store:db_store.filter(r=>r.date&&r.date.startsWith(mo));
+  const el=document.getElementById('summary-content');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>No data for this period</div>';
+    return;
+  }
+  const cur=(list[0]?.currency)||'USD';
+  const s=sym(cur);
+  const f=n=>s+' '+new Intl.NumberFormat().format(Math.round(n));
+  const totalAdv=list.reduce((a,r)=>a+r.advTotal,0);
+  const totalUsed=list.reduce((a,r)=>a+r.useTotal,0);
+  const pending=list.filter(r=>r.status==='pending').length;
+  const approved=list.filter(r=>r.status==='approved').length;
+  const settled=list.filter(r=>r.status==='settled').length;
+  const byPerson={};
+  list.forEach(r=>{if(!byPerson[r.name])byPerson[r.name]={adv:0,used:0,count:0};byPerson[r.name].adv+=r.advTotal;byPerson[r.name].used+=r.useTotal;byPerson[r.name].count++;});
+  el.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Total advance</div><div class="stat-val" style="color:var(--amber)">${f(totalAdv)}</div></div>
+      <div class="stat-card"><div class="stat-label">Total used</div><div class="stat-val" style="color:var(--green)">${f(totalUsed)}</div></div>
+      <div class="stat-card"><div class="stat-label">Net balance</div><div class="stat-val" style="color:${totalUsed-totalAdv>0?'var(--green)':'var(--amber)'}">${f(Math.abs(totalUsed-totalAdv))}</div></div>
+      <div class="stat-card"><div class="stat-label">Total records</div><div class="stat-val">${list.length}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1;background:var(--amber-light);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--amber)">${pending}</div><div style="font-size:11px;color:var(--amber);font-weight:600">Pending</div></div>
+      <div style="flex:1;background:var(--green-light);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--green)">${approved}</div><div style="font-size:11px;color:var(--green);font-weight:600">Approved</div></div>
+      <div style="flex:1;background:var(--bg2);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700">${settled}</div><div style="font-size:11px;color:var(--text2);font-weight:600">Settled</div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-hdr"><div class="en">By Employee</div><div class="vn">Tổng hợp theo nhân viên</div></div>
+      <div class="sec-body" style="padding:10px">
+        ${Object.entries(byPerson).sort((a,b)=>b[1].adv-a[1].adv).map(([n,v])=>`
+          <div style="border:0.5px solid var(--border1);border-radius:var(--radius-md);padding:11px 12px;margin-bottom:8px">
+            <div style="font-weight:700;margin-bottom:6px">${escH(n)} <span style="font-size:11px;font-weight:400;color:var(--text3)">${v.count} form(s)</span></div>
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:12px;color:var(--text2)">Advance</span>
+              <span style="font-weight:700;color:var(--amber)">${f(v.adv)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:4px">
+              <span style="font-size:12px;color:var(--text2)">Used</span>
+              <span style="font-weight:700;color:var(--green)">${f(v.used)}</span>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// ==================== TAB SWITCH ====================
+function goTab(t){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('screen-'+t).classList.add('active');
+  if(t==='list')renderList();
+  if(t==='summary')renderSummary();
+}
+
+// ==================== INSTALL BANNER (iOS) ====================
+function checkInstallBanner(){
+  const isIOS=/iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone=window.navigator.standalone===true;
+  if(isIOS && !isStandalone){
+    document.getElementById('install-banner').classList.add('show');
+  }
+}
+
+// ==================== INIT ====================
+async function init(){
+  try{
+    idb=await openDB();
+    await loadAllRecords();
+  }catch(e){
+    // Graceful fallback
+    try{const s=localStorage.getItem('haic_v4');if(s)db_store=JSON.parse(s);}catch(_){}
+  }
+
+  document.getElementById('f-formdate').value=today();
+  renderAdvRows();
+  renderUseRows();
+  calcAll();
+  buildMonthOpts('list-month');
+  buildMonthOpts('sum-month');
+  checkInstallBanner();
+
+  // Hide loading screen
+  document.getElementById('loading').style.display='none';
+  document.getElementById('app').style.display='flex';
+}
+
+init();
+</script>
+</body>
+</html>
