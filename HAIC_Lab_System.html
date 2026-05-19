@@ -1,0 +1,1537 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<title>HAIC LAB – Construction Materials Testing</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+/* ===== RESET & TOKENS ===== */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  /* Brand */
+  --haic-blue:#0057A8;--haic-blue-dark:#003E7A;--haic-blue-light:#E8F1FB;
+  --haic-teal:#00A896;--haic-teal-light:#E0F5F3;
+  --haic-orange:#F07D00;--haic-orange-light:#FEF0DC;
+  --haic-red:#D93025;--haic-red-light:#FDECEA;
+  --haic-green:#1B7F4F;--haic-green-light:#E3F5EC;
+  --haic-purple:#6B3FA0;--haic-purple-light:#F0EBF8;
+  /* Neutrals */
+  --gray-0:#FFFFFF;--gray-50:#F8F9FA;--gray-100:#F1F3F5;--gray-150:#E9ECEF;
+  --gray-200:#DEE2E6;--gray-300:#CED4DA;--gray-400:#ADB5BD;--gray-500:#868E96;
+  --gray-600:#495057;--gray-700:#343A40;--gray-800:#212529;--gray-900:#121416;
+  /* Semantic */
+  --bg:var(--gray-50);--surface:var(--gray-0);--surface2:var(--gray-100);
+  --border:var(--gray-200);--border-strong:var(--gray-300);
+  --text-primary:var(--gray-800);--text-secondary:var(--gray-500);--text-tertiary:var(--gray-400);
+  --shadow-xs:0 1px 2px rgba(0,0,0,0.05);
+  --shadow-sm:0 1px 4px rgba(0,0,0,0.07),0 2px 8px rgba(0,0,0,0.05);
+  --shadow-md:0 4px 12px rgba(0,0,0,0.08),0 1px 3px rgba(0,0,0,0.06);
+  --shadow-lg:0 8px 24px rgba(0,0,0,0.1),0 2px 6px rgba(0,0,0,0.06);
+  --radius-sm:6px;--radius-md:10px;--radius-lg:14px;--radius-xl:18px;--radius-full:999px;
+  --font:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+}
+[data-theme="dark"]{
+  --bg:#0D1117;--surface:#161B22;--surface2:#21262D;
+  --border:#30363D;--border-strong:#484F58;
+  --text-primary:#E6EDF3;--text-secondary:#8B949E;--text-tertiary:#484F58;
+  --gray-50:#161B22;--gray-100:#21262D;--gray-200:#30363D;
+  --haic-blue-light:rgba(0,87,168,0.2);--haic-teal-light:rgba(0,168,150,0.2);
+  --haic-orange-light:rgba(240,125,0,0.2);--haic-red-light:rgba(217,48,37,0.2);
+  --haic-green-light:rgba(27,127,79,0.2);--haic-purple-light:rgba(107,63,160,0.2);
+  --shadow-sm:0 1px 4px rgba(0,0,0,0.3);--shadow-md:0 4px 12px rgba(0,0,0,0.4);--shadow-lg:0 8px 24px rgba(0,0,0,0.5);
+}
+html,body{height:100%;font-family:var(--font);background:var(--bg);color:var(--text-primary);font-size:14px;line-height:1.5}
+/* ===== LAYOUT ===== */
+.app-shell{display:flex;height:100vh;overflow:hidden}
+/* SIDEBAR */
+.sidebar{width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width 0.25s}
+.sidebar.collapsed{width:64px}
+.sidebar-logo{padding:16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border);min-height:60px}
+.logo-mark{width:36px;height:36px;background:var(--haic-blue);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;color:#fff;letter-spacing:0.5px}
+.logo-text{font-size:13px;font-weight:700;color:var(--text-primary);line-height:1.2;white-space:nowrap;overflow:hidden}
+.logo-text span{display:block;font-size:10px;font-weight:400;color:var(--text-secondary);margin-top:1px}
+.nav-section{padding:8px;flex:1;overflow-y:auto}
+.nav-label{font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.8px;padding:8px 8px 4px;white-space:nowrap;overflow:hidden}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:var(--radius-md);cursor:pointer;color:var(--text-secondary);font-size:13px;font-weight:500;transition:all 0.15s;white-space:nowrap;overflow:hidden;margin-bottom:2px;text-decoration:none;border:none;background:transparent;width:100%}
+.nav-item:hover{background:var(--surface2);color:var(--text-primary)}
+.nav-item.active{background:var(--haic-blue-light);color:var(--haic-blue)}
+.nav-item svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--haic-orange);color:#fff;font-size:10px;font-weight:700;border-radius:var(--radius-full);padding:1px 6px;min-width:18px;text-align:center}
+.sidebar-footer{padding:12px;border-top:1px solid var(--border)}
+.user-chip{display:flex;align-items:center;gap:8px;padding:8px;border-radius:var(--radius-md);cursor:pointer;transition:background 0.15s}
+.user-chip:hover{background:var(--surface2)}
+.avatar{width:32px;height:32px;border-radius:var(--radius-full);background:var(--haic-blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.user-info{overflow:hidden;flex:1}
+.user-name{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-role{font-size:10px;color:var(--text-secondary)}
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{height:60px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0}
+.topbar-title{font-size:16px;font-weight:700;flex:1}
+.topbar-search{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-full);padding:6px 12px;gap:8px;width:280px}
+.topbar-search input{border:none;background:transparent;font-size:13px;color:var(--text-primary);outline:none;flex:1;font-family:var(--font)}
+.topbar-search input::placeholder{color:var(--text-tertiary)}
+.topbar-search svg{width:15px;height:15px;stroke:var(--text-tertiary);fill:none;stroke-width:2;flex-shrink:0}
+.icon-btn{width:36px;height:36px;border-radius:var(--radius-md);border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--text-secondary);transition:all 0.15s}
+.icon-btn:hover{background:var(--surface2);color:var(--text-primary)}
+.icon-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.content{flex:1;overflow-y:auto;padding:20px}
+/* ===== SCREENS ===== */
+.screen{display:none}
+.screen.active{display:block}
+/* ===== CARDS ===== */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px}
+.card-sm{padding:16px}
+/* ===== STATS GRID ===== */
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+@media(max-width:900px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:18px;position:relative;overflow:hidden;cursor:pointer;transition:box-shadow 0.2s,transform 0.2s}
+.stat-card:hover{box-shadow:var(--shadow-md);transform:translateY(-1px)}
+.stat-icon{width:40px;height:40px;border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;margin-bottom:14px}
+.stat-icon svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.stat-val{font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.stat-label{font-size:12px;color:var(--text-secondary);font-weight:500}
+.stat-trend{font-size:11px;font-weight:600;margin-top:6px;display:flex;align-items:center;gap:3px}
+.stat-trend.up{color:var(--haic-green)}
+.stat-trend.neutral{color:var(--text-secondary)}
+/* ===== TABLE ===== */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--surface2);padding:10px 14px;text-align:left;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-secondary);border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:12px 14px;border-bottom:1px solid var(--border);font-size:13px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr{transition:background 0.1s;cursor:pointer}
+tbody tr:hover{background:var(--surface2)}
+/* ===== STATUS BADGES ===== */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--radius-full);font-size:11px;font-weight:600;white-space:nowrap}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.badge-received{background:var(--haic-blue-light);color:var(--haic-blue)}.badge-received::before{background:var(--haic-blue)}
+.badge-preparing{background:var(--haic-purple-light);color:var(--haic-purple)}.badge-preparing::before{background:var(--haic-purple)}
+.badge-testing{background:var(--haic-orange-light);color:var(--haic-orange)}.badge-testing::before{background:var(--haic-orange)}
+.badge-completed{background:var(--haic-teal-light);color:var(--haic-teal)}.badge-completed::before{background:var(--haic-teal)}
+.badge-delivered{background:var(--haic-green-light);color:var(--haic-green)}.badge-delivered::before{background:var(--haic-green)}
+/* ===== BUTTONS ===== */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:8px 16px;border-radius:var(--radius-md);font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all 0.15s;white-space:nowrap;font-family:var(--font);min-height:36px}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:var(--haic-blue);color:#fff}.btn-primary:hover{background:var(--haic-blue-dark)}
+.btn-secondary{background:var(--surface2);color:var(--text-primary);border:1px solid var(--border)}.btn-secondary:hover{background:var(--gray-150)}
+.btn-outline{background:transparent;color:var(--haic-blue);border:1.5px solid var(--haic-blue)}.btn-outline:hover{background:var(--haic-blue-light)}
+.btn-danger{background:var(--haic-red);color:#fff}.btn-danger:hover{opacity:0.9}
+.btn-sm{padding:5px 12px;font-size:12px;min-height:30px}
+.btn-lg{padding:12px 24px;font-size:14px;min-height:44px}
+.btn-icon{padding:0;width:36px;height:36px}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* ===== FORM ===== */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.form-grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+@media(max-width:700px){.form-grid,.form-grid-3{grid-template-columns:1fr}}
+.form-col-full{grid-column:1/-1}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.4px}
+.field label .req{color:var(--haic-red)}
+.field input,.field select,.field textarea{font-size:14px;padding:9px 12px;border:1px solid var(--border-strong);border-radius:var(--radius-md);background:var(--surface);color:var(--text-primary);font-family:var(--font);transition:border-color 0.15s,box-shadow 0.15s;-webkit-appearance:none;appearance:none;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--haic-blue);box-shadow:0 0 0 3px rgba(0,87,168,0.12)}
+.field textarea{resize:vertical;min-height:80px}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23868E96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.field-hint{font-size:11px;color:var(--text-tertiary)}
+/* ===== SECTION HEADERS ===== */
+.section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-title{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px}
+.section-title .num{width:22px;height:22px;background:var(--haic-blue);color:#fff;border-radius:var(--radius-sm);display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.section-divider{border:none;border-top:1px solid var(--border);margin:20px 0}
+/* ===== LAB NO BADGE ===== */
+.lab-no{font-family:var(--font-mono);font-size:12px;font-weight:500;background:var(--haic-blue-light);color:var(--haic-blue);padding:2px 8px;border-radius:4px}
+/* ===== SAMPLE TABLE in form ===== */
+.sample-table{width:100%;border-collapse:collapse;margin-bottom:10px}
+.sample-table th{background:var(--surface2);padding:8px 10px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.4px;color:var(--text-secondary);border:1px solid var(--border);text-align:left}
+.sample-table td{border:1px solid var(--border);padding:4px 6px;vertical-align:middle}
+.sample-table input{border:none;background:transparent;font-size:13px;color:var(--text-primary);width:100%;padding:5px 6px;font-family:var(--font);outline:none;min-height:34px}
+.sample-table input:focus{background:var(--haic-blue-light);border-radius:4px}
+.del-sample{background:none;border:none;cursor:pointer;color:var(--text-tertiary);padding:5px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:color 0.15s,background 0.15s}
+.del-sample:hover{color:var(--haic-red);background:var(--haic-red-light)}
+.del-sample svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+/* ===== CHECKBOX & RADIO ===== */
+.check-group{display:flex;flex-wrap:wrap;gap:10px}
+.check-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:500}
+.check-item input[type=checkbox],.check-item input[type=radio]{width:16px;height:16px;accent-color:var(--haic-blue);cursor:pointer}
+/* ===== SIGNATURE PAD ===== */
+.sig-container{border:1.5px dashed var(--border-strong);border-radius:var(--radius-md);background:var(--surface2);position:relative;overflow:hidden}
+.sig-canvas{display:block;width:100%;cursor:crosshair;touch-action:none}
+.sig-label{position:absolute;top:8px;left:10px;font-size:10px;font-weight:600;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;pointer-events:none}
+.sig-actions{display:flex;gap:6px;padding:6px 8px;border-top:1px solid var(--border);background:var(--surface)}
+/* ===== TIMELINE ===== */
+.timeline{position:relative;padding-left:24px}
+.timeline::before{content:'';position:absolute;left:7px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-21px;width:14px;height:14px;border-radius:50%;border:2px solid var(--surface);top:3px;z-index:1}
+.tl-dot.done{background:var(--haic-green)}
+.tl-dot.active{background:var(--haic-blue);box-shadow:0 0 0 3px var(--haic-blue-light)}
+.tl-dot.pending{background:var(--border-strong)}
+.tl-label{font-size:13px;font-weight:600}
+.tl-date{font-size:11px;color:var(--text-secondary);margin-top:1px}
+/* ===== MODAL ===== */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius-xl);width:100%;max-width:680px;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-hdr{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);z-index:1}
+.modal-title{font-size:16px;font-weight:700}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px;position:sticky;bottom:0;background:var(--surface)}
+/* ===== QR PANEL ===== */
+.qr-box{background:var(--surface2);border-radius:var(--radius-lg);padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px;border:1px solid var(--border)}
+#qr-canvas{border-radius:var(--radius-md)}
+/* ===== CHART (CSS only) ===== */
+.chart-bars{display:flex;align-items:flex-end;gap:8px;height:120px;padding:0 4px}
+.bar-group{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;transition:height 0.6s cubic-bezier(.4,0,.2,1)}
+.bar-label{font-size:10px;color:var(--text-secondary);white-space:nowrap}
+/* ===== FILTER ROW ===== */
+.filter-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+.filter-row select{font-size:12px;padding:6px 28px 6px 10px;border:1px solid var(--border);border-radius:var(--radius-full);background:var(--surface);color:var(--text-primary);font-family:var(--font);cursor:pointer;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23868E96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center}
+/* ===== DETAIL PANEL ===== */
+.detail-kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-kv:last-child{border-bottom:none}
+.detail-k{color:var(--text-secondary);font-weight:500;flex-shrink:0;margin-right:16px}
+.detail-v{font-weight:600;text-align:right;word-break:break-word}
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;right:24px;background:var(--gray-800);color:#fff;padding:12px 18px;border-radius:var(--radius-lg);font-size:13px;font-weight:500;z-index:999;opacity:0;transform:translateY(8px);transition:all 0.25s;pointer-events:none;display:flex;align-items:center;gap:8px;max-width:320px;box-shadow:var(--shadow-lg)}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast-icon{width:16px;height:16px;flex-shrink:0}
+/* ===== LOADING ===== */
+#splash{position:fixed;inset:0;background:var(--haic-blue);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;transition:opacity 0.4s}
+#splash.hide{opacity:0;pointer-events:none}
+.splash-logo{font-size:48px;font-weight:800;letter-spacing:4px;margin-bottom:6px}
+.splash-sub{font-size:13px;opacity:0.8;margin-bottom:32px}
+.splash-spin{width:28px;height:28px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ===== LOGIN SCREEN ===== */
+#login-screen{display:none;position:fixed;inset:0;background:linear-gradient(135deg,var(--haic-blue-dark) 0%,var(--haic-blue) 100%);align-items:center;justify-content:center;z-index:1000}
+#login-screen.show{display:flex}
+.login-card{background:var(--surface);border-radius:var(--radius-xl);padding:36px;width:100%;max-width:400px;box-shadow:var(--shadow-lg)}
+.login-logo{display:flex;align-items:center;gap:12px;margin-bottom:28px}
+.login-logo-mark{width:44px;height:44px;background:var(--haic-blue);border-radius:var(--radius-md);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;letter-spacing:1px}
+.login-logo-text{font-size:18px;font-weight:700;line-height:1.2}
+.login-logo-text span{display:block;font-size:11px;font-weight:400;color:var(--text-secondary);margin-top:2px}
+.login-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-sub{font-size:13px;color:var(--text-secondary);margin-bottom:24px}
+.login-err{color:var(--haic-red);font-size:12px;text-align:center;min-height:16px;margin-bottom:4px}
+/* ===== EMPTY STATE ===== */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 20px;color:var(--text-secondary);text-align:center}
+.empty-state svg{width:56px;height:56px;stroke:var(--border-strong);fill:none;stroke-width:1.2;stroke-linecap:round;margin-bottom:16px}
+.empty-state h3{font-size:15px;font-weight:600;color:var(--text-primary);margin-bottom:6px}
+.empty-state p{font-size:13px;max-width:280px}
+/* ===== RESPONSIVE SIDEBAR ===== */
+@media(max-width:768px){
+  .sidebar{position:fixed;left:-240px;top:0;bottom:0;z-index:100;transition:left 0.25s}
+  .sidebar.mobile-open{left:0}
+  .main{width:100%}
+  .topbar-search{display:none}
+}
+/* ===== MISC ===== */
+.page-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px}
+.page-title{font-size:20px;font-weight:700}
+.page-sub{font-size:13px;color:var(--text-secondary);margin-top:2px}
+.flex{display:flex}.gap-2{gap:8px}.gap-3{gap:12px}.items-center{align-items:center}.justify-between{justify-content:space-between}.flex-1{flex:1}.flex-wrap{flex-wrap:wrap}.mt-1{margin-top:4px}.mt-2{margin-top:8px}.mt-3{margin-top:12px}.mt-4{margin-top:16px}.mt-5{margin-top:20px}
+.w-full{width:100%}.text-sm{font-size:12px}.text-xs{font-size:11px}.font-mono{font-family:var(--font-mono)}.font-bold{font-weight:700}.text-secondary{color:var(--text-secondary)}
+.rounded{border-radius:var(--radius-md)}.p-4{padding:16px}.mb-4{margin-bottom:16px}.mb-3{margin-bottom:12px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.grid-2{grid-template-columns:1fr}}
+.spin-sm{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">HAIC</div>
+  <div class="splash-sub">LAB – Construction Materials Testing System</div>
+  <div class="splash-spin"></div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-mark">HAI</div>
+      <div class="login-logo-text">HAIC LAB System<span>Construction Materials Testing</span></div>
+    </div>
+    <div class="login-title">Welcome back</div>
+    <div class="login-sub">Sign in to access the lab management system</div>
+    <div class="field mb-3">
+      <label>Email Address</label>
+      <input type="email" id="l-email" placeholder="admin@haicam.com" autocomplete="email"/>
+    </div>
+    <div class="field mb-3">
+      <label>Password</label>
+      <input type="password" id="l-pwd" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div class="login-err" id="l-err"></div>
+    <button class="btn btn-primary w-full btn-lg" onclick="doLogin()" id="l-btn">Sign In</button>
+    <div style="margin-top:16px;text-align:center;font-size:12px;color:var(--text-secondary)">
+      Demo: admin@haicam.com / lab@haicam.com / client@haicam.com — password: <b>haic2024</b>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app-shell" id="app" style="display:none">
+  <!-- SIDEBAR -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">HAI</div>
+      <div class="logo-text">HAIC LAB<span>Testing System</span></div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <button class="nav-item active" data-screen="dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        Dashboard
+      </button>
+      <button class="nav-item" data-screen="requests">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg>
+        Test Requests
+        <span class="nav-badge" id="nav-pending-badge">0</span>
+      </button>
+      <button class="nav-item" data-screen="new-request">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+        New Request
+      </button>
+      <div class="nav-label" id="nav-admin-section">Admin</div>
+      <button class="nav-item" data-screen="users" id="nav-users">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        Users
+      </button>
+      <button class="nav-item" data-screen="analytics" id="nav-analytics">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+        Analytics
+      </button>
+    </div>
+    <div class="sidebar-footer">
+      <div class="user-chip" onclick="doLogout()">
+        <div class="avatar" id="user-avatar">A</div>
+        <div class="user-info">
+          <div class="user-name" id="user-name-display">Loading...</div>
+          <div class="user-role" id="user-role-display">—</div>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn" id="sidebar-toggle" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+      <div class="topbar-title" id="topbar-title">Dashboard</div>
+      <div class="topbar-search">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input type="text" placeholder="Search Lab No, Project, Client..." id="global-search" oninput="onGlobalSearch()"/>
+      </div>
+      <button class="icon-btn" onclick="toggleDark()" title="Toggle dark mode">
+        <svg viewBox="0 0 24 24" id="dark-icon"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+      <button class="icon-btn btn-primary" style="width:auto;padding:0 14px;font-size:12px;font-weight:600;color:#fff;border:none" onclick="goScreen('new-request')">
+        + New Request
+      </button>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ===== DASHBOARD ===== -->
+      <div class="screen active" id="screen-dashboard">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Dashboard</div>
+            <div class="page-sub" id="dash-greeting">Good morning! Here's your lab overview.</div>
+          </div>
+          <div class="flex gap-2">
+            <select style="font-size:12px;padding:6px 28px 6px 10px;border:1px solid var(--border);border-radius:var(--radius-full);background:var(--surface);font-family:var(--font);cursor:pointer;-webkit-appearance:none;background-image:url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23868E96' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E\");background-repeat:no-repeat;background-position:right 10px center" onchange="renderDashboard()">
+              <option>This Month</option><option>Last Month</option><option>All Time</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid"></div>
+
+        <!-- Charts + Recent -->
+        <div style="display:grid;grid-template-columns:1fr 1.6fr;gap:16px;margin-bottom:20px">
+          <!-- Status Donut (CSS) -->
+          <div class="card">
+            <div class="section-header mb-3" style="margin-bottom:12px">
+              <div class="section-title" style="font-size:13px">Status Breakdown</div>
+            </div>
+            <div id="status-chart"></div>
+          </div>
+          <!-- Monthly Bar Chart -->
+          <div class="card">
+            <div class="section-header" style="margin-bottom:12px">
+              <div class="section-title" style="font-size:13px">Monthly Samples</div>
+            </div>
+            <div class="chart-bars" id="monthly-chart"></div>
+            <div style="margin-top:8px;font-size:10px;color:var(--text-tertiary);text-align:center">Last 6 months</div>
+          </div>
+        </div>
+
+        <!-- Recent Requests -->
+        <div class="card">
+          <div class="section-header">
+            <div class="section-title">Recent Requests</div>
+            <button class="btn btn-secondary btn-sm" onclick="goScreen('requests')">View All</button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Lab No</th><th>Project</th><th>Client</th><th>Samples</th><th>Date</th><th>Status</th><th></th>
+              </tr></thead>
+              <tbody id="recent-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== REQUESTS LIST ===== -->
+      <div class="screen" id="screen-requests">
+        <div class="page-header">
+          <div>
+            <div class="page-title">Test Requests</div>
+            <div class="page-sub">All construction material testing requests</div>
+          </div>
+          <button class="btn btn-primary" onclick="goScreen('new-request')">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            New Request
+          </button>
+        </div>
+        <div class="filter-row">
+          <select id="filter-status" onchange="renderRequestsList()">
+            <option value="">All Status</option>
+            <option value="received">Received</option>
+            <option value="preparing">Preparing</option>
+            <option value="testing">Testing</option>
+            <option value="completed">Completed</option>
+            <option value="delivered">Delivered</option>
+          </select>
+          <select id="filter-month" onchange="renderRequestsList()"></select>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('filter-status').value='';document.getElementById('filter-month').value='all';renderRequestsList()">Clear</button>
+          <div style="margin-left:auto;font-size:12px;color:var(--text-secondary)" id="list-count">— records</div>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>Lab No</th><th>Project</th><th>Contractor</th><th>Contact</th><th>Samples</th><th>Received</th><th>Status</th><th>Action</th>
+              </tr></thead>
+              <tbody id="requests-tbody"></tbody>
+            </table>
+          </div>
+          <div id="requests-empty" style="display:none"></div>
+        </div>
+      </div>
+
+      <!-- ===== NEW REQUEST FORM ===== -->
+      <div class="screen" id="screen-new-request">
+        <div class="page-header">
+          <div>
+            <div class="page-title" id="form-page-title">New Testing Request</div>
+            <div class="page-sub">F-01.HAIC-LAB-15MAT — Construction Materials Testing</div>
+          </div>
+          <div class="flex gap-2">
+            <button class="btn btn-secondary" onclick="goScreen('requests')">Cancel</button>
+            <button class="btn btn-primary" onclick="saveRequest()" id="save-req-btn">
+              <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+              Save & Submit
+            </button>
+          </div>
+        </div>
+
+        <!-- Auto Lab No -->
+        <div class="card mb-4" style="background:var(--haic-blue-light);border-color:var(--haic-blue);padding:14px 18px">
+          <div class="flex items-center justify-between">
+            <div>
+              <div class="text-xs font-bold" style="color:var(--haic-blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px">Auto-Generated Lab Number</div>
+              <div class="font-mono font-bold" style="font-size:20px;color:var(--haic-blue)" id="preview-lab-no">LAB-2026-001</div>
+            </div>
+            <div class="text-sm text-secondary" id="form-date-display"></div>
+          </div>
+        </div>
+
+        <!-- Section I: Project Info -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">I</span> Project Information / Thông tin dự án</div>
+          </div>
+          <div class="form-grid">
+            <div class="field"><label>Contractor / Nhà thầu <span class="req">*</span></label><input id="f-contractor" placeholder="Contractor name" autocomplete="off"/></div>
+            <div class="field"><label>Client / Đơn vị gửi mẫu <span class="req">*</span></label><input id="f-client" placeholder="Client company" autocomplete="off"/></div>
+            <div class="field form-col-full"><label>Project / Công trình <span class="req">*</span></label><input id="f-project" placeholder="Project name" autocomplete="off"/></div>
+            <div class="field form-col-full"><label>Location / Địa điểm XD</label><input id="f-location" placeholder="Construction site location" autocomplete="off"/></div>
+            <div class="field"><label>Contact Person / Người liên hệ</label><input id="f-contact" placeholder="Full name + phone" autocomplete="off"/></div>
+            <div class="field"><label>Testing Category</label>
+              <select id="f-category">
+                <option value="">— Select —</option>
+                <option>Concrete Testing</option>
+                <option>Steel/Rebar Testing</option>
+                <option>Soil Testing</option>
+                <option>Asphalt Testing</option>
+                <option>Cement Testing</option>
+                <option>Aggregate Testing</option>
+                <option>Water Quality Testing</option>
+                <option>Other</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section II: Sample Information -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">II</span> Sample Information / Thông tin mẫu thử</div>
+          </div>
+          <div style="overflow-x:auto">
+            <table class="sample-table" id="sample-table">
+              <thead><tr>
+                <th style="width:40px">#</th>
+                <th>Sample Name / Tên mẫu thử</th>
+                <th style="width:110px">Quantity / SL</th>
+                <th>Note / Ghi chú</th>
+                <th style="width:40px"></th>
+              </tr></thead>
+              <tbody id="sample-tbody"></tbody>
+            </table>
+          </div>
+          <button class="btn btn-outline btn-sm mt-2" onclick="addSampleRow()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Sample Row
+          </button>
+        </div>
+
+        <!-- Section III: Result Info -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">III</span> Result Information / Thông tin kết quả</div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Result Form Language</label>
+              <select id="f-result-form">
+                <option value="english-vietnamese">English / Vietnamese</option>
+                <option value="english">English only</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Copy Quantity / Số bản</label>
+              <input type="number" id="f-copies" value="2" min="1" max="10"/>
+            </div>
+            <div class="field">
+              <label>Test Result Date / Ngày trả kết quả</label>
+              <input type="date" id="f-result-date"/>
+            </div>
+          </div>
+          <div class="field mt-3">
+            <label>Result Delivery Location</label>
+            <div class="check-group mt-1">
+              <label class="check-item"><input type="checkbox" id="rd-haic-lab" checked/> HAIC Lab</label>
+              <label class="check-item"><input type="checkbox" id="rd-sms"/> SMS</label>
+              <label class="check-item"><input type="checkbox" id="rd-customer"/> Customer</label>
+              <label class="check-item"><input type="checkbox" id="rd-company"/> Company</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section IV: Lab Testing -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">IV</span> Lab Testing Option</div>
+          </div>
+          <div class="flex gap-3">
+            <label class="check-item"><input type="radio" name="lab-remain" id="remain-no" value="no" checked/> No Remain / Không lưu mẫu</label>
+            <label class="check-item"><input type="radio" name="lab-remain" id="remain-yes" value="yes"/> Remain / Lưu mẫu</label>
+          </div>
+        </div>
+
+        <!-- Section V: Other Requirements -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">V</span> Other Requirements / Yêu cầu khác</div>
+          </div>
+          <div class="field">
+            <textarea id="f-other-req" placeholder="Any special requirements or notes..." style="min-height:100px"></textarea>
+          </div>
+        </div>
+
+        <!-- Section VI: Signatures -->
+        <div class="card mb-4">
+          <div class="section-header">
+            <div class="section-title"><span class="num">VI</span> Digital Signatures / Chữ ký xác nhận</div>
+          </div>
+          <div class="grid-2">
+            <div>
+              <div class="text-xs font-bold text-secondary mb-2" style="text-transform:uppercase;letter-spacing:0.5px">Client Signature / Đơn vị gửi mẫu</div>
+              <div class="sig-container">
+                <canvas id="sig-client" class="sig-canvas" height="120"></canvas>
+                <div class="sig-label">Sign here</div>
+                <div class="sig-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="clearSig('client')">Clear</button>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs font-bold text-secondary mb-2" style="text-transform:uppercase;letter-spacing:0.5px">HAIC Lab Signature / Đơn vị nhận mẫu</div>
+              <div class="sig-container">
+                <canvas id="sig-lab" class="sig-canvas" height="120"></canvas>
+                <div class="sig-label">Sign here</div>
+                <div class="sig-actions">
+                  <button class="btn btn-secondary btn-sm" onclick="clearSig('lab')">Clear</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2" style="justify-content:flex-end;margin-bottom:40px">
+          <button class="btn btn-secondary" onclick="goScreen('requests')">Cancel</button>
+          <button class="btn btn-primary btn-lg" onclick="saveRequest()" id="save-req-btn2">
+            <svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>
+            Save & Submit Request
+          </button>
+        </div>
+      </div>
+
+      <!-- ===== ANALYTICS ===== -->
+      <div class="screen" id="screen-analytics">
+        <div class="page-header">
+          <div class="page-title">Analytics</div>
+        </div>
+        <div id="analytics-content"></div>
+      </div>
+
+      <!-- ===== USERS ===== -->
+      <div class="screen" id="screen-users">
+        <div class="page-header">
+          <div class="page-title">User Management</div>
+          <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add User
+          </button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden">
+          <table>
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="users-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /app-shell -->
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal" onclick="closeModal('detail-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:780px">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title" id="detail-modal-title">Request Details</div>
+        <div class="text-xs text-secondary mt-1" id="detail-modal-sub"></div>
+      </div>
+      <div class="flex gap-2 items-center">
+        <button class="btn btn-secondary btn-sm" onclick="exportPDF()" id="export-pdf-btn">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Export PDF
+        </button>
+        <button class="icon-btn" onclick="closeModal('detail-modal')">
+          <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="modal-body" id="detail-modal-body"></div>
+  </div>
+</div>
+
+<!-- STATUS UPDATE MODAL -->
+<div class="modal-overlay" id="status-modal" onclick="closeModal('status-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:420px">
+    <div class="modal-hdr">
+      <div class="modal-title">Update Status</div>
+      <button class="icon-btn" onclick="closeModal('status-modal')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field mb-3">
+        <label>New Status</label>
+        <select id="status-select">
+          <option value="received">📥 Received</option>
+          <option value="preparing">🔬 Preparing</option>
+          <option value="testing">⚗️ Testing</option>
+          <option value="completed">✅ Completed</option>
+          <option value="delivered">📦 Delivered</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Note (optional)</label>
+        <textarea id="status-note" placeholder="Status update note..." style="min-height:70px"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('status-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmStatusUpdate()">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD USER MODAL -->
+<div class="modal-overlay" id="add-user-modal" onclick="closeModal('add-user-modal')">
+  <div class="modal" onclick="event.stopPropagation()" style="max-width:400px">
+    <div class="modal-hdr">
+      <div class="modal-title">Add User</div>
+      <button class="icon-btn" onclick="closeModal('add-user-modal')">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="field mb-3"><label>Full Name</label><input id="nu-name" placeholder="Full name"/></div>
+      <div class="field mb-3"><label>Email</label><input type="email" id="nu-email" placeholder="email@haicam.com"/></div>
+      <div class="field mb-3"><label>Password</label><input type="password" id="nu-pwd" placeholder="Min 8 chars"/></div>
+      <div class="field"><label>Role</label>
+        <select id="nu-role">
+          <option value="lab_staff">Lab Staff</option>
+          <option value="admin">Admin</option>
+          <option value="customer">Customer</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('add-user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()">Create User</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg class="toast-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-msg"></span>
+</div>
+
+<!-- QR Library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+<!-- Firebase -->
+<script type="module">
+import{initializeApp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,updateDoc,deleteDoc,doc,onSnapshot,query,orderBy,where,serverTimestamp,getDoc,setDoc}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ======== FIREBASE CONFIG ========
+const firebaseConfig={
+  apiKey:"AIzaSyClyUxANBDlO848xnlokxIbrLloCNk0m4o",
+  authDomain:"haic-app.firebaseapp.com",
+  projectId:"haic-app",
+  storageBucket:"haic-app.firebasestorage.app",
+  messagingSenderId:"434927099865",
+  appId:"1:434927099865:web:b799e53332d5eced6183c8"
+};
+
+const fbApp=initializeApp(firebaseConfig,'lab-system');
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+
+// ======== DEMO USERS (in-memory fallback) ========
+const DEMO_USERS={
+  'admin@haicam.com':{name:'Truong Kieu Hai',role:'admin',pwd:'haic2024'},
+  'lab@haicam.com':{name:'Lab Staff 01',role:'lab_staff',pwd:'haic2024'},
+  'client@haicam.com':{name:'Client User',role:'customer',pwd:'haic2024'},
+};
+
+// ======== STATE ========
+let currentUser=null,currentRole='lab_staff',records=[],allUsers=[];
+let sampleRows=[{name:'',qty:'',note:''}];
+let sigPads={};
+let editingId=null,statusTargetId=null;
+
+// ======== HELPERS ========
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtDate=d=>{if(!d)return'—';try{const p=d.split?d.split('-'):new Date(d.seconds*1000).toISOString().split('T')[0].split('-');if(p.length===3)return p[2]+'/'+p[1]+'/'+p[0];}catch(e){}return d;};
+const statusMap={received:'Received',preparing:'Preparing',testing:'Testing',completed:'Completed',delivered:'Delivered'};
+const statusBadge=s=>`<span class="badge badge-${s}">${statusMap[s]||s}</span>`;
+
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  const ic=t.querySelector('.toast-icon');
+  document.getElementById('toast-msg').textContent=msg;
+  ic.style.stroke=type==='error'?'#ff6b6b':type==='warning'?'#ffa94d':'#69db7c';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+function genLabNo(){
+  const y=new Date().getFullYear();
+  const existing=records.filter(r=>r.labNo&&r.labNo.startsWith('LAB-'+y));
+  const nums=existing.map(r=>parseInt(r.labNo.split('-')[2]||0)).filter(n=>!isNaN(n));
+  const next=(nums.length?Math.max(...nums):0)+1;
+  return'LAB-'+y+'-'+String(next).padStart(3,'0');
+}
+
+// ======== AUTH ========
+window.doLogin=async()=>{
+  const email=document.getElementById('l-email').value.trim();
+  const pwd=document.getElementById('l-pwd').value;
+  const btn=document.getElementById('l-btn');
+  const err=document.getElementById('l-err');
+  err.textContent='';
+  btn.innerHTML='<span class="spin-sm"></span> Signing in...';btn.disabled=true;
+
+  // Demo mode — check in-memory users
+  const demo=DEMO_USERS[email];
+  if(demo&&demo.pwd===pwd){
+    currentUser={email,displayName:demo.name};
+    currentRole=demo.role;
+    onLogin();
+    btn.innerHTML='Sign In';btn.disabled=false;
+    return;
+  }
+  // Firebase auth
+  try{
+    const uc=await signInWithEmailAndPassword(auth,email,pwd);
+    currentUser=uc.user;
+    // load role from Firestore users collection
+    try{
+      const ud=await getDoc(doc(db,'lab_users',uc.user.uid));
+      currentRole=ud.exists()?ud.data().role||'lab_staff':'lab_staff';
+    }catch(e){currentRole='lab_staff';}
+    onLogin();
+  }catch(e){
+    err.textContent='Invalid email or password';
+    btn.innerHTML='Sign In';btn.disabled=false;
+  }
+};
+
+window.doLogout=()=>{
+  signOut(auth).catch(()=>{});
+  currentUser=null;currentRole='lab_staff';records=[];
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').classList.add('show');
+};
+
+onAuthStateChanged(auth,user=>{
+  if(user){currentUser=user;}
+});
+
+function onLogin(){
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-name-display').textContent=currentUser.displayName||currentUser.email;
+  document.getElementById('user-avatar').textContent=(currentUser.displayName||currentUser.email||'?')[0].toUpperCase();
+  document.getElementById('user-role-display').textContent=({admin:'Administrator',lab_staff:'Lab Staff',customer:'Customer'}[currentRole])||currentRole;
+
+  // Admin-only nav
+  const isAdmin=currentRole==='admin';
+  document.getElementById('nav-admin-section').style.display=isAdmin?'':'none';
+  document.getElementById('nav-users').style.display=isAdmin?'':'none';
+  document.getElementById('nav-analytics').style.display=isAdmin?'':'none';
+
+  initApp();
+}
+
+// ======== INIT ========
+function initApp(){
+  buildMonthFilter();
+  subscribeRecords();
+  initSignaturePads();
+  setPreviewLabNo();
+  document.getElementById('form-date-display').textContent='Date: '+fmtDate(today());
+
+  const h=new Date().getHours();
+  document.getElementById('dash-greeting').textContent=
+    (h<12?'Good morning!':h<17?'Good afternoon!':'Good evening!')+' Here\'s your lab overview.';
+
+  // mock users
+  allUsers=[
+    {id:'1',name:'Truong Kieu Hai',email:'admin@haicam.com',role:'admin',status:'active'},
+    {id:'2',name:'Lab Staff 01',email:'lab@haicam.com',role:'lab_staff',status:'active'},
+    {id:'3',name:'Client User',email:'client@haicam.com',role:'customer',status:'active'},
+  ];
+  renderUsers();
+}
+
+function setPreviewLabNo(){
+  document.getElementById('preview-lab-no').textContent=genLabNo();
+}
+
+function buildMonthFilter(){
+  const sel=document.getElementById('filter-month');
+  sel.innerHTML='<option value="all">All Months</option>';
+  const now=new Date();
+  for(let i=0;i<6;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const o=document.createElement('option');
+    o.value=val;o.textContent=lbl;if(i===0)o.selected=true;
+    sel.appendChild(o);
+  }
+}
+
+// ======== FIRESTORE RECORDS ========
+function subscribeRecords(){
+  const col=collection(db,'lab_requests');
+  let q;
+  if(currentRole==='customer'){
+    q=query(col,orderBy('createdAt','desc'));
+  } else {
+    q=query(col,orderBy('createdAt','desc'));
+  }
+  onSnapshot(q,snap=>{
+    records=snap.docs.map(d=>({id:d.id,...d.data()}));
+    // Also add demo data if empty
+    if(records.length===0) records=getDemoRecords();
+    refreshAll();
+  },err=>{
+    // Firestore error — use demo data
+    records=getDemoRecords();
+    refreshAll();
+  });
+}
+
+function getDemoRecords(){
+  return[
+    {id:'demo1',labNo:'LAB-2026-001',project:'CBC PS Farm Phase 2',contractor:'Koh Kong Construction',client:'CBC Holdings',contact:'Mr. Dara +855 12 345 678',location:'Koh Kong Province',category:'Concrete Testing',samples:[{name:'Concrete Cube 7-day',qty:'6',note:'C25 Mix'},{name:'Concrete Cube 28-day',qty:'6',note:'C25 Mix'}],status:'testing',resultForm:'english-vietnamese',copies:2,resultDate:'2026-06-01',remain:'no',otherReq:'Urgent testing required',createdAt:{toDate:()=>new Date('2026-05-15')},date:'2026-05-15'},
+    {id:'demo2',labNo:'LAB-2026-002',project:'Phnom Penh Flyover Bridge',contractor:'CRBC Cambodia',client:'Ministry of Public Works',contact:'Eng. Sophea +855 23 123 456',location:'Phnom Penh',category:'Steel/Rebar Testing',samples:[{name:'Rebar D16 Tensile',qty:'3',note:'Grade 40'},{name:'Rebar D20 Tensile',qty:'3',note:'Grade 40'},{name:'Bend Test D16',qty:'2',note:''}],status:'completed',resultForm:'english',copies:3,resultDate:'2026-05-20',remain:'yes',otherReq:'',createdAt:{toDate:()=>new Date('2026-05-10')},date:'2026-05-10'},
+    {id:'demo3',labNo:'LAB-2026-003',project:'Sen Sok Residential Tower A',contractor:'HLH Group',client:'Overseas Cambodia',contact:'Ms. Lily +855 17 234 567',location:'Sangkat Krang Thnong, Sen Sok',category:'Soil Testing',samples:[{name:'Soil CBR Test',qty:'2',note:'Layer 1 & 2'},{name:'Soil Compaction Test',qty:'4',note:''}],status:'received',resultForm:'english-vietnamese',copies:2,resultDate:'',remain:'no',otherReq:'Include field density report',createdAt:{toDate:()=>new Date('2026-05-18')},date:'2026-05-18'},
+    {id:'demo4',labNo:'LAB-2026-004',project:'National Road 6 Rehabilitation',contractor:'Sinohydro Cambodia',client:'MPWT',contact:'Mr. Vuthy +855 12 999 888',location:'Kampong Thom Province',category:'Asphalt Testing',samples:[{name:'Core Sample Extraction',qty:'6',note:'STA 12+000'},{name:'Marshall Stability',qty:'3',note:''}],status:'preparing',resultForm:'english',copies:2,resultDate:'2026-05-30',remain:'no',otherReq:'',createdAt:{toDate:()=>new Date('2026-05-12')},date:'2026-05-12'},
+    {id:'demo5',labNo:'LAB-2026-005',project:'Siem Reap Water Treatment Plant',contractor:'Veng Sreng Construction',client:'Ministry of Industry',contact:'Mr. Chan +855 78 123 456',location:'Siem Reap Province',category:'Cement Testing',samples:[{name:'Cement Compressive 3d',qty:'3',note:'OPC Grade 42.5'},{name:'Cement Compressive 7d',qty:'3',note:''},{name:'Cement Compressive 28d',qty:'3',note:''}],status:'delivered',resultForm:'english-vietnamese',copies:4,resultDate:'2026-04-30',remain:'yes',otherReq:'',createdAt:{toDate:()=>new Date('2026-04-25')},date:'2026-04-25'},
+  ];
+}
+
+function refreshAll(){
+  renderDashboard();
+  renderRequestsList();
+  renderAnalytics();
+  updateNavBadge();
+}
+
+function updateNavBadge(){
+  const pending=records.filter(r=>r.status==='received'||r.status==='preparing').length;
+  const b=document.getElementById('nav-pending-badge');
+  b.textContent=pending;b.style.display=pending?'':'none';
+}
+
+// ======== DASHBOARD ========
+window.renderDashboard=function(){
+  const total=records.length;
+  const testing=records.filter(r=>r.status==='testing').length;
+  const completed=records.filter(r=>r.status==='completed'||r.status==='delivered').length;
+  const pending=records.filter(r=>r.status==='received'||r.status==='preparing').length;
+  const totalSamples=records.reduce((s,r)=>s+(r.samples||[]).length,0);
+
+  const stats=[
+    {val:total,label:'Total Requests',icon:'<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>',bg:'var(--haic-blue-light)',color:'var(--haic-blue)',trend:'+12% vs last month'},
+    {val:testing,label:'Currently Testing',icon:'<path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5a2 2 0 0 0-2 2v1a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1a2 2 0 0 0-2-2h-4m-4 0V3"/>',bg:'var(--haic-orange-light)',color:'var(--haic-orange)',trend:'Active'},
+    {val:completed,label:'Completed',icon:'<polyline points="20 6 9 17 4 12"/>',bg:'var(--haic-green-light)',color:'var(--haic-green)',trend:Math.round(total?completed/total*100:0)+'% completion rate'},
+    {val:totalSamples,label:'Total Samples',icon:'<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>',bg:'var(--haic-teal-light)',color:'var(--haic-teal)',trend:'Across all requests'},
+  ];
+
+  document.getElementById('stats-grid').innerHTML=stats.map(s=>`
+    <div class="stat-card" onclick="goScreen('requests')">
+      <div class="stat-icon" style="background:${s.bg};color:${s.color}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${s.icon}</svg></div>
+      <div class="stat-val" style="color:${s.color}">${s.val}</div>
+      <div class="stat-label">${s.label}</div>
+      <div class="stat-trend neutral">${s.trend}</div>
+    </div>`).join('');
+
+  // Status chart
+  const statuses=['received','preparing','testing','completed','delivered'];
+  const colors=['var(--haic-blue)','var(--haic-purple)','var(--haic-orange)','var(--haic-teal)','var(--haic-green)'];
+  const counts=statuses.map(s=>records.filter(r=>r.status===s).length);
+  document.getElementById('status-chart').innerHTML=statuses.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <div style="width:8px;height:8px;border-radius:50%;background:${colors[i]};flex-shrink:0"></div>
+      <div style="font-size:12px;flex:1;color:var(--text-secondary)">${statusMap[s]}</div>
+      <div style="font-size:12px;font-weight:700">${counts[i]}</div>
+      <div style="flex:1;max-width:80px;background:var(--surface2);border-radius:4px;height:6px;overflow:hidden">
+        <div style="height:100%;border-radius:4px;background:${colors[i]};width:${total?Math.round(counts[i]/total*100):0}%;transition:width 0.8s"></div>
+      </div>
+    </div>`).join('');
+
+  // Monthly chart
+  const now=new Date();
+  const months=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const key=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const cnt=records.filter(r=>(r.date||'').startsWith(key)).length;
+    months.push({lbl:d.toLocaleDateString('en-US',{month:'short'}),cnt});
+  }
+  const maxM=Math.max(...months.map(m=>m.cnt),1);
+  document.getElementById('monthly-chart').innerHTML=months.map(m=>`
+    <div class="bar-group">
+      <div style="font-size:10px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">${m.cnt||''}</div>
+      <div class="bar-fill" style="height:${Math.round(m.cnt/maxM*100)}%;background:var(--haic-blue);min-height:${m.cnt?4:0}px;opacity:${m.cnt?1:0.2}"></div>
+      <div class="bar-label">${m.lbl}</div>
+    </div>`).join('');
+
+  // Recent table
+  const recent=records.slice(0,5);
+  document.getElementById('recent-tbody').innerHTML=recent.length?recent.map(r=>`
+    <tr onclick="openDetail('${r.id}')">
+      <td><span class="lab-no">${esc(r.labNo)}</span></td>
+      <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.project)}</td>
+      <td>${esc(r.client)}</td>
+      <td>${(r.samples||[]).length}</td>
+      <td>${fmtDate(r.date||r.createdAt)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openDetail('${r.id}')">View</button></td>
+    </tr>`).join(''):'<tr><td colspan="7" style="text-align:center;color:var(--text-secondary);padding:30px">No requests yet</td></tr>';
+};
+
+// ======== REQUESTS LIST ========
+window.renderRequestsList=function(){
+  const statusF=document.getElementById('filter-status')?.value||'';
+  const monthF=document.getElementById('filter-month')?.value||'all';
+  const search=(document.getElementById('global-search')?.value||'').toLowerCase();
+  let list=records.filter(r=>{
+    if(statusF&&r.status!==statusF)return false;
+    if(monthF!=='all'&&!(r.date||'').startsWith(monthF))return false;
+    if(search&&![r.labNo,r.project,r.client,r.contact,r.contractor].some(v=>(v||'').toLowerCase().includes(search)))return false;
+    return true;
+  });
+  document.getElementById('list-count').textContent=list.length+' record'+(list.length!==1?'s':'');
+  const tbody=document.getElementById('requests-tbody');
+  const empty=document.getElementById('requests-empty');
+  if(!list.length){
+    tbody.innerHTML='';
+    empty.style.display='';
+    empty.innerHTML=`<div class="empty-state"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><h3>No requests found</h3><p>Try adjusting your filters or create a new request</p></div>`;
+    return;
+  }
+  empty.style.display='none';
+  tbody.innerHTML=list.map(r=>`
+    <tr onclick="openDetail('${r.id}')">
+      <td><span class="lab-no">${esc(r.labNo)}</span></td>
+      <td><div style="font-weight:600;font-size:13px">${esc(r.project)}</div><div style="font-size:11px;color:var(--text-secondary)">${esc(r.location||'')}</div></td>
+      <td>${esc(r.contractor)}</td>
+      <td style="font-size:12px">${esc(r.contact)}</td>
+      <td><span style="font-size:13px;font-weight:600">${(r.samples||[]).length}</span></td>
+      <td>${fmtDate(r.date||r.createdAt)}</td>
+      <td>${statusBadge(r.status)}</td>
+      <td>
+        <div class="flex gap-2" onclick="event.stopPropagation()">
+          <button class="btn btn-secondary btn-sm" onclick="openDetail('${r.id}')">View</button>
+          ${currentRole!=='customer'?`<button class="btn btn-outline btn-sm" onclick="openStatusModal('${r.id}')">Status</button>`:''}
+        </div>
+      </td>
+    </tr>`).join('');
+};
+
+window.onGlobalSearch=function(){
+  renderRequestsList();
+};
+
+// ======== SAMPLE ROWS ========
+function renderSampleRows(){
+  document.getElementById('sample-tbody').innerHTML=sampleRows.map((r,i)=>`
+    <tr>
+      <td style="text-align:center;color:var(--text-tertiary);font-size:12px;font-weight:600;width:40px">${i+1}</td>
+      <td><input data-si="${i}" data-sf="name" value="${esc(r.name)}" placeholder="e.g. Concrete Cube C25" style="min-width:180px"/></td>
+      <td><input type="number" data-si="${i}" data-sf="qty" value="${r.qty}" placeholder="0" style="width:80px;text-align:center"/></td>
+      <td><input data-si="${i}" data-sf="note" value="${esc(r.note)}" placeholder="Additional note..."/></td>
+      <td style="text-align:center">
+        ${sampleRows.length>1?`<button class="del-sample" data-di="${i}"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>`:''}
+      </td>
+    </tr>`).join('');
+}
+
+window.addSampleRow=function(){sampleRows.push({name:'',qty:'',note:''});renderSampleRows();};
+
+// Event delegation for sample table
+document.addEventListener('input',e=>{
+  const si=e.target.dataset.si;
+  if(si!==undefined){sampleRows[+si][e.target.dataset.sf]=e.target.value;}
+});
+document.addEventListener('click',e=>{
+  const di=e.target.closest('[data-di]')?.dataset.di;
+  if(di!==undefined){sampleRows.splice(+di,1);renderSampleRows();}
+});
+
+// ======== SIGNATURE PADS ========
+function initSignaturePads(){
+  ['client','lab'].forEach(id=>{
+    const canvas=document.getElementById('sig-'+id);
+    if(!canvas)return;
+    const ctx=canvas.getContext('2d');
+    let drawing=false,lx=0,ly=0;
+    function getPos(e){
+      const r=canvas.getBoundingClientRect();
+      const src=e.touches?e.touches[0]:e;
+      return{x:(src.clientX-r.left)*(canvas.width/r.width),y:(src.clientY-r.top)*(canvas.height/r.height)};
+    }
+    canvas.addEventListener('mousedown',e=>{drawing=true;const p=getPos(e);lx=p.x;ly=p.y;});
+    canvas.addEventListener('mousemove',e=>{if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle=getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim()||'#212529';ctx.lineWidth=2;ctx.lineCap='round';ctx.stroke();lx=p.x;ly=p.y;});
+    canvas.addEventListener('mouseup',()=>drawing=false);
+    canvas.addEventListener('mouseleave',()=>drawing=false);
+    canvas.addEventListener('touchstart',e=>{e.preventDefault();drawing=true;const p=getPos(e);lx=p.x;ly=p.y;},{passive:false});
+    canvas.addEventListener('touchmove',e=>{e.preventDefault();if(!drawing)return;const p=getPos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p.x,p.y);ctx.strokeStyle='#212529';ctx.lineWidth=2.5;ctx.lineCap='round';ctx.stroke();lx=p.x;ly=p.y;},{passive:false});
+    canvas.addEventListener('touchend',()=>drawing=false);
+    // Resize canvas
+    function resizeCanvas(){canvas.width=canvas.offsetWidth;canvas.height=120;}
+    resizeCanvas();
+    window.addEventListener('resize',resizeCanvas);
+    sigPads[id]={canvas,ctx,clear:()=>{ctx.clearRect(0,0,canvas.width,canvas.height);}};
+  });
+}
+
+window.clearSig=function(id){sigPads[id]?.clear();};
+
+// ======== SAVE REQUEST ========
+window.saveRequest=async function(){
+  const contractor=document.getElementById('f-contractor').value.trim();
+  const client=document.getElementById('f-client').value.trim();
+  const project=document.getElementById('f-project').value.trim();
+  if(!contractor){toast('Please enter Contractor name','error');return;}
+  if(!client){toast('Please enter Client name','error');return;}
+  if(!project){toast('Please enter Project name','error');return;}
+  if(!sampleRows.some(r=>r.name.trim())){toast('Please add at least one sample','error');return;}
+
+  const btn=document.getElementById('save-req-btn');
+  btn.innerHTML='<span class="spin-sm"></span> Saving...';btn.disabled=true;
+  const btn2=document.getElementById('save-req-btn2');
+  if(btn2){btn2.innerHTML='<span class="spin-sm"></span> Saving...';btn2.disabled=true;}
+
+  const labNo=editingId?records.find(r=>r.id===editingId)?.labNo:genLabNo();
+  const delivery=[];
+  if(document.getElementById('rd-haic-lab').checked)delivery.push('HAIC Lab');
+  if(document.getElementById('rd-sms').checked)delivery.push('SMS');
+  if(document.getElementById('rd-customer').checked)delivery.push('Customer');
+  if(document.getElementById('rd-company').checked)delivery.push('Company');
+
+  const sigClient=sigPads['client']?.canvas.toDataURL('image/png');
+  const sigLab=sigPads['lab']?.canvas.toDataURL('image/png');
+
+  const data={
+    labNo,date:today(),
+    contractor,client,
+    project:document.getElementById('f-project').value,
+    location:document.getElementById('f-location').value,
+    contact:document.getElementById('f-contact').value,
+    category:document.getElementById('f-category').value,
+    samples:sampleRows.filter(r=>r.name.trim()),
+    resultForm:document.getElementById('f-result-form').value,
+    copies:+document.getElementById('f-copies').value,
+    resultDate:document.getElementById('f-result-date').value,
+    delivery,
+    remain:document.querySelector('input[name="lab-remain"]:checked').value,
+    otherReq:document.getElementById('f-other-req').value,
+    sigClient,sigLab,
+    status:editingId?records.find(r=>r.id===editingId)?.status:'received',
+    updatedAt:serverTimestamp(),
+  };
+
+  try{
+    if(editingId){
+      await updateDoc(doc(db,'lab_requests',editingId),data);
+      toast('✓ Request updated successfully!');
+    }else{
+      data.createdAt=serverTimestamp();
+      await addDoc(collection(db,'lab_requests'),data);
+      toast('✓ Request submitted! Lab No: '+labNo);
+    }
+  }catch(e){
+    // demo mode — add to local array
+    if(!editingId){
+      records.unshift({id:'local-'+Date.now(),...data,createdAt:{toDate:()=>new Date()}});
+      toast('✓ Request submitted! Lab No: '+labNo);
+    }else{
+      const idx=records.findIndex(r=>r.id===editingId);
+      if(idx>=0)records[idx]={...records[idx],...data};
+      toast('✓ Request updated!');
+    }
+  }
+
+  editingId=null;
+  resetForm();
+  refreshAll();
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>Save & Submit';btn.disabled=false;
+  if(btn2){btn2.innerHTML=btn.innerHTML;btn2.disabled=false;}
+  goScreen('requests');
+};
+
+function resetForm(){
+  ['f-contractor','f-client','f-project','f-location','f-contact','f-other-req','f-result-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-category').value='';
+  document.getElementById('f-result-form').value='english-vietnamese';
+  document.getElementById('f-copies').value='2';
+  document.getElementById('rd-haic-lab').checked=true;
+  document.getElementById('rd-sms').checked=false;
+  document.getElementById('rd-customer').checked=false;
+  document.getElementById('rd-company').checked=false;
+  document.getElementById('remain-no').checked=true;
+  sampleRows=[{name:'',qty:'',note:''}];
+  renderSampleRows();
+  clearSig('client');clearSig('lab');
+  setPreviewLabNo();
+  document.getElementById('form-page-title').textContent='New Testing Request';
+}
+
+// ======== DETAIL MODAL ========
+window.openDetail=function(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  document.getElementById('detail-modal-title').textContent=r.labNo||'Request Detail';
+  document.getElementById('detail-modal-sub').textContent=r.project||'';
+  document.getElementById('export-pdf-btn').onclick=()=>exportPDF(r);
+
+  const tl=[
+    {key:'received',label:'Received',date:r.date},
+    {key:'preparing',label:'Preparing',date:''},
+    {key:'testing',label:'Testing',date:''},
+    {key:'completed',label:'Completed',date:r.resultDate},
+    {key:'delivered',label:'Delivered',date:''},
+  ];
+  const statusOrder=['received','preparing','testing','completed','delivered'];
+  const currentIdx=statusOrder.indexOf(r.status);
+
+  document.getElementById('detail-modal-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+      <div>
+        <div class="section-label" style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Project Information</div>
+        <div class="detail-kv"><span class="detail-k">Lab No</span><span class="detail-v"><span class="lab-no">${esc(r.labNo)}</span></span></div>
+        <div class="detail-kv"><span class="detail-k">Project</span><span class="detail-v">${esc(r.project)}</span></div>
+        <div class="detail-kv"><span class="detail-k">Contractor</span><span class="detail-v">${esc(r.contractor)}</span></div>
+        <div class="detail-kv"><span class="detail-k">Client</span><span class="detail-v">${esc(r.client)}</span></div>
+        <div class="detail-kv"><span class="detail-k">Location</span><span class="detail-v">${esc(r.location||'—')}</span></div>
+        <div class="detail-kv"><span class="detail-k">Contact</span><span class="detail-v">${esc(r.contact||'—')}</span></div>
+        <div class="detail-kv"><span class="detail-k">Category</span><span class="detail-v">${esc(r.category||'—')}</span></div>
+        <div class="detail-kv"><span class="detail-k">Status</span><span class="detail-v">${statusBadge(r.status)}</span></div>
+      </div>
+      <div>
+        <div class="section-label" style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Timeline</div>
+        <div class="timeline">
+          ${tl.map((t,i)=>`
+            <div class="tl-item">
+              <div class="tl-dot ${i<currentIdx?'done':i===currentIdx?'active':'pending'}"></div>
+              <div class="tl-label" style="color:${i<=currentIdx?'var(--text-primary)':'var(--text-tertiary)'}">${t.label}</div>
+              ${t.date?`<div class="tl-date">${fmtDate(t.date)}</div>`:''}
+            </div>`).join('')}
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-bottom:20px">
+      <div class="section-label" style="font-size:10px;font-weight:700;color:var(--text-tertiary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:10px">Samples (${(r.samples||[]).length})</div>
+      <div class="table-wrap">
+        <table style="border:1px solid var(--border);border-radius:var(--radius-md);overflow:hidden">
+          <thead><tr>
+            <th style="background:var(--surface2)">#</th>
+            <th style="background:var(--surface2)">Sample Name</th>
+            <th style="background:var(--surface2)">Qty</th>
+            <th style="background:var(--surface2)">Note</th>
+          </tr></thead>
+          <tbody>
+            ${(r.samples||[]).map((s,i)=>`<tr><td style="text-align:center;color:var(--text-tertiary)">${i+1}</td><td style="font-weight:500">${esc(s.name)}</td><td style="text-align:center">${esc(s.qty)}</td><td style="color:var(--text-secondary)">${esc(s.note||'')}</td></tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px">
+      <div class="card" style="padding:14px;background:var(--surface2)">
+        <div class="text-xs font-bold text-secondary mb-2" style="text-transform:uppercase;letter-spacing:0.5px">Result Info</div>
+        <div class="detail-kv" style="font-size:12px"><span class="detail-k">Form</span><span class="detail-v">${r.resultForm||'—'}</span></div>
+        <div class="detail-kv" style="font-size:12px"><span class="detail-k">Copies</span><span class="detail-v">${r.copies||'—'}</span></div>
+        <div class="detail-kv" style="font-size:12px"><span class="detail-k">Result Date</span><span class="detail-v">${fmtDate(r.resultDate)||'—'}</span></div>
+        <div class="detail-kv" style="font-size:12px"><span class="detail-k">Delivery</span><span class="detail-v">${(r.delivery||[]).join(', ')||'—'}</span></div>
+        <div class="detail-kv" style="font-size:12px"><span class="detail-k">Remain Sample</span><span class="detail-v">${r.remain==='yes'?'✓ Remain':'No Remain'}</span></div>
+      </div>
+      ${r.otherReq?`<div class="card" style="padding:14px;background:var(--surface2)"><div class="text-xs font-bold text-secondary mb-2" style="text-transform:uppercase;letter-spacing:0.5px">Other Requirements</div><div style="font-size:13px;color:var(--text-primary)">${esc(r.otherReq)}</div></div>`:'<div></div>'}
+    </div>
+
+    ${currentRole!=='customer'?`
+    <div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="btn btn-outline btn-sm" onclick="openStatusModal('${r.id}');closeModal('detail-modal')">Update Status</button>
+      <button class="btn btn-secondary btn-sm" onclick="editRequest('${r.id}');closeModal('detail-modal')">Edit Request</button>
+      ${currentRole==='admin'?`<button class="btn btn-danger btn-sm" onclick="deleteRequest('${r.id}');closeModal('detail-modal')">Delete</button>`:''}
+      <div style="margin-left:auto">
+        <div id="qr-detail-${r.id}"></div>
+      </div>
+    </div>`:''} `;
+
+  document.getElementById('detail-modal').classList.add('open');
+
+  // Generate QR
+  setTimeout(()=>{
+    const qrDiv=document.getElementById('qr-detail-'+r.id);
+    if(qrDiv&&window.QRCode&&!qrDiv.innerHTML){
+      try{new QRCode(qrDiv,{text:window.location.href+'?lab='+r.labNo,width:80,height:80,colorDark:'#0057A8',colorLight:document.documentElement.dataset.theme==='dark'?'#161B22':'#ffffff'});}catch(e){}
+    }
+  },100);
+};
+
+// ======== STATUS UPDATE ========
+window.openStatusModal=function(id){
+  statusTargetId=id;
+  const r=records.find(x=>x.id===id);
+  if(r)document.getElementById('status-select').value=r.status;
+  document.getElementById('status-note').value='';
+  document.getElementById('status-modal').classList.add('open');
+};
+
+window.confirmStatusUpdate=async function(){
+  const newStatus=document.getElementById('status-select').value;
+  const note=document.getElementById('status-note').value;
+  try{
+    await updateDoc(doc(db,'lab_requests',statusTargetId),{status:newStatus,statusNote:note,updatedAt:serverTimestamp()});
+    toast('✓ Status updated to '+statusMap[newStatus]);
+  }catch(e){
+    const idx=records.findIndex(r=>r.id===statusTargetId);
+    if(idx>=0){records[idx].status=newStatus;records[idx].statusNote=note;}
+    toast('✓ Status updated to '+statusMap[newStatus]);
+  }
+  closeModal('status-modal');
+  refreshAll();
+};
+
+// ======== EDIT ========
+window.editRequest=function(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  editingId=id;
+  goScreen('new-request');
+  document.getElementById('form-page-title').textContent='Edit Request — '+r.labNo;
+  document.getElementById('preview-lab-no').textContent=r.labNo;
+  ['contractor','client','project','location','contact'].forEach(k=>{
+    const el=document.getElementById('f-'+k);if(el)el.value=r[k]||'';
+  });
+  document.getElementById('f-category').value=r.category||'';
+  document.getElementById('f-result-form').value=r.resultForm||'english-vietnamese';
+  document.getElementById('f-copies').value=r.copies||2;
+  document.getElementById('f-result-date').value=r.resultDate||'';
+  document.getElementById('f-other-req').value=r.otherReq||'';
+  document.getElementById('remain-'+(r.remain||'no')).checked=true;
+  ['haic-lab','sms','customer','company'].forEach(k=>{
+    const el=document.getElementById('rd-'+k);
+    if(el)el.checked=(r.delivery||[]).some(d=>d.toLowerCase().replace(' ','-')===k);
+  });
+  sampleRows=r.samples?.length?r.samples.map(s=>({...s})):[{name:'',qty:'',note:''}];
+  renderSampleRows();
+};
+
+// ======== DELETE ========
+window.deleteRequest=async function(id){
+  if(!confirm('Delete this request permanently?'))return;
+  try{await deleteDoc(doc(db,'lab_requests',id));}
+  catch(e){records=records.filter(r=>r.id!==id);}
+  toast('✓ Deleted');refreshAll();
+};
+
+// ======== PDF EXPORT ========
+window.exportPDF=function(r){
+  if(!r){const id=statusTargetId||records[0]?.id;r=records.find(x=>x.id===id);}
+  if(!r){toast('No record selected','error');return;}
+  const w=window.open('','_blank');
+  w.document.write(`
+  <!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>${r.labNo} – HAIC Lab</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11pt;margin:0;padding:20px;color:#000}
+    .hdr{display:flex;justify-content:space-between;border:2px solid #0057A8;margin-bottom:12px}
+    .hdr-left{padding:10px;border-right:1px solid #0057A8;width:180px;display:flex;align-items:center}
+    .hdr-mid{flex:1;padding:10px;text-align:center;border-right:1px solid #0057A8}
+    .hdr-mid h2{color:#0057A8;font-size:12pt;margin:0 0 2px}
+    .hdr-mid h3{color:#0057A8;font-size:10pt;font-style:italic;margin:0}
+    .hdr-mid p{font-size:9pt;margin:0}
+    .hdr-right{padding:10px;font-size:9pt;width:160px}
+    h1{text-align:center;color:#D93025;font-size:14pt;margin:12px 0 4px}
+    h1 em{display:block;font-size:12pt}
+    .section{margin-bottom:12px}
+    .section-title{font-weight:bold;text-decoration:underline;color:#0057A8;margin-bottom:6px}
+    .field{margin-bottom:4px;display:flex;gap:6px}
+    .field .lbl{font-weight:bold;min-width:180px}
+    table{width:100%;border-collapse:collapse;margin-bottom:10px}
+    th,td{border:1px solid #000;padding:5px 8px;font-size:10pt}
+    th{background:#E8F1FB;font-weight:bold}
+    .sig-row{display:flex;justify-content:space-between;margin-top:20px;gap:40px}
+    .sig-box{flex:1;text-align:center}
+    .sig-box .line{border-top:1px solid #000;margin-top:60px;padding-top:4px;font-size:9pt}
+    .footer{text-align:center;font-size:9pt;color:#666;margin-top:20px;border-top:1px solid #ccc;padding-top:8px}
+    @media print{body{padding:10px}}
+  </style></head><body>
+  <div class="hdr">
+    <div class="hdr-left"><b style="font-size:18pt;color:#0057A8">HAIC</b></div>
+    <div class="hdr-mid">
+      <h2>QUY TRÌNH THÍ NGHIỆM VẬT LIỆU XÂY DỰNG</h2>
+      <h3>CONSTRUCTION MATERIALS TESTING PROCEDURE</h3>
+    </div>
+    <div class="hdr-right">
+      <div><b>Code:</b> HAIC-LAB-15MAT</div>
+      <div><b>Issued:</b> 04</div>
+      <div><b>Date:</b> 15/09/2024</div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+    <div><b>Lab No:</b> ${r.labNo}</div>
+    <div>Phnom Penh, ${fmtDate(r.date)}</div>
+  </div>
+  <h1>PHIẾU YÊU CẦU VÀ NHẬN MẪU THỬ NGHIỆM<em>REQUEST AND RECEIPT FORM FOR TESTING</em></h1>
+  <div class="section">
+    <div class="section-title">I. CÁC THÔNG TIN LIÊN QUAN TRÊN KẾT QUẢ / PROJECT INFORMATION</div>
+    <div class="field"><span class="lbl">- Nhà thầu / Contractor :</span><span>${r.contractor}</span></div>
+    <div class="field"><span class="lbl">- Công trình / Project :</span><span>${r.project}</span></div>
+    <div class="field"><span class="lbl">- Địa điểm XD / Location :</span><span>${r.location||'—'}</span></div>
+    <div class="field"><span class="lbl">- Đơn vị gửi mẫu / Client :</span><span>${r.client}</span></div>
+    <div class="field"><span class="lbl">- Người liên hệ / Contact :</span><span>${r.contact||'—'}</span></div>
+  </div>
+  <p style="font-size:9pt;margin-bottom:8px;font-style:italic">Yêu cầu HAIC thử nghiệm theo nội dung dưới đây...</p>
+  <table>
+    <thead><tr><th style="width:40px">No.</th><th>Tên mẫu thử / Name of sample</th><th style="width:80px">Số lượng / Quantity</th><th>Ghi chú / Note</th></tr></thead>
+    <tbody>
+      ${(r.samples||[]).map((s,i)=>`<tr><td style="text-align:center">${i+1}</td><td>${s.name}</td><td style="text-align:center">${s.qty}</td><td>${s.note||''}</td></tr>`).join('')}
+      ${Array(Math.max(0,8-(r.samples||[]).length)).fill('<tr><td></td><td>&nbsp;</td><td></td><td></td></tr>').join('')}
+    </tbody>
+  </table>
+  <div style="margin-bottom:6px"><b>Form kết quả / Result form:</b> ${r.resultForm==='english-vietnamese'?'English / Vietnamese ☑':'English only'} &nbsp;&nbsp;<b>Số bản / Copy:</b> ${r.copies}</div>
+  <div style="margin-bottom:6px"><b>Ngày trả kết quả / Test result date:</b> ${fmtDate(r.resultDate)||'___________'}</div>
+  <div style="margin-bottom:6px"><b>Nhận kết quả tại / Delivery:</b> ${(r.delivery||[]).join(' ☑  ')} ☑</div>
+  <div style="margin-bottom:6px"><b>Phòng thí nghiệm / Lab testing:</b> ${r.remain==='yes'?'Lưu mẫu ☑':'Không lưu mẫu ☑'}</div>
+  ${r.otherReq?`<div style="margin-bottom:6px"><b>Các yêu cầu khác / Other requirements:</b> ${r.otherReq}</div>`:''}
+  <div class="sig-row">
+    <div class="sig-box">
+      ${r.sigClient?`<img src="${r.sigClient}" style="height:60px;object-fit:contain"/>`:''}
+      <div class="line">Đơn vị gửi mẫu / Client</div>
+    </div>
+    <div class="sig-box">
+      ${r.sigLab?`<img src="${r.sigLab}" style="height:60px;object-fit:contain"/>`:''}
+      <div class="line">Đơn vị nhận mẫu / HAI LAB</div>
+    </div>
+  </div>
+  <div class="footer">HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD<br>Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia<br>Telephone: +855 977 855 953 | Website: haicam.com | Email: truongkieu@haicam.com<br><b>F-01.HAIC-LAB-15MAT</b></div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  w.document.close();
+};
+
+// ======== ANALYTICS ========
+function renderAnalytics(){
+  const byCategory={};
+  const byMonth={};
+  records.forEach(r=>{
+    const cat=r.category||'Other';
+    byCategory[cat]=(byCategory[cat]||0)+1;
+    const mo=(r.date||'').slice(0,7);
+    if(mo)byMonth[mo]=(byMonth[mo]||0)+1;
+  });
+  const sortedCat=Object.entries(byCategory).sort((a,b)=>b[1]-a[1]);
+  const maxCat=sortedCat[0]?.[1]||1;
+  document.getElementById('analytics-content').innerHTML=`
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--haic-blue-light);color:var(--haic-blue)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+        <div class="stat-val">${records.length}</div><div class="stat-label">Total Requests</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--haic-green-light);color:var(--haic-green)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="stat-val">${records.filter(r=>r.status==='delivered').length}</div><div class="stat-label">Delivered</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--haic-orange-light);color:var(--haic-orange)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></div>
+        <div class="stat-val">${records.reduce((s,r)=>s+(r.samples||[]).length,0)}</div><div class="stat-label">Total Samples</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:var(--haic-teal-light);color:var(--haic-teal)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div>
+        <div class="stat-val">${records.length?Math.round(records.filter(r=>['completed','delivered'].includes(r.status)).length/records.length*100):0}%</div><div class="stat-label">Completion Rate</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title mb-4">Testing by Category</div>
+      ${sortedCat.map(([cat,cnt])=>`
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:500;width:200px;flex-shrink:0">${esc(cat)}</div>
+          <div style="flex:1;background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
+            <div style="height:100%;border-radius:4px;background:var(--haic-blue);width:${Math.round(cnt/maxCat*100)}%;transition:width 0.8s"></div>
+          </div>
+          <div style="font-size:13px;font-weight:700;width:30px;text-align:right">${cnt}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ======== USERS ========
+function renderUsers(){
+  const roleLabel={admin:'Administrator',lab_staff:'Lab Staff',customer:'Customer'};
+  document.getElementById('users-tbody').innerHTML=allUsers.map(u=>`
+    <tr>
+      <td><div class="flex items-center gap-2"><div class="avatar" style="width:28px;height:28px;font-size:11px">${u.name[0]}</div>${esc(u.name)}</div></td>
+      <td>${esc(u.email)}</td>
+      <td><span class="badge ${u.role==='admin'?'badge-completed':u.role==='lab_staff'?'badge-testing':'badge-received'}">${roleLabel[u.role]||u.role}</span></td>
+      <td><span class="badge badge-delivered">Active</span></td>
+      <td><button class="btn btn-secondary btn-sm" onclick="toast('Feature coming soon')">Edit</button></td>
+    </tr>`).join('');
+}
+
+window.openAddUserModal=()=>document.getElementById('add-user-modal').classList.add('open');
+
+window.createUser=async()=>{
+  const name=document.getElementById('nu-name').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const pwd=document.getElementById('nu-pwd').value;
+  const role=document.getElementById('nu-role').value;
+  if(!name||!email||pwd.length<6){toast('Fill all fields (min 6 char password)','error');return;}
+  try{
+    const uc=await createUserWithEmailAndPassword(auth,email,pwd);
+    await setDoc(doc(db,'lab_users',uc.user.uid),{name,email,role,createdAt:serverTimestamp()});
+    allUsers.push({id:uc.user.uid,name,email,role,status:'active'});
+    renderUsers();
+    toast('✓ User created: '+name);
+    closeModal('add-user-modal');
+  }catch(e){toast('Error: '+e.message,'error');}
+};
+
+// ======== MODAL / NAV ========
+window.closeModal=id=>document.getElementById(id).classList.remove('open');
+
+window.goScreen=function(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('screen-'+name).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b=>{
+    b.classList.toggle('active',b.dataset.screen===name);
+  });
+  const titles={dashboard:'Dashboard','new-request':'New Testing Request',requests:'Test Requests',analytics:'Analytics',users:'Users'};
+  document.getElementById('topbar-title').textContent=titles[name]||name;
+  if(name==='new-request'){renderSampleRows();setPreviewLabNo();}
+  if(name==='dashboard')renderDashboard();
+  if(name==='requests')renderRequestsList();
+  if(name==='analytics')renderAnalytics();
+  if(name==='users')renderUsers();
+};
+
+// Nav items
+document.querySelectorAll('.nav-item[data-screen]').forEach(btn=>{
+  btn.addEventListener('click',()=>goScreen(btn.dataset.screen));
+});
+
+window.toggleSidebar=()=>{
+  const sb=document.getElementById('sidebar');
+  sb.classList.toggle('mobile-open');
+};
+
+let dark=false;
+window.toggleDark=()=>{
+  dark=!dark;
+  document.documentElement.dataset.theme=dark?'dark':'';
+  document.getElementById('dark-icon').innerHTML=dark
+    ?'<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>'
+    :'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
+};
+
+// ======== BOOT ========
+setTimeout(()=>{
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(()=>document.getElementById('splash').style.display='none',400);
+  document.getElementById('login-screen').classList.add('show');
+},1200);
+
+document.getElementById('l-pwd').addEventListener('keydown',e=>{if(e.key==='Enter')window.doLogin();});
+</script>
+</body>
+</html>
