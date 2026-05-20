@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="HAIC Lab"/>
+<title>HAIC Lab – Testing Request</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --blue:#0057A8;--blue-dark:#003E7A;--blue-light:#E8F1FB;
+  --teal:#00A896;--teal-light:#E0F5F3;
+  --orange:#F07D00;--orange-light:#FEF0DC;
+  --red:#D93025;--red-light:#FDECEA;
+  --green:#1B7F4F;--green-light:#E3F5EC;
+  --purple:#6B3FA0;--purple-light:#F0EBF8;
+  --bg:#F8F9FA;--surface:#fff;--surface2:#F1F3F5;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+  --text:#212529;--text2:#868E96;--text3:#ADB5BD;
+  --r-sm:6px;--r-md:10px;--r-lg:14px;--r-xl:18px;--r-full:999px;
+  --sh-sm:0 1px 4px rgba(0,0,0,0.07);
+  --sh-md:0 4px 12px rgba(0,0,0,0.1);
+}
+html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);font-size:15px;overscroll-behavior:none}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;background:var(--blue);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;color:#fff;transition:opacity 0.4s}
+#splash.hide{opacity:0;pointer-events:none}
+.splash-logo{font-size:52px;font-weight:800;letter-spacing:4px;margin-bottom:6px}
+.splash-sub{font-size:13px;opacity:0.8;margin-bottom:32px}
+.splash-spin{width:28px;height:28px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* LOGIN */
+#login-screen{display:none;position:fixed;inset:0;background:linear-gradient(160deg,var(--blue-dark),var(--blue));z-index:100;overflow-y:auto;padding:24px 20px 40px}
+#login-screen.show{display:block}
+.login-wrap{max-width:400px;margin:40px auto 0}
+.login-logo-box{display:flex;align-items:center;gap:12px;margin-bottom:32px}
+.login-mark{width:52px;height:52px;background:rgba(255,255,255,0.2);border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:800;color:#fff;letter-spacing:1px}
+.login-title{color:#fff;font-size:22px;font-weight:800}
+.login-sub-text{color:rgba(255,255,255,0.75);font-size:12px;margin-top:2px}
+.login-card{background:var(--surface);border-radius:var(--r-xl);padding:22px}
+.login-card h2{font-size:18px;font-weight:700;margin-bottom:4px}
+.login-card p{font-size:12px;color:var(--text2);margin-bottom:20px}
+#l-err{color:var(--red);font-size:12px;text-align:center;min-height:16px;margin:4px 0}
+.demo-btns{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.demo-btn{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);padding:11px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;transition:background 0.15s}
+.demo-btn:active{background:var(--border)}
+.demo-btn-left{font-size:13px;font-weight:600}
+.demo-btn-right{font-size:11px;color:var(--text2)}
+
+/* APP SHELL */
+#app{display:none;flex-direction:column;height:100vh;max-width:430px;margin:0 auto;background:var(--surface)}
+#app.show{display:flex}
+
+/* TOP BAR */
+.topbar{background:var(--blue);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.topbar-back{font-size:22px;cursor:pointer;margin-right:2px;line-height:1}
+.topbar-logo{width:34px;height:34px;background:rgba(255,255,255,0.2);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+.topbar-info{flex:1}
+.topbar-info h1{font-size:15px;font-weight:700;line-height:1.2}
+.topbar-info p{font-size:10px;opacity:0.75;margin-top:1px}
+.topbar-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.pending-pill{background:var(--orange);border-radius:var(--r-full);padding:3px 9px;font-size:11px;font-weight:700}
+
+/* BOTTOM TABS */
+.tabs{display:flex;background:var(--surface);border-top:1px solid var(--border);flex-shrink:0;padding-bottom:env(safe-area-inset-bottom,0px)}
+.tab{flex:1;padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;border:none;background:transparent;position:relative}
+.tab-icon{font-size:20px;opacity:0.5;transition:opacity 0.15s}
+.tab-label{font-size:9px;font-weight:500;color:var(--text2);transition:color 0.15s}
+.tab.active .tab-icon{opacity:1}
+.tab.active .tab-label{color:var(--blue);font-weight:700}
+.tab-badge{position:absolute;top:4px;right:calc(50% - 18px);background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center}
+
+/* SCREENS */
+.screen{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px;flex-direction:column;gap:12px}
+.screen.active{display:flex}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--sh-sm)}
+.card-sm{padding:12px}
+
+/* SECTION HEADER */
+.sec-hdr{display:flex;align-items:center;gap:8px;margin-bottom:14px}
+.sec-num{width:24px;height:24px;background:var(--blue);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0}
+.sec-title{font-size:14px;font-weight:700}
+.sec-sub{font-size:11px;color:var(--text2);margin-top:1px}
+
+/* FIELDS */
+.field{margin-bottom:12px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:5px}
+.field label .req{color:var(--red)}
+.field input,.field select,.field textarea{font-size:15px;padding:11px 13px;border:1px solid var(--border2);border-radius:var(--r-md);background:var(--surface2);color:var(--text);width:100%;-webkit-appearance:none;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,87,168,0.12);background:var(--surface)}
+.field textarea{resize:none;height:80px}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23868' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 18px;border-radius:var(--r-md);font-size:14px;font-weight:600;border:none;cursor:pointer;font-family:inherit;min-height:46px;transition:opacity 0.15s}
+.btn:active{opacity:0.75}
+.btn-primary{background:var(--blue);color:#fff;width:100%}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-outline{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-sm{padding:7px 14px;font-size:12px;min-height:34px}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn{flex:1}
+.spin-sm{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+
+/* STATUS BADGE */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:var(--r-full);font-size:11px;font-weight:600}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.badge-received{background:var(--blue-light);color:var(--blue)}.badge-received::before{background:var(--blue)}
+.badge-preparing{background:var(--purple-light);color:var(--purple)}.badge-preparing::before{background:var(--purple)}
+.badge-testing{background:var(--orange-light);color:var(--orange)}.badge-testing::before{background:var(--orange)}
+.badge-completed{background:var(--teal-light);color:var(--teal)}.badge-completed::before{background:var(--teal)}
+.badge-delivered{background:var(--green-light);color:var(--green)}.badge-delivered::before{background:var(--green)}
+
+/* STAT CARDS */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;box-shadow:var(--sh-sm)}
+.stat-icon{font-size:24px;margin-bottom:8px}
+.stat-val{font-size:26px;font-weight:700;line-height:1;margin-bottom:3px}
+.stat-label{font-size:11px;color:var(--text2);font-weight:500}
+
+/* LIST CARDS */
+.list-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px;margin-bottom:10px;box-shadow:var(--sh-sm);cursor:pointer;transition:background 0.1s}
+.list-card:active{background:var(--surface2)}
+.lc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.lc-labno{background:var(--blue-light);color:var(--blue);font-size:12px;font-weight:600;padding:2px 8px;border-radius:4px;font-family:monospace}
+.lc-name{font-size:15px;font-weight:700;margin-bottom:3px}
+.lc-sub{font-size:12px;color:var(--text2);margin-bottom:3px}
+.lc-foot{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+
+/* SAMPLE TABLE */
+.sample-row{background:var(--surface2);border-radius:var(--r-md);padding:12px;margin-bottom:8px;position:relative}
+.sample-row-num{width:22px;height:22px;background:var(--blue);border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;margin-bottom:8px}
+.sample-del{position:absolute;top:10px;right:10px;background:var(--red-light);color:var(--red);border:none;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center}
+
+/* CHECKBOX */
+.check-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.check-item{display:flex;align-items:center;gap:7px;cursor:pointer;font-size:13px;font-weight:500;padding:7px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-md);transition:all 0.15s}
+.check-item.checked{background:var(--blue-light);border-color:var(--blue);color:var(--blue)}
+.check-item input{display:none}
+
+/* RADIO */
+.radio-group{display:flex;gap:10px;margin-top:6px}
+.radio-item{flex:1;display:flex;align-items:center;justify-content:center;gap:7px;padding:11px;background:var(--surface2);border:2px solid var(--border);border-radius:var(--r-md);cursor:pointer;font-size:13px;font-weight:600;transition:all 0.15s;text-align:center}
+.radio-item.selected{background:var(--blue-light);border-color:var(--blue);color:var(--blue)}
+.radio-item input{display:none}
+
+/* TIMELINE */
+.timeline{padding-left:20px;position:relative}
+.timeline::before{content:'';position:absolute;left:6px;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:14px}
+.tl-dot{position:absolute;left:-20px;width:14px;height:14px;border-radius:50%;border:2px solid var(--surface);top:2px;z-index:1}
+.tl-dot.done{background:var(--green)}
+.tl-dot.active{background:var(--blue);box-shadow:0 0 0 3px var(--blue-light)}
+.tl-dot.pending{background:var(--border2)}
+.tl-label{font-size:13px;font-weight:600}
+.tl-date{font-size:11px;color:var(--text2);margin-top:1px}
+
+/* DETAIL KV */
+.kv-list{border-radius:var(--r-md);overflow:hidden;border:1px solid var(--border)}
+.kv{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv-k{color:var(--text2);font-weight:500;flex-shrink:0;margin-right:12px}
+.kv-v{font-weight:600;text-align:right;word-break:break-word}
+
+/* SEARCH BAR */
+.search-bar{display:flex;align-items:center;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r-full);padding:9px 14px;gap:8px;margin-bottom:12px}
+.search-bar input{border:none;background:transparent;font-size:14px;color:var(--text);outline:none;flex:1;font-family:inherit}
+.search-bar input::placeholder{color:var(--text3)}
+
+/* FILTER TABS */
+.filter-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:12px;-webkit-overflow-scrolling:touch}
+.filter-tabs::-webkit-scrollbar{display:none}
+.ftab{padding:6px 14px;border-radius:var(--r-full);font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap;transition:all 0.15s;flex-shrink:0}
+.ftab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:20px 20px 0 0;padding:20px;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))}
+.modal-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.modal-title{font-size:16px;font-weight:700}
+.modal-close{background:var(--surface2);border:none;border-radius:50%;width:32px;height:32px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+
+/* SECTION LABEL */
+.sec-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;margin:16px 0 8px}
+
+/* CHART BAR */
+.chart-wrap{display:flex;align-items:flex-end;gap:8px;height:80px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar-fill{width:100%;border-radius:4px 4px 0 0;transition:height 0.6s cubic-bezier(.4,0,.2,1)}
+.bar-lbl{font-size:10px;color:var(--text2)}
+
+/* INSTALL BANNER */
+#install-banner{background:var(--blue);color:#fff;padding:10px 14px;display:none;align-items:center;gap:10px;flex-shrink:0;font-size:12px}
+#install-banner.show{display:flex}
+#install-banner b{flex:1}
+#install-banner button{background:rgba(255,255,255,0.25);border:none;color:#fff;padding:5px 10px;border-radius:var(--r-full);font-size:12px;font-weight:600;cursor:pointer}
+
+/* TOAST */
+.toast{position:fixed;bottom:calc(80px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#212529;color:#fff;padding:11px 20px;border-radius:var(--r-full);font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.25s;pointer-events:none;white-space:nowrap;box-shadow:var(--sh-md)}
+.toast.show{opacity:1}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;color:var(--text2);text-align:center}
+.empty-icon{font-size:48px;margin-bottom:12px}
+.empty h3{font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px}
+.divider{border:none;border-top:1px solid var(--border);margin:14px 0}
+.bottom-safe{height:calc(env(safe-area-inset-bottom,0px) + 8px);flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">HAIC</div>
+  <div class="splash-sub">LAB – Construction Materials Testing</div>
+  <div class="splash-spin"></div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-wrap">
+    <div class="login-logo-box">
+      <div class="login-mark">HAI</div>
+      <div>
+        <div class="login-title">HAIC LAB</div>
+        <div class="login-sub-text">Construction Materials Testing System</div>
+      </div>
+    </div>
+    <div class="login-card">
+      <h2>Sign In</h2>
+      <p>Enter your credentials to continue</p>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="l-email" placeholder="admin@haicam.com" autocomplete="email" inputmode="email"/>
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <input type="password" id="l-pwd" placeholder="••••••••" autocomplete="current-password"/>
+      </div>
+      <div id="l-err"></div>
+      <button class="btn btn-primary" onclick="doLogin()" id="l-btn">Sign In</button>
+      <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
+      <div style="font-size:12px;color:var(--text2);text-align:center;margin-bottom:10px">Or sign in as demo user</div>
+      <div class="demo-btns">
+        <div class="demo-btn" onclick="demoLogin('admin@haicam.com','admin','Truong Kieu Hai')">
+          <span class="demo-btn-left">⭐ Admin</span>
+          <span class="demo-btn-right">admin@haicam.com</span>
+        </div>
+        <div class="demo-btn" onclick="demoLogin('lab@haicam.com','lab_staff','Lab Staff 01')">
+          <span class="demo-btn-left">🔬 Lab Staff</span>
+          <span class="demo-btn-right">lab@haicam.com</span>
+        </div>
+        <div class="demo-btn" onclick="demoLogin('client@haicam.com','customer','Client User')">
+          <span class="demo-btn-left">👤 Customer</span>
+          <span class="demo-btn-right">client@haicam.com</span>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:12px">Password: <b>haic2024</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="app">
+  <div id="install-banner">
+    <b>📲 Bấm Share → "Add to Home Screen" để dùng như app!</b>
+    <button onclick="this.parentElement.style.display='none'">✕</button>
+  </div>
+
+  <!-- TOP BAR -->
+  <div class="topbar" id="topbar">
+    <span class="topbar-back" id="topbar-back" style="display:none" onclick="goBack()">←</span>
+    <div class="topbar-logo">HAI</div>
+    <div class="topbar-info">
+      <h1 id="topbar-title">HAIC LAB</h1>
+      <p id="topbar-sub">Dashboard</p>
+    </div>
+    <div class="topbar-right">
+      <span class="pending-pill" id="pending-pill" style="display:none">0</span>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+
+    <!-- DASHBOARD -->
+    <div class="screen active" id="screen-dashboard">
+      <div class="stats-row">
+        <div class="stat-card" onclick="goTab('requests')">
+          <div class="stat-icon">📋</div>
+          <div class="stat-val" id="s-total" style="color:var(--blue)">0</div>
+          <div class="stat-label">Total Requests</div>
+        </div>
+        <div class="stat-card" onclick="goTab('requests')">
+          <div class="stat-icon">⚗️</div>
+          <div class="stat-val" id="s-testing" style="color:var(--orange)">0</div>
+          <div class="stat-label">In Testing</div>
+        </div>
+        <div class="stat-card" onclick="goTab('requests')">
+          <div class="stat-icon">✅</div>
+          <div class="stat-val" id="s-completed" style="color:var(--green)">0</div>
+          <div class="stat-label">Completed</div>
+        </div>
+        <div class="stat-card" onclick="goTab('requests')">
+          <div class="stat-icon">🔬</div>
+          <div class="stat-val" id="s-samples" style="color:var(--teal)">0</div>
+          <div class="stat-label">Total Samples</div>
+        </div>
+      </div>
+
+      <!-- Monthly chart -->
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:14px">Monthly Requests</div>
+        <div class="chart-wrap" id="monthly-chart"></div>
+      </div>
+
+      <!-- Status breakdown -->
+      <div class="card">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px">Status Overview</div>
+        <div id="status-overview"></div>
+      </div>
+
+      <!-- Recent -->
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="font-size:15px;font-weight:700">Recent Requests</div>
+        <span style="font-size:12px;color:var(--blue);font-weight:600;cursor:pointer" onclick="goTab('requests')">See all →</span>
+      </div>
+      <div id="recent-list"></div>
+      <div class="bottom-safe"></div>
+    </div>
+
+    <!-- REQUESTS LIST -->
+    <div class="screen" id="screen-requests">
+      <div class="search-bar">
+        <span style="font-size:16px">🔍</span>
+        <input type="text" id="search-input" placeholder="Search Lab No, Project, Client..." oninput="renderList()"/>
+      </div>
+      <div class="filter-tabs" id="filter-tabs">
+        <div class="ftab active" data-status="" onclick="setFilter('')">All</div>
+        <div class="ftab" data-status="received" onclick="setFilter('received')">Received</div>
+        <div class="ftab" data-status="preparing" onclick="setFilter('preparing')">Preparing</div>
+        <div class="ftab" data-status="testing" onclick="setFilter('testing')">Testing</div>
+        <div class="ftab" data-status="completed" onclick="setFilter('completed')">Completed</div>
+        <div class="ftab" data-status="delivered" onclick="setFilter('delivered')">Delivered</div>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px" id="list-count">— records</div>
+      <div id="requests-list"></div>
+      <div class="bottom-safe"></div>
+    </div>
+
+    <!-- NEW REQUEST FORM -->
+    <div class="screen" id="screen-form">
+      <!-- Lab No Banner -->
+      <div style="background:var(--blue-light);border:1px solid var(--blue);border-radius:var(--r-lg);padding:14px 16px;margin-bottom:4px">
+        <div style="font-size:10px;font-weight:700;color:var(--blue);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:2px" id="form-mode-label">New Request</div>
+        <div style="font-size:24px;font-weight:800;color:var(--blue);font-family:monospace" id="form-labno">LAB-2026-001</div>
+        <div style="font-size:11px;color:var(--blue);opacity:0.7;margin-top:2px" id="form-date-lbl"></div>
+      </div>
+
+      <!-- Section I -->
+      <div class="card">
+        <div class="sec-hdr"><div class="sec-num">I</div><div><div class="sec-title">Project Information</div><div class="sec-sub">Thông tin dự án</div></div></div>
+        <div class="field"><label>Contractor / Nhà thầu <span class="req">*</span></label><input id="f-contractor" placeholder="Contractor company" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Client / Đơn vị gửi mẫu <span class="req">*</span></label><input id="f-client" placeholder="Client company" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Project / Công trình <span class="req">*</span></label><input id="f-project" placeholder="Project name" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Location / Địa điểm</label><input id="f-location" placeholder="Construction site location" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Contact / Người liên hệ</label><input id="f-contact" placeholder="Name + phone number" autocomplete="off" autocorrect="off"/></div>
+        <div class="field"><label>Testing Category</label>
+          <select id="f-category">
+            <option value="">— Select —</option>
+            <option>Concrete Testing</option><option>Steel/Rebar Testing</option>
+            <option>Soil Testing</option><option>Asphalt Testing</option>
+            <option>Cement Testing</option><option>Aggregate Testing</option>
+            <option>Water Quality Testing</option><option>Other</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Section II: Samples -->
+      <div class="card">
+        <div class="sec-hdr"><div class="sec-num">II</div><div><div class="sec-title">Sample Information</div><div class="sec-sub">Thông tin mẫu thử nghiệm</div></div></div>
+        <div id="sample-rows"></div>
+        <button class="btn btn-outline" style="width:100%;margin-top:4px" onclick="addSampleRow()">+ Add Sample / Thêm mẫu</button>
+      </div>
+
+      <!-- Section III -->
+      <div class="card">
+        <div class="sec-hdr"><div class="sec-num">III</div><div><div class="sec-title">Result Information</div><div class="sec-sub">Thông tin kết quả</div></div></div>
+        <div class="field"><label>Result Form Language</label>
+          <div class="radio-group">
+            <label class="radio-item selected" id="rf-ev" onclick="selectResultForm('english-vietnamese')"><input type="radio" name="rf" value="english-vietnamese" checked/> English / Vietnamese</label>
+            <label class="radio-item" id="rf-e" onclick="selectResultForm('english')"><input type="radio" name="rf" value="english"/> English only</label>
+          </div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>Copies / Số bản</label><input type="number" id="f-copies" value="2" min="1" max="10"/></div>
+          <div class="field"><label>Result Date / Ngày trả</label><input type="date" id="f-result-date"/></div>
+        </div>
+        <div class="field"><label>Result Delivery Location</label>
+          <div class="check-group">
+            <label class="check-item checked" id="ci-haic" onclick="toggleCheck('haic')"><input type="checkbox" checked/>HAIC Lab</label>
+            <label class="check-item" id="ci-sms" onclick="toggleCheck('sms')"><input type="checkbox"/>SMS</label>
+            <label class="check-item" id="ci-customer" onclick="toggleCheck('customer')"><input type="checkbox"/>Customer</label>
+            <label class="check-item" id="ci-company" onclick="toggleCheck('company')"><input type="checkbox"/>Company</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section IV -->
+      <div class="card">
+        <div class="sec-hdr"><div class="sec-num">IV</div><div class="sec-title">Lab Testing Option</div></div>
+        <div class="radio-group">
+          <label class="radio-item selected" id="rem-no" onclick="selectRemain('no')"><input type="radio" name="remain" value="no" checked/>🚫 No Remain<br/><small style="font-weight:400;font-size:10px">Không lưu mẫu</small></label>
+          <label class="radio-item" id="rem-yes" onclick="selectRemain('yes')"><input type="radio" name="remain" value="yes"/>✅ Remain<br/><small style="font-weight:400;font-size:10px">Lưu mẫu</small></label>
+        </div>
+      </div>
+
+      <!-- Section V -->
+      <div class="card">
+        <div class="sec-hdr"><div class="sec-num">V</div><div><div class="sec-title">Other Requirements</div><div class="sec-sub">Yêu cầu khác</div></div></div>
+        <div class="field"><textarea id="f-other" placeholder="Any special requirements or notes..."></textarea></div>
+      </div>
+
+      <!-- Submit -->
+      <div class="btn-row">
+        <button class="btn btn-secondary" onclick="goBack()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveForm()" id="save-btn" style="flex:2">
+          <span>✈ Submit Request</span>
+        </button>
+      </div>
+      <div class="bottom-safe"></div>
+    </div>
+
+    <!-- PROFILE -->
+    <div class="screen" id="screen-profile">
+      <div style="background:var(--blue);border-radius:var(--r-xl);padding:24px;text-align:center;margin-bottom:4px">
+        <div style="width:64px;height:64px;background:rgba(255,255,255,0.25);border-radius:32px;display:flex;align-items:center;justify-content:center;font-size:26px;font-weight:800;color:#fff;margin:0 auto 12px" id="profile-avatar">A</div>
+        <div style="color:#fff;font-size:17px;font-weight:700" id="profile-name">—</div>
+        <div style="color:rgba(255,255,255,0.75);font-size:12px;margin-top:3px" id="profile-email">—</div>
+        <div style="background:rgba(255,255,255,0.2);border-radius:var(--r-full);padding:4px 14px;display:inline-block;margin-top:10px;font-size:11px;font-weight:700;color:#fff" id="profile-role">—</div>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Company</div>
+          <div style="font-size:14px;font-weight:600">HAI (Cambodia) Survey & Construction Co., Ltd</div>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Address</div>
+          <div style="font-size:13px">No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh</div>
+        </div>
+        <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Contact</div>
+          <div style="font-size:13px">📞 +855 977 855 953 &nbsp;|&nbsp; 🌐 haicam.com</div>
+        </div>
+        <div style="padding:14px 16px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Email</div>
+          <div style="font-size:13px">truongkieu@haicam.com</div>
+        </div>
+      </div>
+
+      <button class="btn btn-danger" onclick="doLogout()" style="margin-top:4px">🚪 Sign Out</button>
+      <div style="text-align:center;font-size:11px;color:var(--text3);margin-top:16px;line-height:1.7">
+        HAIC Lab System v1.0<br/>F-01.HAIC-LAB-15MAT<br/>© 2026 HAI (Cambodia) Survey & Construction
+      </div>
+      <div class="bottom-safe"></div>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM TABS -->
+  <div class="tabs" id="tabs">
+    <button class="tab active" onclick="goTab('dashboard')" id="tab-dashboard">
+      <span class="tab-icon">📊</span>
+      <span class="tab-label">Home</span>
+    </button>
+    <button class="tab" onclick="goTab('requests')" id="tab-requests">
+      <span class="tab-icon">📋</span>
+      <span class="tab-label">Requests</span>
+      <span class="tab-badge" id="tab-badge" style="display:none">0</span>
+    </button>
+    <button class="tab" onclick="goTab('form')" id="tab-form" style="display:none">
+      <span class="tab-icon">➕</span>
+      <span class="tab-label">New</span>
+    </button>
+    <button class="tab" onclick="goTab('profile')" id="tab-profile">
+      <span class="tab-icon">👤</span>
+      <span class="tab-label">Profile</span>
+    </button>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="detail-modal" onclick="if(event.target===this)closeModal('detail-modal')">
+  <div class="modal">
+    <div class="modal-hdr">
+      <div>
+        <div class="modal-title" id="dm-title">Request Detail</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:2px" id="dm-sub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('detail-modal')">✕</button>
+    </div>
+    <div id="dm-body"></div>
+  </div>
+</div>
+
+<!-- STATUS MODAL -->
+<div class="modal-bg" id="status-modal" onclick="if(event.target===this)closeModal('status-modal')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <div class="modal-title">Update Status</div>
+      <button class="modal-close" onclick="closeModal('status-modal')">✕</button>
+    </div>
+    <div id="status-options" style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px"></div>
+    <div class="field">
+      <label>Note (optional)</label>
+      <textarea id="status-note" placeholder="Status update note..." style="height:70px"></textarea>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('status-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmStatus()" style="flex:2">Update Status</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script type="module">
+import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,updateDoc,deleteDoc,doc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyClyUxANBDlO848xnlokxIbrLloCNk0m4o",authDomain:"haic-app.firebaseapp.com",projectId:"haic-app",storageBucket:"haic-app.firebasestorage.app",messagingSenderId:"434927099865",appId:"1:434927099865:web:b799e53332d5eced6183c8"};
+const fbApp=getApps().find(a=>a.name==='lab')||initializeApp(cfg,'lab');
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+
+// ── STATE ──────────────────────────────────────────────────
+let records=[],role='lab_staff',userName='',userEmail='';
+let sampleRows=[{name:'',qty:'',note:''}];
+let resultForm='english-vietnamese',remain='no';
+let delivery={haic:true,sms:false,customer:false,company:false};
+let filterStatus='',editingId=null,statusTargetId=null,newStatusVal='received';
+let activeTab='dashboard',backTab='dashboard';
+
+// ── DEMO DATA ──────────────────────────────────────────────
+const DEMO=[
+  {id:'d1',labNo:'LAB-2026-001',date:'2026-05-15',contractor:'Koh Kong Construction',client:'CBC Holdings',project:'CBC PS Farm Phase 2',location:'Koh Kong Province',contact:'Mr. Dara +855 12 345 678',category:'Concrete Testing',samples:[{name:'Concrete Cube 7-day',qty:'6',note:'C25 Mix'},{name:'Concrete Cube 28-day',qty:'6',note:''}],resultForm:'english-vietnamese',copies:2,resultDate:'2026-06-01',delivery:['HAIC Lab'],remain:'no',otherReq:'Urgent',status:'testing',createdAt:{toDate:()=>new Date('2026-05-15')}},
+  {id:'d2',labNo:'LAB-2026-002',date:'2026-05-10',contractor:'CRBC Cambodia',client:'Ministry of Public Works',project:'Phnom Penh Flyover Bridge',location:'Phnom Penh',contact:'Eng. Sophea +855 23 123 456',category:'Steel/Rebar Testing',samples:[{name:'Rebar D16 Tensile',qty:'3',note:'Grade 40'},{name:'Rebar D20 Tensile',qty:'3',note:''}],resultForm:'english',copies:3,resultDate:'2026-05-20',delivery:['Customer','HAIC Lab'],remain:'yes',otherReq:'',status:'completed',createdAt:{toDate:()=>new Date('2026-05-10')}},
+  {id:'d3',labNo:'LAB-2026-003',date:'2026-05-18',contractor:'HLH Group',client:'Overseas Cambodia',project:'Sen Sok Residential Tower A',location:'Sen Sok, Phnom Penh',contact:'Ms. Lily +855 17 234 567',category:'Soil Testing',samples:[{name:'Soil CBR Test',qty:'2',note:''},{name:'Soil Compaction',qty:'4',note:''}],resultForm:'english-vietnamese',copies:2,resultDate:'',delivery:['HAIC Lab'],remain:'no',otherReq:'Include field density report',status:'received',createdAt:{toDate:()=>new Date('2026-05-18')}},
+];
+
+// ── HELPERS ────────────────────────────────────────────────
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtD=d=>{if(!d)return'—';try{if(d?.toDate){const x=d.toDate();return`${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}/${x.getFullYear()}`;}if(typeof d==='string'&&d.includes('-')){const[y,m,dy]=d.split('-');return`${dy}/${m}/${y}`;}return d;}catch(e){return d;}};
+const STATUS_MAP={received:'Received',preparing:'Preparing',testing:'Testing',completed:'Completed',delivered:'Delivered'};
+const STATUS_COL={received:'var(--blue)',preparing:'var(--purple)',testing:'var(--orange)',completed:'var(--teal)',delivered:'var(--green)'};
+const STATUS_ORDER=['received','preparing','testing','completed','delivered'];
+
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2600);}
+
+function genLabNo(){
+  const y=new Date().getFullYear();
+  const nums=records.filter(r=>r.labNo?.startsWith('LAB-'+y)).map(r=>parseInt(r.labNo?.split('-')[2]||0)).filter(n=>!isNaN(n));
+  return`LAB-${y}-${String((nums.length?Math.max(...nums):0)+1).padStart(3,'0')}`;
+}
+
+// ── AUTH ───────────────────────────────────────────────────
+window.doLogin=async()=>{
+  const email=document.getElementById('l-email').value.trim();
+  const pwd=document.getElementById('l-pwd').value;
+  const btn=document.getElementById('l-btn');
+  const err=document.getElementById('l-err');
+  err.textContent='';
+  btn.innerHTML='<span class="spin-sm"></span> Signing in...';btn.disabled=true;
+  try{
+    await signInWithEmailAndPassword(auth,email,pwd);
+  }catch(e){
+    err.textContent='Invalid email or password';
+    btn.innerHTML='Sign In';btn.disabled=false;
+  }
+};
+
+window.demoLogin=async(email,r,name)=>{
+  try{await signInWithEmailAndPassword(auth,email,'haic2024');}
+  catch(e){
+    // Fallback: demo mode without Firebase auth
+    role=r;userName=name;userEmail=email;
+    onLoginSuccess();
+  }
+};
+
+window.doLogout=async()=>{
+  try{await signOut(auth);}catch(e){}
+  records=[];
+  document.getElementById('app').classList.remove('show');
+  document.getElementById('app').style.display='none';
+  document.getElementById('login-screen').classList.add('show');
+};
+
+onAuthStateChanged(auth,async user=>{
+  if(user){
+    userEmail=user.email||'';
+    userName=user.displayName||user.email||'';
+    // Determine role from email
+    if(user.email==='admin@haicam.com')role='admin';
+    else if(user.email==='client@haicam.com')role='customer';
+    else role='lab_staff';
+    onLoginSuccess();
+  }
+});
+
+function onLoginSuccess(){
+  document.getElementById('login-screen').classList.remove('show');
+  document.getElementById('app').style.display='flex';
+  document.getElementById('app').classList.add('show');
+
+  // Profile
+  document.getElementById('profile-avatar').textContent=(userName||'U')[0].toUpperCase();
+  document.getElementById('profile-name').textContent=userName;
+  document.getElementById('profile-email').textContent=userEmail;
+  document.getElementById('profile-role').textContent=({admin:'⭐ Administrator',lab_staff:'🔬 Lab Staff',customer:'👤 Customer'}[role])||role;
+
+  // Show/hide New tab
+  document.getElementById('tab-form').style.display=role==='customer'?'none':'flex';
+
+  // iOS install banner
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone){
+    document.getElementById('install-banner').classList.add('show');
+  }
+
+  subscribeRecords();
+}
+
+// ── FIRESTORE ──────────────────────────────────────────────
+function subscribeRecords(){
+  const q=query(collection(db,'lab_requests'),orderBy('createdAt','desc'));
+  onSnapshot(q,snap=>{
+    records=snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!records.length)records=DEMO;
+    refreshAll();
+  },err=>{
+    records=DEMO;
+    refreshAll();
+  });
+}
+
+function refreshAll(){
+  renderDashboard();
+  renderList();
+  updateBadge();
+  document.getElementById('form-labno').textContent=genLabNo();
+  document.getElementById('form-date-lbl').textContent='Date: '+today();
+}
+
+function updateBadge(){
+  const n=records.filter(r=>['received','preparing'].includes(r.status)).length;
+  const b=document.getElementById('tab-badge');
+  const p=document.getElementById('pending-pill');
+  b.textContent=n;b.style.display=n&&role!=='customer'?'':'none';
+  p.textContent=n+' pending';p.style.display=n&&role!=='customer'?'':'none';
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────
+function renderDashboard(){
+  document.getElementById('s-total').textContent=records.length;
+  document.getElementById('s-testing').textContent=records.filter(r=>r.status==='testing').length;
+  document.getElementById('s-completed').textContent=records.filter(r=>['completed','delivered'].includes(r.status)).length;
+  document.getElementById('s-samples').textContent=records.reduce((s,r)=>s+(r.samples?.length||0),0);
+
+  // Monthly chart
+  const now=new Date();
+  const months=Array.from({length:6},(_,i)=>{
+    const d=new Date(now.getFullYear(),now.getMonth()-(5-i),1);
+    const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    return{lbl:d.toLocaleDateString('en-US',{month:'short'}),cnt:records.filter(r=>(r.date||'').startsWith(key)).length};
+  });
+  const maxM=Math.max(...months.map(m=>m.cnt),1);
+  document.getElementById('monthly-chart').innerHTML=months.map(m=>`
+    <div class="bar-col">
+      ${m.cnt?`<span style="font-size:9px;font-weight:700;color:var(--blue)">${m.cnt}</span>`:''}
+      <div class="bar-fill" style="height:${m.cnt?Math.max(Math.round(m.cnt/maxM*60),6):3}px;background:${m.cnt?'var(--blue)':'var(--surface2)'}"></div>
+      <span class="bar-lbl">${m.lbl}</span>
+    </div>`).join('');
+
+  // Status overview
+  document.getElementById('status-overview').innerHTML=STATUS_ORDER.map(s=>{
+    const cnt=records.filter(r=>r.status===s).length;
+    const pct=records.length?Math.round(cnt/records.length*100):0;
+    return`<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:500">${STATUS_MAP[s]}</span>
+        <span style="font-size:12px;font-weight:700;color:${STATUS_COL[s]}">${cnt}</span>
+      </div>
+      <div style="height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${STATUS_COL[s]};border-radius:3px"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Recent
+  const recent=records.slice(0,4);
+  document.getElementById('recent-list').innerHTML=recent.length?recent.map(r=>listCardHTML(r)).join(''):`<div class="empty"><div class="empty-icon">🔬</div><h3>No requests yet</h3><p>Tap ➕ to create your first request</p></div>`;
+}
+
+// ── LIST ───────────────────────────────────────────────────
+function listCardHTML(r){
+  return`<div class="list-card" onclick="openDetail('${r.id}')">
+    <div class="lc-top">
+      <span class="lc-labno">${esc(r.labNo)}</span>
+      <span class="badge badge-${r.status}">${STATUS_MAP[r.status]||r.status}</span>
+    </div>
+    <div class="lc-name">${esc(r.project)}</div>
+    <div class="lc-sub">🏗️ ${esc(r.contractor)}</div>
+    <div class="lc-sub">🏢 ${esc(r.client)}</div>
+    <div class="lc-foot">
+      <span style="font-size:12px;color:var(--blue);font-weight:600">${r.samples?.length||0} sample(s)</span>
+      <span style="font-size:11px;color:var(--text3)">${fmtD(r.date||r.createdAt)}</span>
+    </div>
+  </div>`;
+}
+
+window.renderList=function(){
+  const search=(document.getElementById('search-input')?.value||'').toLowerCase();
+  let list=records.filter(r=>{
+    if(filterStatus&&r.status!==filterStatus)return false;
+    if(search&&![r.labNo,r.project,r.client,r.contractor,r.contact].some(v=>(v||'').toLowerCase().includes(search)))return false;
+    return true;
+  });
+  document.getElementById('list-count').textContent=list.length+' record'+(list.length!==1?'s':'');
+  const el=document.getElementById('requests-list');
+  el.innerHTML=list.length?list.map(r=>listCardHTML(r)).join(''):`<div class="empty"><div class="empty-icon">📋</div><h3>No records found</h3><p>${search?`No results for "${search}"`:'No records match this filter'}</p></div>`;
+};
+
+window.setFilter=function(s){
+  filterStatus=s;
+  document.querySelectorAll('.ftab').forEach(t=>t.classList.toggle('active',t.dataset.status===s));
+  renderList();
+};
+
+// ── FORM ───────────────────────────────────────────────────
+function renderSampleRows(){
+  document.getElementById('sample-rows').innerHTML=sampleRows.map((r,i)=>`
+    <div class="sample-row" data-si="${i}">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span class="sample-row-num">${i+1}</span>
+        ${sampleRows.length>1?`<button class="sample-del" data-del="${i}">×</button>`:''}
+      </div>
+      <div class="field" style="margin-bottom:8px"><label>Sample Name / Tên mẫu</label>
+        <input data-si="${i}" data-sf="name" value="${esc(r.name)}" placeholder="e.g. Concrete Cube C25, Rebar D16..." autocomplete="off" autocorrect="off"/>
+      </div>
+      <div class="row2">
+        <div class="field" style="margin-bottom:0"><label>Quantity / SL</label>
+          <input type="number" data-si="${i}" data-sf="qty" value="${r.qty}" placeholder="0" inputmode="numeric"/>
+        </div>
+        <div class="field" style="margin-bottom:0"><label>Note / Ghi chú</label>
+          <input data-si="${i}" data-sf="note" value="${esc(r.note)}" placeholder="Note..." autocomplete="off"/>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+document.addEventListener('input',e=>{
+  const si=e.target.dataset.si;
+  if(si!==undefined)sampleRows[+si][e.target.dataset.sf]=e.target.value;
+});
+document.addEventListener('click',e=>{
+  const d=e.target.closest('[data-del]')?.dataset.del;
+  if(d!==undefined){sampleRows.splice(+d,1);renderSampleRows();}
+});
+
+window.addSampleRow=()=>{sampleRows.push({name:'',qty:'',note:''});renderSampleRows();};
+
+window.selectResultForm=id=>{
+  resultForm=id;
+  ['ev','e'].forEach(k=>{const el=document.getElementById('rf-'+k);if(el)el.classList.toggle('selected',('english-vietnamese'===id&&k==='ev')||('english'===id&&k==='e'));});
+};
+
+window.selectRemain=v=>{
+  remain=v;
+  document.getElementById('rem-no').classList.toggle('selected',v==='no');
+  document.getElementById('rem-yes').classList.toggle('selected',v==='yes');
+};
+
+window.toggleCheck=k=>{
+  delivery[k]=!delivery[k];
+  document.getElementById('ci-'+k).classList.toggle('checked',delivery[k]);
+};
+
+function resetForm(){
+  ['f-contractor','f-client','f-project','f-location','f-contact','f-other','f-result-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-category').value='';
+  document.getElementById('f-copies').value='2';
+  sampleRows=[{name:'',qty:'',note:''}];
+  resultForm='english-vietnamese';remain='no';
+  delivery={haic:true,sms:false,customer:false,company:false};
+  renderSampleRows();
+  selectResultForm('english-vietnamese');
+  selectRemain('no');
+  ['haic','sms','customer','company'].forEach(k=>{const el=document.getElementById('ci-'+k);if(el)el.classList.toggle('checked',k==='haic');});
+  document.getElementById('form-mode-label').textContent='New Request';
+  document.getElementById('form-labno').textContent=genLabNo();
+  editingId=null;
+}
+
+window.saveForm=async()=>{
+  const contractor=document.getElementById('f-contractor').value.trim();
+  const client=document.getElementById('f-client').value.trim();
+  const project=document.getElementById('f-project').value.trim();
+  if(!contractor){toast('⚠️ Enter Contractor name');return;}
+  if(!client){toast('⚠️ Enter Client name');return;}
+  if(!project){toast('⚠️ Enter Project name');return;}
+  if(!sampleRows.some(s=>s.name.trim())){toast('⚠️ Add at least one sample');return;}
+
+  const btn=document.getElementById('save-btn');
+  btn.innerHTML='<span class="spin-sm"></span> Saving...';btn.disabled=true;
+
+  const deliveryArr=['haic','sms','customer','company'].filter(k=>delivery[k]).map(k=>({haic:'HAIC Lab',sms:'SMS',customer:'Customer',company:'Company'}[k]));
+  const labNo=editingId?records.find(r=>r.id===editingId)?.labNo:genLabNo();
+  const data={
+    labNo,date:today(),
+    contractor,client,
+    project:document.getElementById('f-project').value,
+    location:document.getElementById('f-location').value,
+    contact:document.getElementById('f-contact').value,
+    category:document.getElementById('f-category').value,
+    samples:sampleRows.filter(s=>s.name.trim()),
+    resultForm,copies:+document.getElementById('f-copies').value,
+    resultDate:document.getElementById('f-result-date').value,
+    delivery:deliveryArr,remain,
+    otherReq:document.getElementById('f-other').value,
+    status:editingId?records.find(r=>r.id===editingId)?.status:'received',
+  };
+
+  try{
+    if(editingId){
+      await updateDoc(doc(db,'lab_requests',editingId),{...data,updatedAt:serverTimestamp()});
+      toast('✓ Request updated! Lab No: '+labNo);
+    }else{
+      await addDoc(collection(db,'lab_requests'),{...data,createdAt:serverTimestamp()});
+      toast('✓ Request submitted! Lab No: '+labNo);
+    }
+  }catch(e){
+    if(!editingId)records.unshift({id:'local-'+Date.now(),...data,createdAt:{toDate:()=>new Date()}});
+    else{const idx=records.findIndex(r=>r.id===editingId);if(idx>=0)records[idx]={...records[idx],...data};}
+    toast('✓ '+(editingId?'Updated':'Submitted')+': '+labNo);
+  }
+
+  btn.innerHTML='<span>✈ Submit Request</span>';btn.disabled=false;
+  resetForm();
+  refreshAll();
+  goTab('requests');
+};
+
+// ── DETAIL ─────────────────────────────────────────────────
+window.openDetail=function(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  document.getElementById('dm-title').textContent=r.labNo;
+  document.getElementById('dm-sub').textContent=r.project;
+  const curIdx=STATUS_ORDER.indexOf(r.status);
+
+  document.getElementById('dm-body').innerHTML=`
+    <div class="kv-list" style="margin-bottom:14px">
+      <div class="kv"><span class="kv-k">Status</span><span class="kv-v"><span class="badge badge-${r.status}">${STATUS_MAP[r.status]}</span></span></div>
+      <div class="kv"><span class="kv-k">Date</span><span class="kv-v">${fmtD(r.date||r.createdAt)}</span></div>
+      <div class="kv"><span class="kv-k">Project</span><span class="kv-v">${esc(r.project)}</span></div>
+      <div class="kv"><span class="kv-k">Contractor</span><span class="kv-v">${esc(r.contractor)}</span></div>
+      <div class="kv"><span class="kv-k">Client</span><span class="kv-v">${esc(r.client)}</span></div>
+      <div class="kv"><span class="kv-k">Location</span><span class="kv-v">${esc(r.location||'—')}</span></div>
+      <div class="kv"><span class="kv-k">Contact</span><span class="kv-v">${esc(r.contact||'—')}</span></div>
+      <div class="kv"><span class="kv-k">Category</span><span class="kv-v">${esc(r.category||'—')}</span></div>
+    </div>
+
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">Progress</div>
+    <div class="timeline" style="margin-bottom:16px">
+      ${STATUS_ORDER.map((s,i)=>`
+        <div class="tl-item">
+          <div class="tl-dot ${i<curIdx?'done':i===curIdx?'active':'pending'}"></div>
+          <div class="tl-label" style="color:${i<=curIdx?'var(--text)':'var(--text3)'}">${i<curIdx?'✓ ':''}${STATUS_MAP[s]}</div>
+          ${s===r.status?`<div class="tl-date" style="color:${STATUS_COL[s]}">Current status</div>`:''}
+        </div>`).join('')}
+    </div>
+
+    <div style="font-size:14px;font-weight:700;margin-bottom:10px">Samples (${(r.samples||[]).length})</div>
+    ${(r.samples||[]).map((s,i)=>`
+      <div style="background:var(--surface2);border-radius:var(--r-md);padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:flex-start">
+        <div style="width:22px;height:22px;background:var(--blue);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:600">${esc(s.name)}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">Qty: <b style="color:var(--blue)">${esc(s.qty)}</b>${s.note?` · ${esc(s.note)}`:''}  </div>
+        </div>
+      </div>`).join('')}
+
+    <div style="font-size:14px;font-weight:700;margin:14px 0 10px">Result Info</div>
+    <div class="kv-list" style="margin-bottom:14px">
+      <div class="kv"><span class="kv-k">Form</span><span class="kv-v">${r.resultForm==='english-vietnamese'?'English / Vietnamese':'English'}</span></div>
+      <div class="kv"><span class="kv-k">Copies</span><span class="kv-v">${r.copies||2}</span></div>
+      <div class="kv"><span class="kv-k">Result Date</span><span class="kv-v">${fmtD(r.resultDate)||'—'}</span></div>
+      <div class="kv"><span class="kv-k">Delivery</span><span class="kv-v">${(r.delivery||[]).join(', ')||'—'}</span></div>
+      <div class="kv"><span class="kv-k">Remain Sample</span><span class="kv-v">${r.remain==='yes'?'✓ Remain':'No Remain'}</span></div>
+      ${r.otherReq?`<div class="kv"><span class="kv-k">Other Req.</span><span class="kv-v">${esc(r.otherReq)}</span></div>`:''}
+    </div>
+
+    ${role!=='customer'?`
+    <div class="btn-row" style="margin-bottom:10px">
+      <button class="btn btn-outline" onclick="openStatusModal('${r.id}')">Update Status</button>
+      <button class="btn btn-secondary" onclick="editRecord('${r.id}');closeModal('detail-modal')">Edit</button>
+    </div>
+    <button class="btn btn-primary" onclick="exportPDF('${r.id}');closeModal('detail-modal')">📥 Export PDF</button>
+    ${role==='admin'?`<button class="btn btn-danger" style="margin-top:8px;width:100%" onclick="deleteRecord('${r.id}');closeModal('detail-modal')">🗑 Delete</button>`:''}
+    `:`<button class="btn btn-primary" onclick="exportPDF('${r.id}');closeModal('detail-modal')">📥 Download PDF</button>`}
+  `;
+
+  document.getElementById('detail-modal').classList.add('open');
+};
+
+// ── STATUS MODAL ───────────────────────────────────────────
+window.openStatusModal=function(id){
+  statusTargetId=id;
+  const r=records.find(x=>x.id===id);
+  newStatusVal=r?.status||'received';
+  document.getElementById('status-note').value='';
+  document.getElementById('status-options').innerHTML=STATUS_ORDER.map(s=>`
+    <div onclick="selectNewStatus('${s}')" id="so-${s}" style="padding:12px 14px;border-radius:var(--r-md);border:2px solid ${s===newStatusVal?STATUS_COL[s]:'var(--border)'};background:${s===newStatusVal?`color-mix(in srgb,${STATUS_COL[s]} 10%,white)`:'var(--surface2)'};cursor:pointer;display:flex;align-items:center;gap:10px;transition:all 0.15s">
+      <div style="width:10px;height:10px;border-radius:50%;background:${STATUS_COL[s]}"></div>
+      <span style="font-size:14px;font-weight:600;color:${s===newStatusVal?STATUS_COL[s]:'var(--text)'}">${STATUS_MAP[s]}</span>
+      ${r?.status===s?`<span style="margin-left:auto;font-size:11px;color:var(--text3)">Current</span>`:''}
+    </div>`).join('');
+  closeModal('detail-modal');
+  document.getElementById('status-modal').classList.add('open');
+};
+
+window.selectNewStatus=function(s){
+  newStatusVal=s;
+  STATUS_ORDER.forEach(x=>{
+    const el=document.getElementById('so-'+x);
+    if(!el)return;
+    el.style.border=`2px solid ${x===s?STATUS_COL[x]:'var(--border)'}`;
+    el.style.background=x===s?`color-mix(in srgb,${STATUS_COL[x]} 10%,white)`:'var(--surface2)';
+    el.querySelector('span:nth-child(2)').style.color=x===s?STATUS_COL[x]:'var(--text)';
+  });
+};
+
+window.confirmStatus=async function(){
+  const note=document.getElementById('status-note').value;
+  try{
+    await updateDoc(doc(db,'lab_requests',statusTargetId),{status:newStatusVal,statusNote:note,updatedAt:serverTimestamp()});
+  }catch(e){
+    const idx=records.findIndex(r=>r.id===statusTargetId);
+    if(idx>=0){records[idx].status=newStatusVal;records[idx].statusNote=note;}
+  }
+  toast('✓ Status updated: '+STATUS_MAP[newStatusVal]);
+  closeModal('status-modal');
+  refreshAll();
+};
+
+// ── EDIT / DELETE ──────────────────────────────────────────
+window.editRecord=function(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  editingId=id;
+  goTab('form');
+  document.getElementById('form-mode-label').textContent='Editing Request';
+  document.getElementById('form-labno').textContent=r.labNo;
+  ['contractor','client','project','location','contact'].forEach(k=>{const el=document.getElementById('f-'+k);if(el)el.value=r[k]||'';});
+  document.getElementById('f-category').value=r.category||'';
+  document.getElementById('f-copies').value=r.copies||2;
+  document.getElementById('f-result-date').value=r.resultDate||'';
+  document.getElementById('f-other').value=r.otherReq||'';
+  sampleRows=r.samples?.length?r.samples.map(s=>({...s})):[{name:'',qty:'',note:''}];
+  renderSampleRows();
+  selectResultForm(r.resultForm||'english-vietnamese');
+  selectRemain(r.remain||'no');
+  const d=r.delivery||[];
+  delivery={haic:d.includes('HAIC Lab'),sms:d.includes('SMS'),customer:d.includes('Customer'),company:d.includes('Company')};
+  ['haic','sms','customer','company'].forEach(k=>{const el=document.getElementById('ci-'+k);if(el)el.classList.toggle('checked',delivery[k]);});
+};
+
+window.deleteRecord=async function(id){
+  if(!confirm('Delete this request? Cannot be undone.'))return;
+  try{await deleteDoc(doc(db,'lab_requests',id));}
+  catch(e){records=records.filter(r=>r.id!==id);}
+  toast('✓ Deleted');refreshAll();
+};
+
+// ── PDF EXPORT ─────────────────────────────────────────────
+window.exportPDF=function(id){
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const samplesHtml=(r.samples||[]).map((s,i)=>`<tr><td style="text-align:center;border:1px solid #ccc;padding:5px">${i+1}</td><td style="border:1px solid #ccc;padding:5px;font-weight:500">${s.name}</td><td style="text-align:center;border:1px solid #ccc;padding:5px">${s.qty}</td><td style="border:1px solid #ccc;padding:5px;color:#666">${s.note||''}</td></tr>`).join('');
+  const empty=Array(Math.max(0,8-(r.samples||[]).length)).fill('<tr><td style="border:1px solid #ccc;padding:8px"></td><td style="border:1px solid #ccc;padding:8px">&nbsp;</td><td style="border:1px solid #ccc;padding:8px"></td><td style="border:1px solid #ccc;padding:8px"></td></tr>').join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/><title>${r.labNo}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:11pt;margin:20px;color:#000;line-height:1.4}
+  .hdr{display:flex;border:2px solid #0057A8;margin-bottom:12px}
+  .hl{padding:10px;border-right:1px solid #0057A8;min-width:100px;display:flex;align-items:center;justify-content:center}
+  .hm{flex:1;padding:10px;text-align:center;border-right:1px solid #0057A8}
+  .hm h2{color:#0057A8;font-size:12pt;margin:0 0 2px}.hm h3{color:#0057A8;font-size:10pt;font-style:italic;margin:0}
+  .hr{padding:10px;font-size:9pt;min-width:150px}
+  h1{text-align:center;color:#D93025;font-size:13pt;margin:12px 0 4px}h1 em{display:block;font-size:11pt}
+  .meta{display:flex;justify-content:space-between;margin-bottom:8px;font-size:10pt}
+  .st{font-weight:bold;text-decoration:underline;color:#0057A8;margin-bottom:6px;font-size:10.5pt}
+  .fl{margin-bottom:4px;display:flex;gap:4px;font-size:10pt}.flb{font-weight:bold;min-width:180px}
+  table{width:100%;border-collapse:collapse;margin-bottom:10px}
+  th{background:#E8F1FB;padding:6px 8px;font-size:10pt;text-align:left;border:1px solid #000;font-weight:bold}
+  .sr{display:flex;justify-content:space-between;margin-top:28px;gap:50px}
+  .sb{flex:1;text-align:center}.sl{border-top:1px solid #000;margin-top:50px;padding-top:4px;font-size:9.5pt;font-style:italic}
+  .ft{text-align:center;font-size:9pt;color:#666;margin-top:20px;border-top:1px solid #ccc;padding-top:8px;line-height:1.6}
+  @media print{body{margin:10px}}</style></head><body>
+  <div class="hdr">
+    <div class="hl"><b style="font-size:20pt;color:#0057A8">HAIC</b></div>
+    <div class="hm"><h2>QUY TRÌNH THÍ NGHIỆM VẬT LIỆU XÂY DỰNG</h2><h3>CONSTRUCTION MATERIALS TESTING PROCEDURE</h3></div>
+    <div class="hr"><div><b>Code:</b> HAIC-LAB-15MAT</div><div><b>Issued:</b> 04</div><div><b>Date:</b> 15/09/2024</div></div>
+  </div>
+  <div class="meta"><span><b>Lab No:</b> <span style="font-family:monospace;background:#E8F1FB;padding:1px 6px;border-radius:3px;color:#0057A8">${r.labNo}</span></span><span>Phnom Penh, ${fmtD(r.date)}</span></div>
+  <h1>PHIẾU YÊU CẦU VÀ NHẬN MẪU THỬ NGHIỆM<em>REQUEST AND RECEIPT FORM FOR TESTING</em></h1>
+  <div style="margin-bottom:10px">
+    <div class="st">I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION</div>
+    <div class="fl"><span class="flb">- Nhà thầu / Contractor :</span><span>${r.contractor}</span></div>
+    <div class="fl"><span class="flb">- Công trình / Project :</span><span>${r.project}</span></div>
+    <div class="fl"><span class="flb">- Địa điểm XD / Location :</span><span>${r.location||'—'}</span></div>
+    <div class="fl"><span class="flb">- Đơn vị gửi mẫu / Client :</span><span>${r.client}</span></div>
+    <div class="fl"><span class="flb">- Người liên hệ / Contact :</span><span>${r.contact||'—'}</span></div>
+  </div>
+  <table><thead><tr><th style="width:35px;text-align:center">No.</th><th>Tên mẫu thử / Name of sample</th><th style="width:80px;text-align:center">Số lượng</th><th>Ghi chú / Note</th></tr></thead>
+  <tbody>${samplesHtml}${empty}</tbody></table>
+  <div style="font-size:10pt;margin-bottom:5px"><b>Form kết quả:</b> ${r.resultForm==='english-vietnamese'?'English / Vietnamese ☑':'English ☑'} &nbsp;&nbsp;<b>Số bản:</b> ${r.copies||2}</div>
+  <div style="font-size:10pt;margin-bottom:5px"><b>Ngày trả kết quả:</b> ${fmtD(r.resultDate)||'___________'}</div>
+  <div style="font-size:10pt;margin-bottom:5px"><b>Nhận kết quả tại:</b> ${(r.delivery||[]).map(d=>d+' ☑').join(' &nbsp;')}</div>
+  <div style="font-size:10pt;margin-bottom:5px"><b>Lab testing:</b> ${r.remain==='yes'?'Lưu mẫu ☑':'Không lưu mẫu ☑'}</div>
+  ${r.otherReq?`<div style="font-size:10pt;margin-bottom:5px"><b>Yêu cầu khác:</b> ${r.otherReq}</div>`:''}
+  <div class="sr">
+    <div class="sb"><div class="sl">Đơn vị gửi mẫu / <em>Client</em></div></div>
+    <div class="sb"><div class="sl">Đơn vị nhận mẫu / <em>HAI LAB</em></div></div>
+  </div>
+  <div class="ft"><b>HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD</b><br/>No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia<br/>Tel: +855 977 855 953 | haicam.com | truongkieu@haicam.com<br/><b>F-01.HAIC-LAB-15MAT</b></div>
+  <script>window.onload=()=>window.print();<\/script></body></html>`);
+  w.document.close();
+};
+
+// ── NAV ────────────────────────────────────────────────────
+window.goTab=function(tab){
+  activeTab=tab;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  const scr=document.getElementById('screen-'+tab);
+  const tabBtn=document.getElementById('tab-'+tab);
+  if(scr)scr.classList.add('active');
+  if(tabBtn)tabBtn.classList.add('active');
+
+  const titles={dashboard:{title:'HAIC LAB',sub:'Dashboard'},requests:{title:'Test Requests',sub:'All requests'},form:{title:editingId?'Edit Request':'New Request',sub:'F-01.HAIC-LAB-15MAT'},profile:{title:'Profile',sub:'Account & Settings'}};
+  const t=titles[tab]||{title:'HAIC LAB',sub:''};
+  document.getElementById('topbar-title').textContent=t.title;
+  document.getElementById('topbar-sub').textContent=t.sub;
+  document.getElementById('topbar-back').style.display='none';
+  document.getElementById('tabs').style.display='flex';
+
+  if(tab==='form')renderSampleRows();
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='requests')renderList();
+};
+
+window.goBack=function(){goTab(backTab);};
+window.closeModal=id=>document.getElementById(id).classList.remove('open');
+
+// ── BOOT ───────────────────────────────────────────────────
+setTimeout(()=>{
+  document.getElementById('splash').classList.add('hide');
+  setTimeout(()=>document.getElementById('splash').style.display='none',400);
+  document.getElementById('login-screen').classList.add('show');
+},1200);
+document.getElementById('l-pwd').addEventListener('keydown',e=>{if(e.key==='Enter')window.doLogin();});
+</script>
+</body>
+</html>
