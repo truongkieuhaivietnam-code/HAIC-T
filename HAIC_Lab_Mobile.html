@@ -248,22 +248,7 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
       <div id="l-err"></div>
       <button class="btn btn-primary" onclick="doLogin()" id="l-btn">Sign In</button>
       <hr style="border:none;border-top:1px solid var(--border);margin:16px 0"/>
-      <div style="font-size:12px;color:var(--text2);text-align:center;margin-bottom:10px">Or sign in as demo user</div>
-      <div class="demo-btns">
-        <div class="demo-btn" onclick="demoLogin('admin@haicam.com','admin','Truong Kieu Hai')">
-          <span class="demo-btn-left">⭐ Admin</span>
-          <span class="demo-btn-right">admin@haicam.com</span>
-        </div>
-        <div class="demo-btn" onclick="demoLogin('lab@haicam.com','lab_staff','Lab Staff 01')">
-          <span class="demo-btn-left">🔬 Lab Staff</span>
-          <span class="demo-btn-right">lab@haicam.com</span>
-        </div>
-        <div class="demo-btn" onclick="demoLogin('client@haicam.com','customer','Client User')">
-          <span class="demo-btn-left">👤 Customer</span>
-          <span class="demo-btn-right">client@haicam.com</span>
-        </div>
-      </div>
-      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:12px">Password: <b>haic2024</b></div>
+      <div style="font-size:11px;color:var(--text3);text-align:center;margin-top:8px">Contact admin to get your account credentials</div>
     </div>
   </div>
 </div>
@@ -448,6 +433,17 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
         <div style="background:rgba(255,255,255,0.2);border-radius:var(--r-full);padding:4px 14px;display:inline-block;margin-top:10px;font-size:11px;font-weight:700;color:#fff" id="profile-role">—</div>
       </div>
 
+      <!-- ADMIN: User Management -->
+      <div id="admin-user-section" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div style="font-size:15px;font-weight:700">👥 Team Members</div>
+          <button class="btn btn-primary btn-sm" onclick="openAddUserModal()">+ Add User</button>
+        </div>
+        <div class="card" style="padding:0;overflow:hidden;margin-bottom:4px" id="users-list">
+          <div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">Loading...</div>
+        </div>
+      </div>
+
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:14px 16px;border-bottom:1px solid var(--border)">
           <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:0.4px;margin-bottom:2px">Company</div>
@@ -531,18 +527,47 @@ html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sa
   </div>
 </div>
 
+<!-- ADD USER MODAL -->
+<div class="modal-bg" id="add-user-modal" onclick="if(event.target===this)closeModal('add-user-modal')">
+  <div class="modal" style="max-width:380px">
+    <div class="modal-hdr">
+      <div class="modal-title">Add Team Member</div>
+      <button class="modal-close" onclick="closeModal('add-user-modal')">✕</button>
+    </div>
+    <div class="field"><label>Full Name</label><input id="nu-name" placeholder="Nguyen Van A" autocomplete="off"/></div>
+    <div class="field"><label>Email <span class="req">*</span></label><input type="email" id="nu-email" placeholder="staff@haicam.com" inputmode="email" autocapitalize="none"/></div>
+    <div class="field"><label>Password <span class="req">*</span></label><input type="password" id="nu-pwd" placeholder="Min 6 characters"/></div>
+    <div class="field"><label>Role</label>
+      <select id="nu-role">
+        <option value="lab_staff">🔬 Lab Staff</option>
+        <option value="admin">⭐ Admin</option>
+        <option value="customer">👤 Customer</option>
+      </select>
+    </div>
+    <div id="nu-err" style="color:var(--red);font-size:12px;min-height:16px;margin-bottom:8px"></div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeModal('add-user-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="createUser()" id="nu-btn" style="flex:2">Create Account</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <!-- Firebase -->
 <script type="module">
 import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import{getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import{getFirestore,collection,addDoc,updateDoc,deleteDoc,doc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{getFirestore,collection,addDoc,updateDoc,deleteDoc,doc,onSnapshot,query,orderBy,serverTimestamp,getDoc,setDoc,getDocs}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import{createUserWithEmailAndPassword}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const cfg={apiKey:"AIzaSyClyUxANBDlO848xnlokxIbrLloCNk0m4o",authDomain:"haic-app.firebaseapp.com",projectId:"haic-app",storageBucket:"haic-app.firebasestorage.app",messagingSenderId:"434927099865",appId:"1:434927099865:web:b799e53332d5eced6183c8"};
 const fbApp=getApps().find(a=>a.name==='lab')||initializeApp(cfg,'lab');
 const auth=getAuth(fbApp);
 const db=getFirestore(fbApp);
+
+// ── CONFIG ─────────────────────────────────────────────────
+const SUPER_ADMIN = 'truong.haicambodia@gmail.com'; // permanent admin
 
 // ── STATE ──────────────────────────────────────────────────
 let records=[],role='lab_staff',userName='',userEmail='';
@@ -593,11 +618,7 @@ window.doLogin=async()=>{
 
 window.demoLogin=async(email,r,name)=>{
   try{await signInWithEmailAndPassword(auth,email,'haic2024');}
-  catch(e){
-    // Fallback: demo mode without Firebase auth
-    role=r;userName=name;userEmail=email;
-    onLoginSuccess();
-  }
+  catch(e){role=r;userName=name;userEmail=email;onLoginSuccess();}
 };
 
 window.doLogout=async()=>{
@@ -608,14 +629,21 @@ window.doLogout=async()=>{
   document.getElementById('login-screen').classList.add('show');
 };
 
+// ── GET ROLE ───────────────────────────────────────────────
+async function getRoleForUser(uid,email){
+  if(email===SUPER_ADMIN)return'admin'; // anh luôn là admin
+  try{
+    const snap=await getDoc(doc(db,'lab_users',uid));
+    if(snap.exists())return snap.data().role||'lab_staff';
+  }catch(e){}
+  return'lab_staff'; // mặc định
+}
+
 onAuthStateChanged(auth,async user=>{
   if(user){
     userEmail=user.email||'';
     userName=user.displayName||user.email||'';
-    // Determine role from email
-    if(user.email==='admin@haicam.com')role='admin';
-    else if(user.email==='client@haicam.com')role='customer';
-    else role='lab_staff';
+    role=await getRoleForUser(user.uid,user.email||'');
     onLoginSuccess();
   }
 });
@@ -625,20 +653,19 @@ function onLoginSuccess(){
   document.getElementById('app').style.display='flex';
   document.getElementById('app').classList.add('show');
 
-  // Profile
   document.getElementById('profile-avatar').textContent=(userName||'U')[0].toUpperCase();
   document.getElementById('profile-name').textContent=userName;
   document.getElementById('profile-email').textContent=userEmail;
   document.getElementById('profile-role').textContent=({admin:'⭐ Administrator',lab_staff:'🔬 Lab Staff',customer:'👤 Customer'}[role])||role;
 
-  // Show/hide New tab
+  // Show admin features
   document.getElementById('tab-form').style.display=role==='customer'?'none':'flex';
+  document.getElementById('admin-user-section').style.display=role==='admin'?'block':'none';
+  if(role==='admin')loadUsers();
 
-  // iOS install banner
   if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone){
     document.getElementById('install-banner').classList.add('show');
   }
-
   subscribeRecords();
 }
 
@@ -1044,6 +1071,72 @@ window.exportPDF=function(id){
   <div class="ft"><b>HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD</b><br/>No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia<br/>Tel: +855 977 855 953 | haicam.com | truongkieu@haicam.com<br/><b>F-01.HAIC-LAB-15MAT</b></div>
   <script>window.onload=()=>window.print();<\/script></body></html>`);
   w.document.close();
+};
+
+// ── USER MANAGEMENT (Admin only) ──────────────────────────
+async function loadUsers(){
+  const el=document.getElementById('users-list');
+  try{
+    const snap=await getDocs(collection(db,'lab_users'));
+    const users=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const roleLabel={admin:'⭐ Admin',lab_staff:'🔬 Lab Staff',customer:'👤 Customer'};
+    const roleColor={admin:'var(--orange)',lab_staff:'var(--blue)',customer:'var(--teal)'};
+    el.innerHTML=users.length?users.map(u=>`
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+        <div style="width:36px;height:36px;background:var(--blue-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;color:var(--blue);flex-shrink:0">${(u.name||u.email||'?')[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.name||u.email||'—')}</div>
+          <div style="font-size:11px;color:var(--text2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(u.email||'')}</div>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:${roleColor[u.role]||'var(--text2)'};">${roleLabel[u.role]||u.role}</div>
+        ${u.email!==SUPER_ADMIN?`<button onclick="changeUserRole('${u.id}','${u.role}')" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--text2)">Edit</button>`:'<div style="width:40px"></div>'}
+      </div>`).join('')+`<div style="padding:10px 14px;font-size:11px;color:var(--text3)">Total: ${users.length} member(s)</div>`
+    :'<div style="padding:20px;text-align:center;color:var(--text2);font-size:13px">No team members yet</div>';
+  }catch(e){
+    el.innerHTML='<div style="padding:16px;text-align:center;color:var(--text2);font-size:13px">Could not load users</div>';
+  }
+}
+
+window.openAddUserModal=function(){
+  ['nu-name','nu-email','nu-pwd'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('nu-role').value='lab_staff';
+  document.getElementById('nu-err').textContent='';
+  document.getElementById('add-user-modal').classList.add('open');
+};
+
+window.createUser=async function(){
+  const name=document.getElementById('nu-name').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const pwd=document.getElementById('nu-pwd').value;
+  const r=document.getElementById('nu-role').value;
+  const err=document.getElementById('nu-err');
+  const btn=document.getElementById('nu-btn');
+  err.textContent='';
+  if(!email){err.textContent='Email is required';return;}
+  if(pwd.length<6){err.textContent='Password must be at least 6 characters';return;}
+  btn.innerHTML='<span class="spin-sm"></span> Creating...';btn.disabled=true;
+  try{
+    const uc=await createUserWithEmailAndPassword(auth,email,pwd);
+    await setDoc(doc(db,'lab_users',uc.user.uid),{name,email,role:r,createdAt:serverTimestamp(),createdBy:userEmail});
+    toast('✓ Account created: '+(name||email));
+    closeModal('add-user-modal');
+    loadUsers();
+  }catch(e){
+    err.textContent=e.code==='auth/email-already-in-use'?'Email already exists':e.message;
+  }
+  btn.innerHTML='Create Account';btn.disabled=false;
+};
+
+window.changeUserRole=async function(uid,currentRole){
+  const roles=['lab_staff','admin','customer'];
+  const labels={'lab_staff':'🔬 Lab Staff','admin':'⭐ Admin','customer':'👤 Customer'};
+  const newRole=roles[(roles.indexOf(currentRole)+1)%roles.length];
+  if(!confirm(`Change role to ${labels[newRole]}?`))return;
+  try{
+    await updateDoc(doc(db,'lab_users',uid),{role:newRole});
+    toast('✓ Role updated to '+labels[newRole]);
+    loadUsers();
+  }catch(e){toast('❌ Error: '+e.message);}
 };
 
 // ── NAV ────────────────────────────────────────────────────
