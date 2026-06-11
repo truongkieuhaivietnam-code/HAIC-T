@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="HAIC Pay"/>
+<title>HAIC – Advance Payment</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--green:#0F6E56;--green-light:#E1F5EE;--amber:#BA7517;--amber-light:#FAEEDA;--red:#A32D2D;--red-light:#FCEBEB;--bg:#ffffff;--bg2:#f7f7f5;--bg3:#f1efe8;--text1:#1a1a1a;--text2:#5f5e5a;--text3:#888780;--border1:rgba(0,0,0,0.12);--border2:rgba(0,0,0,0.22);--radius-md:10px;--radius-lg:14px;}
+@media(prefers-color-scheme:dark){:root{--bg:#1c1c1a;--bg2:#252523;--bg3:#2c2c2a;--text1:#f0ede8;--text2:#b4b2a9;--text3:#888780;--border1:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.2);--green-light:rgba(29,158,117,0.15);--amber-light:rgba(186,117,23,0.15);--red-light:rgba(163,45,45,0.15);}}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg3);color:var(--text1)}
+.app{max-width:430px;margin:0 auto;background:var(--bg);height:100%;display:flex;flex-direction:column;overflow:hidden}
+#splash{position:fixed;inset:0;background:var(--green);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;color:#fff;transition:opacity 0.4s}
+#splash.hide{opacity:0;pointer-events:none}
+#splash .logo{font-size:36px;font-weight:800;letter-spacing:2px;margin-bottom:6px}
+#splash p{font-size:13px;opacity:0.8}
+#splash .spin{width:26px;height:26px;border:3px solid rgba(255,255,255,0.3);border-top-color:#fff;border-radius:50%;animation:spin 0.8s linear infinite;margin-top:24px}
+@keyframes spin{to{transform:rotate(360deg)}}
+#install-banner{background:var(--green);color:#fff;padding:10px 14px;font-size:12px;display:none;align-items:center;gap:10px;flex-shrink:0}
+#install-banner.show{display:flex}
+#install-banner b{flex:1}
+#install-banner button{background:rgba(255,255,255,0.25);border:none;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer}
+.hdr{background:var(--green);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0;padding-top:calc(12px + env(safe-area-inset-top,0px))}
+.logo-box{background:rgba(255,255,255,0.18);border-radius:8px;padding:6px 10px;font-size:14px;font-weight:700;letter-spacing:1px;flex-shrink:0}
+.hdr-text h1{font-size:13px;font-weight:600;line-height:1.3}
+.hdr-text p{font-size:10px;opacity:0.75;margin-top:1px}
+.hdr-right{margin-left:auto;display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.hdr-code{font-size:10px;opacity:0.75;text-align:right}
+.role-badge{background:rgba(255,255,255,0.25);border-radius:20px;padding:2px 8px;font-size:10px;font-weight:700}
+.logout-btn{background:none;border:1px solid rgba(255,255,255,0.4);color:#fff;padding:2px 8px;border-radius:20px;font-size:10px;cursor:pointer}
+#staff-bar{background:var(--bg2);border-bottom:0.5px solid var(--border1);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+#staff-bar label{font-size:12px;color:var(--text2);white-space:nowrap;font-weight:500}
+#staff-bar input{flex:1;font-size:15px;padding:7px 12px;border:1px solid var(--border2);border-radius:var(--radius-md);background:var(--bg);color:var(--text1);-webkit-appearance:none;min-height:38px}
+#staff-bar input:focus{outline:none;border-color:var(--green)}
+.tabbar{display:flex;border-bottom:0.5px solid var(--border1);background:var(--bg);flex-shrink:0}
+.tab{flex:1;padding:9px 4px;font-size:11px;border:none;background:transparent;cursor:pointer;color:var(--text2);display:flex;flex-direction:column;align-items:center;gap:3px;border-bottom:2.5px solid transparent;position:relative}
+.tab.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.tab svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab-badge{position:absolute;top:5px;right:calc(50% - 18px);background:var(--red);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 5px;min-width:16px;text-align:center}
+.screen{display:none;flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:12px;flex-direction:column;gap:10px}
+.screen.active{display:flex}
+.sec{border:0.5px solid var(--border1);border-radius:var(--radius-lg);overflow:hidden;flex-shrink:0}
+.sec-hdr{background:var(--green);color:#fff;padding:9px 13px}
+.sec-hdr .en{font-size:12px;font-weight:600}
+.sec-hdr .vn{font-size:10px;opacity:0.8;margin-top:1px}
+.sec-body{padding:12px;background:var(--bg)}
+.field{margin-bottom:10px}
+.field:last-child{margin-bottom:0}
+.field label{font-size:11px;color:var(--text2);display:block;margin-bottom:5px;font-weight:500}
+.field input,.field select,.field textarea{font-size:16px;padding:12px 13px;border:1px solid var(--border2);border-radius:var(--radius-md);background:var(--bg2);color:var(--text1);width:100%;-webkit-appearance:none;appearance:none;min-height:48px;font-family:inherit}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(29,158,117,0.18);background:var(--bg)}
+.field textarea{resize:none;height:70px;font-size:15px}
+.field select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row-card{border:1px solid var(--border1);border-radius:var(--radius-md);padding:13px;margin-bottom:10px;background:var(--bg)}
+.row-card-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.row-card-num{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
+.del-row-btn{background:var(--red-light);border:none;color:var(--red);padding:6px 10px;border-radius:8px;cursor:pointer;min-height:36px;min-width:36px;display:flex;align-items:center;justify-content:center}
+.del-row-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round}
+.row-card .field{margin-bottom:10px}
+.row-card .field:last-child{margin-bottom:0}
+.amt-display{background:var(--green-light);border-radius:var(--radius-md);padding:10px 13px;display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.amt-display span:first-child{font-size:12px;color:var(--text2)}
+.amt-val{font-size:18px;font-weight:700;color:var(--green)}
+.total-bar{background:var(--green-light);border-radius:var(--radius-md);padding:12px 14px;display:flex;justify-content:space-between;align-items:center;margin-top:2px}
+.total-bar .tl{font-size:12px;color:var(--text2)}
+.total-bar .tv{font-size:18px;font-weight:700;color:var(--green)}
+.add-row-btn{background:var(--bg2);border:1.5px dashed var(--border2);border-radius:var(--radius-md);width:100%;padding:14px;font-size:14px;font-weight:600;color:var(--green);cursor:pointer;margin-top:8px;display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px}
+.add-row-btn:active{opacity:0.7}
+.add-row-btn svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.calc-box{border:0.5px solid var(--border1);border-radius:var(--radius-md);overflow:hidden}
+.calc-row{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;border-bottom:0.5px solid var(--border1)}
+.calc-row:last-child{border-bottom:none}
+.cl .en{font-size:13px;font-weight:500}
+.cl .vn{font-size:10px;color:var(--text2);margin-top:1px}
+.cv{font-weight:700;font-size:16px}
+.result-row{padding:14px;display:flex;justify-content:space-between;align-items:center}
+.result-row.payme{background:var(--green-light)}
+.result-row.returnme{background:var(--amber-light)}
+.result-row.balanced{background:var(--bg2)}
+.rl .en{font-size:13px;font-weight:600}
+.rl .vn{font-size:10px;opacity:0.7;margin-top:2px}
+.rv{font-size:22px;font-weight:700}
+.btn{padding:13px 16px;border-radius:var(--radius-md);font-size:14px;font-weight:600;border:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:50px;transition:opacity 0.15s;font-family:inherit}
+.btn:active{opacity:0.75}
+.btn-primary{background:var(--green);color:#fff;width:100%}
+.btn-outline{background:transparent;border:1px solid var(--border2);color:var(--text1);width:100%}
+.btn-sm{padding:8px 14px;font-size:12px;width:auto;border-radius:20px;min-height:36px}
+.btn-row{display:flex;gap:10px;margin-top:12px}
+.btn-row .btn{flex:1}
+.btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.spin-sm{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin 0.7s linear infinite}
+.status{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
+.status.pending{background:var(--amber-light);color:var(--amber)}
+.status.approved{background:var(--green-light);color:var(--green)}
+.status.rejected{background:var(--red-light);color:var(--red)}
+.status.settled{background:var(--bg2);color:var(--text2)}
+.list-card{border:0.5px solid var(--border1);border-radius:var(--radius-lg);padding:13px;margin-bottom:9px;cursor:pointer;background:var(--bg)}
+.list-card:active{background:var(--bg2)}
+.lc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px}
+.lc-name{font-size:14px;font-weight:600}
+.lc-amount{font-size:15px;font-weight:700;color:var(--amber)}
+.lc-project{font-size:12px;color:var(--text2);margin-bottom:4px}
+.lc-sub{font-size:11px;color:var(--text3);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.diff-chip{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.diff-over{background:var(--red-light);color:var(--red)}
+.diff-under{background:var(--green-light);color:var(--green)}
+.diff-even{background:var(--bg2);color:var(--text2)}
+.sum-bar{background:var(--bg2);border-radius:var(--radius-md);padding:8px 13px;display:flex;gap:10px;font-size:11px;justify-content:flex-end;flex-wrap:wrap;margin-top:4px}
+.subtabs{display:flex;gap:6px;flex-wrap:wrap}
+.stab{padding:7px 13px;border-radius:20px;font-size:12px;border:0.5px solid var(--border1);background:transparent;cursor:pointer;color:var(--text2);font-weight:500;min-height:36px}
+.stab.active{background:var(--green);color:#fff;border-color:var(--green)}
+.month-sel{display:flex;align-items:center;gap:8px}
+.month-sel select{font-size:12px;padding:7px 12px;border:0.5px solid var(--border1);border-radius:20px;background:var(--bg);color:var(--text1);-webkit-appearance:none;min-height:36px}
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:10px}
+.stat-card{background:var(--bg2);border-radius:var(--radius-md);padding:13px}
+.stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
+.stat-val{font-size:20px;font-weight:700}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:200;align-items:flex-end;justify-content:center}
+.modal-bg.open{display:flex}
+.modal-sheet{background:var(--bg);border-radius:20px 20px 0 0;padding:18px;width:100%;max-width:430px;max-height:92vh;overflow-y:auto;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.modal-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.mh-title .en{font-size:15px;font-weight:700}
+.mh-title .vn{font-size:10px;color:var(--text2);margin-top:2px}
+.close-btn{background:var(--bg2);border:none;cursor:pointer;color:var(--text2);padding:7px;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center}
+.close-btn svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round}
+.kv{display:flex;justify-content:space-between;padding:7px 0;border-bottom:0.5px solid var(--border1);font-size:13px}
+.kv:last-child{border-bottom:none}
+.kv .k{color:var(--text2);flex-shrink:0;margin-right:8px}
+.kv .v{font-weight:600;text-align:right;word-break:break-word}
+.section-label{margin:14px 0 5px;font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
+.empty{text-align:center;color:var(--text2);font-size:13px;padding:40px 0}
+.bottom-safe{height:calc(env(safe-area-inset-bottom,0px) + 8px);flex-shrink:0}
+.toast{position:fixed;bottom:calc(20px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;padding:11px 20px;border-radius:24px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:opacity 0.25s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div id="splash"><div class="logo">HAIC</div><p>Advance Payment</p><div class="spin"></div></div>
+<div class="app" id="app" style="display:none">
+  <div id="install-banner"><b>📲 Bấm Share → "Add to Home Screen" để dùng như app!</b><button onclick="this.parentElement.style.display='none'">✕</button></div>
+  <div class="hdr">
+    <div class="logo-box">HAIC</div>
+    <div class="hdr-text"><h1>Procedure Advance Payment</h1><p>Quy trình Tạm ứng – Thanh toán</p></div>
+    <div class="hdr-right">
+      <div class="hdr-code">Code: HAIC<br>Issued: 02</div>
+      <span class="role-badge" id="role-badge" style="display:none">⭐ ADMIN</span>
+      <button class="logout-btn" id="logout-btn" style="display:none" onclick="doLogout()">Logout</button>
+    </div>
+  </div>
+  <div id="staff-bar" style="display:none">
+    <label>👤 Tên bạn:</label>
+    <input id="staff-name-input" placeholder="Nhập họ tên của bạn..." autocomplete="off" autocorrect="off"/>
+  </div>
+  <div class="tabbar">
+    <button class="tab active" onclick="goTab('new')" id="tab-new">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      New Form
+    </button>
+    <button class="tab" onclick="goTab('list')" id="tab-list">
+      <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+      Records
+      <span class="tab-badge" id="pending-badge" style="display:none">0</span>
+    </button>
+    <button class="tab" onclick="goTab('summary')" id="tab-summary">
+      <svg viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Summary
+    </button>
+  </div>
+  <div style="flex:1;overflow:hidden;display:flex;flex-direction:column">
+    <!-- NEW FORM -->
+    <div class="screen active" id="screen-new">
+      <div class="sec">
+        <div class="sec-hdr"><div class="en">Proposal for Payment of Project</div><div class="vn">Giấy Đề nghị Thanh Quyết toán Công trình</div></div>
+        <div class="sec-body">
+          <div class="field"><label>Project name / Tên công trình</label><input id="f-project" placeholder="e.g. CBC PS Farm" autocomplete="off" autocorrect="off"/></div>
+          <div class="field"><label>Location / Địa điểm</label><input id="f-location" placeholder="e.g. Kampong Chhnang" autocomplete="off" autocorrect="off"/></div>
+          <div class="row2">
+            <div class="field"><label>My name / Họ tên</label><input id="f-name" placeholder="Full name" autocomplete="off" autocorrect="off"/></div>
+            <div class="field"><label>Department / Bộ phận</label>
+              <select id="f-dept"><option>Survey</option><option>Construction</option><option>Engineering</option><option>Admin</option><option>Management</option><option>Other</option></select>
+            </div>
+          </div>
+          <div class="row2">
+            <div class="field"><label>Form date / Ngày lập</label><input type="date" id="f-formdate"/></div>
+            <div class="field"><label>Currency</label>
+              <select id="f-currency" onchange="calcAll()"><option value="USD">USD ($)</option><option value="KHR">KHR (រ)</option><option value="VND">VND (đ)</option></select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-hdr"><div class="en">I. Advance Details</div><div class="vn">Chi tiết tạm ứng</div></div>
+        <div class="sec-body">
+          <div id="adv-cards"></div>
+          <div class="total-bar"><span class="tl">Total advance / Tổng cộng</span><span class="tv" id="adv-total">0</span></div>
+          <button class="add-row-btn" onclick="addAdvRow()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add row / Thêm dòng</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-hdr"><div class="en">II. Detail Advance Using</div><div class="vn">Chi tiết sử dụng tạm ứng</div></div>
+        <div class="sec-body">
+          <div id="use-cards"></div>
+          <div class="total-bar"><span class="tl">Total used / Tổng cộng</span><span class="tv" id="use-total">0</span></div>
+          <button class="add-row-btn" onclick="addUseRow()"><svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Add row / Thêm dòng</button>
+        </div>
+      </div>
+      <div class="sec">
+        <div class="sec-hdr"><div class="en">III. Final Payment</div><div class="vn">Thanh quyết toán tạm ứng</div></div>
+        <div class="sec-body">
+          <div class="calc-box">
+            <div class="calc-row"><div class="cl"><div class="en">Total Amount advance</div><div class="vn">Tổng tạm ứng</div></div><div class="cv" style="color:var(--amber)" id="calc-adv">$0</div></div>
+            <div class="calc-row"><div class="cl"><div class="en">Total amount used</div><div class="vn">Tổng chi phí thực tế</div></div><div class="cv" style="color:var(--green)" id="calc-used">$0</div></div>
+            <div class="calc-row"><div class="cl"><div class="en">Difference</div><div class="vn">Chênh lệch</div></div><div class="cv" id="calc-diff" style="color:var(--text2)">$0</div></div>
+          </div>
+          <div class="calc-box" style="margin-top:10px;overflow:hidden">
+            <div class="result-row balanced" id="result-row">
+              <div class="rl"><div class="en" id="result-en">Balanced ✓</div><div class="vn" id="result-vn">Khớp số</div></div>
+              <div class="rv" id="result-val" style="color:var(--text2)">$0</div>
+            </div>
+          </div>
+          <div class="field" style="margin-top:14px"><label>Prepared by / Người lập</label><input id="f-preparer" placeholder="Name" autocomplete="off" autocorrect="off"/></div>
+          <div class="field"><label>Note / Ghi chú</label><textarea id="f-note" placeholder="Additional remarks..."></textarea></div>
+          <div class="btn-row">
+            <button class="btn btn-outline" onclick="clearForm()"><svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.5"/></svg>Clear</button>
+            <button class="btn btn-primary" onclick="saveForm()" id="save-btn" style="flex:2"><svg viewBox="0 0 24 24"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>Submit</button>
+          </div>
+        </div>
+      </div>
+      <div class="bottom-safe"></div>
+    </div>
+    <!-- RECORDS -->
+    <div class="screen" id="screen-list">
+      <div class="subtabs" style="flex-shrink:0">
+        <button class="stab active" onclick="switchListTab('pending')" id="ltab-pending">⏳ Pending</button>
+        <button class="stab" onclick="switchListTab('approved')" id="ltab-approved">✓ Approved</button>
+        <button class="stab" onclick="switchListTab('settled')" id="ltab-settled">Settled</button>
+        <button class="stab" onclick="switchListTab('all')" id="ltab-all">All</button>
+      </div>
+      <div class="month-sel" style="flex-shrink:0">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+        <select id="list-month" onchange="renderList()"></select>
+      </div>
+      <div id="list-content"></div>
+      <div class="bottom-safe"></div>
+    </div>
+    <!-- SUMMARY -->
+    <div class="screen" id="screen-summary">
+      <div class="month-sel" style="flex-shrink:0">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--text2)" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        <select id="sum-month" onchange="renderSummary()"></select>
+      </div>
+      <div id="summary-content"></div>
+      <div class="bottom-safe"></div>
+    </div>
+  </div>
+  <!-- MODAL -->
+  <div class="modal-bg" id="modal-bg" onclick="if(event.target===this)closeModal()">
+    <div class="modal-sheet">
+      <div class="modal-hdr">
+        <div class="mh-title"><div class="en">Advance Payment Record</div><div class="vn">HAIC – Quy trình Tạm ứng / Thanh toán</div></div>
+        <button class="close-btn" onclick="closeModal()"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+<script type="module">
+import{initializeApp,getApps}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import{getAuth,onAuthStateChanged,signOut}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import{getFirestore,collection,addDoc,updateDoc,deleteDoc,doc,onSnapshot,query,orderBy,serverTimestamp}from"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const cfg={apiKey:"AIzaSyD_mI8FTzYkpT_qyv1_tqrWyTIfyTWnMAQ",authDomain:"haic-pay.firebaseapp.com",projectId:"haic-pay",storageBucket:"haic-pay.firebasestorage.app",messagingSenderId:"266191097684",appId:"1:266191097684:web:87452906e819a2f02c02c1"};
+const fbApp=getApps().find(a=>a.name==='pay')||initializeApp(cfg,'pay');
+const auth=getAuth(fbApp);
+const db=getFirestore(fbApp);
+const ADMIN_EMAIL='truong.haicambodia@gmail.com';
+
+let records=[],isAdmin=false,listTab='pending';
+let advRows=[{desc:'',date:'',amount:''}];
+let useRows=[{date:'',desc:'',price:'',qty:1,amount:0}];
+
+const esc=s=>(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const today=()=>new Date().toISOString().split('T')[0];
+const fmtD=d=>{if(!d)return'—';try{const p=d.split('-');return p[2]+'/'+p[1]+'/'+p[0];}catch(e){return d;}};
+const sym=c=>({USD:'$',KHR:'រ',VND:'đ'}[c]||'$');
+const getCur=()=>document.getElementById('f-currency')?.value||'USD';
+const fmtN=(n,c)=>sym(c||getCur())+new Intl.NumberFormat().format(Math.round(n||0));
+const toast=msg=>{const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);};
+
+onAuthStateChanged(auth,user=>{
+  isAdmin=!!(user&&user.email===ADMIN_EMAIL);
+  showApp();
+});
+
+function showApp(){
+  document.getElementById('app').style.display='flex';
+  document.getElementById('role-badge').style.display=isAdmin?'inline-flex':'none';
+  document.getElementById('logout-btn').style.display=isAdmin?'block':'none';
+  document.getElementById('staff-bar').style.display=isAdmin?'none':'flex';
+  document.getElementById('f-formdate').value=today();
+  renderAdvRows();renderUseRows();calcAll();
+  buildMonthOpts('list-month');buildMonthOpts('sum-month');
+  subscribeRecords();
+  if(/iphone|ipad|ipod/i.test(navigator.userAgent)&&!window.navigator.standalone)
+    document.getElementById('install-banner').classList.add('show');
+  setTimeout(()=>{document.getElementById('splash').classList.add('hide');setTimeout(()=>document.getElementById('splash').style.display='none',400);},800);
+}
+
+window.doLogout=async()=>{if(!confirm('Đăng xuất Admin?'))return;await signOut(auth);};
+
+function subscribeRecords(){
+  const q=query(collection(db,'records'),orderBy('createdAt','desc'));
+  onSnapshot(q,snap=>{
+    records=snap.docs.map(d=>({id:d.id,...d.data()}));
+    const n=records.filter(r=>r.status==='pending').length;
+    const b=document.getElementById('pending-badge');
+    b.textContent=n;b.style.display=n&&isAdmin?'':'none';
+    if(document.getElementById('screen-list').classList.contains('active'))renderList();
+    if(document.getElementById('screen-summary').classList.contains('active'))renderSummary();
+  },err=>{toast('⚠️ Kết nối Firebase thất bại: '+err.code);});
+}
+
+const delSVG=`<svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>`;
+
+document.addEventListener('input',e=>{
+  const ai=e.target.dataset.adv;
+  if(ai!==undefined){advRows[+ai][e.target.dataset.f]=e.target.value;if(e.target.dataset.f==='amount')calcAll();}
+  const ui=e.target.dataset.use;
+  if(ui!==undefined){
+    const i=+ui,f=e.target.dataset.f;
+    useRows[i][f]=f==='qty'?+e.target.value:e.target.value;
+    if(f==='price'||f==='qty'){
+      const p=parseFloat(useRows[i].price)||0,q=parseFloat(useRows[i].qty)||1;
+      useRows[i].amount=p*q;
+      const el=document.getElementById('ua-'+i);if(el)el.textContent=Math.round(p*q);
+      calcAll();
+    }
+  }
+});
+document.addEventListener('click',e=>{
+  const da=e.target.closest('[data-del-adv]')?.dataset.delAdv;
+  if(da!==undefined){advRows.splice(+da,1);renderAdvRows();calcAll();}
+  const du=e.target.closest('[data-del-use]')?.dataset.delUse;
+  if(du!==undefined){useRows.splice(+du,1);renderUseRows();calcAll();}
+});
+
+function renderAdvRows(){
+  document.getElementById('adv-cards').innerHTML=advRows.map((r,i)=>`
+    <div class="row-card">
+      <div class="row-card-hdr"><span class="row-card-num">Row ${i+1}</span>${advRows.length>1?`<button class="del-row-btn" data-del-adv="${i}">${delSVG}</button>`:''}</div>
+      <div class="field"><label>Description / Nội dung</label><input value="${esc(r.desc)}" data-adv="${i}" data-f="desc" placeholder="Mô tả nội dung tạm ứng..." autocomplete="off" autocorrect="off"/></div>
+      <div class="row2">
+        <div class="field"><label>Date / Ngày tạm ứng</label><input type="date" value="${r.date}" data-adv="${i}" data-f="date"/></div>
+        <div class="field"><label>Amount / Số tiền</label><input type="number" inputmode="decimal" value="${r.amount||''}" data-adv="${i}" data-f="amount" placeholder="0" style="text-align:right"/></div>
+      </div>
+    </div>`).join('');
+}
+window.addAdvRow=()=>{advRows.push({desc:'',date:today(),amount:''});renderAdvRows();};
+
+function renderUseRows(){
+  document.getElementById('use-cards').innerHTML=useRows.map((r,i)=>`
+    <div class="row-card">
+      <div class="row-card-hdr"><span class="row-card-num">Row ${i+1}</span>${useRows.length>1?`<button class="del-row-btn" data-del-use="${i}">${delSVG}</button>`:''}</div>
+      <div class="field"><label>Date / Ngày</label><input type="date" value="${r.date}" data-use="${i}" data-f="date"/></div>
+      <div class="field"><label>Description / Nội dung chi tiêu</label><input value="${esc(r.desc)}" data-use="${i}" data-f="desc" placeholder="Mô tả chi tiết..." autocomplete="off" autocorrect="off"/></div>
+      <div class="row2">
+        <div class="field"><label>Unit price / Đơn giá</label><input type="number" inputmode="decimal" value="${r.price||''}" data-use="${i}" data-f="price" placeholder="0" style="text-align:right"/></div>
+        <div class="field"><label>Qty / Số lượng</label><input type="number" inputmode="decimal" value="${r.qty||1}" data-use="${i}" data-f="qty" placeholder="1" style="text-align:right"/></div>
+      </div>
+      <div class="amt-display"><span>Amount / Thành tiền</span><span class="amt-val" id="ua-${i}">${Math.round(r.amount||0)}</span></div>
+    </div>`).join('');
+}
+window.addUseRow=()=>{useRows.push({date:today(),desc:'',price:'',qty:1,amount:0});renderUseRows();};
+
+window.calcAll=()=>{
+  const advT=advRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const useT=useRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const f=n=>fmtN(n);
+  document.getElementById('adv-total').textContent=new Intl.NumberFormat().format(Math.round(advT));
+  document.getElementById('use-total').textContent=new Intl.NumberFormat().format(Math.round(useT));
+  document.getElementById('calc-adv').textContent=f(advT);
+  document.getElementById('calc-used').textContent=f(useT);
+  const diff=useT-advT;
+  const de=document.getElementById('calc-diff');
+  de.textContent=(diff>0?'+':'')+f(diff);
+  de.style.color=diff>0?'var(--red)':diff<0?'var(--green)':'var(--text2)';
+  const rr=document.getElementById('result-row');
+  rr.className='result-row '+(diff>0?'payme':diff<0?'returnme':'balanced');
+  document.getElementById('result-en').textContent=diff>0?'Amount HAIC must pay to me':diff<0?'Amount I must return to HAIC':'Balanced ✓';
+  document.getElementById('result-vn').textContent=diff>0?'Công ty HAIC còn phải thanh toán thêm':diff<0?'Phải hoàn trả lại công ty':'Khớp số';
+  const rv=document.getElementById('result-val');
+  rv.textContent=f(Math.abs(diff));
+  rv.style.color=diff>0?'var(--green)':diff<0?'var(--amber)':'var(--text2)';
+};
+
+window.clearForm=()=>{
+  ['f-project','f-location','f-name','f-preparer','f-note'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('f-formdate').value=today();
+  advRows=[{desc:'',date:today(),amount:''}];
+  useRows=[{date:today(),desc:'',price:'',qty:1,amount:0}];
+  renderAdvRows();renderUseRows();calcAll();
+};
+
+window.saveForm=async()=>{
+  const staffInput=document.getElementById('staff-name-input');
+  const name=document.getElementById('f-name').value.trim()||staffInput?.value?.trim()||'';
+  const project=document.getElementById('f-project').value.trim();
+  if(!name){toast('⚠️ Nhập họ tên!');return;}
+  if(!project){toast('⚠️ Nhập tên Project!');return;}
+  const btn=document.getElementById('save-btn');
+  btn.innerHTML='<span class="spin-sm"></span> Đang gửi...';btn.disabled=true;
+  const advT=advRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  const useT=useRows.reduce((s,r)=>s+(parseFloat(r.amount)||0),0);
+  try{
+    await addDoc(collection(db,'records'),{
+      createdAt:serverTimestamp(),
+      date:document.getElementById('f-formdate').value,
+      project,location:document.getElementById('f-location').value,
+      name,dept:document.getElementById('f-dept').value,
+      currency:getCur(),
+      preparer:document.getElementById('f-preparer').value,
+      note:document.getElementById('f-note').value,
+      advRows:JSON.parse(JSON.stringify(advRows)),
+      useRows:JSON.parse(JSON.stringify(useRows)),
+      advTotal:advT,useTotal:useT,diff:useT-advT,
+      status:'pending'
+    });
+    toast('✓ Đã gửi phiếu tạm ứng!');
+    clearForm();
+  }catch(e){toast('❌ Lỗi: '+e.message);}
+  btn.innerHTML='<svg viewBox="0 0 24 24" style="width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round"><path d="M22 2L11 13"/><path d="M22 2L15 22 11 13 2 9l20-7z"/></svg>Submit';btn.disabled=false;
+};
+
+window.switchListTab=t=>{
+  listTab=t;
+  document.querySelectorAll('.stab').forEach(b=>b.classList.remove('active'));
+  document.getElementById('ltab-'+t).classList.add('active');
+  renderList();
+};
+
+function buildMonthOpts(selId){
+  const sel=document.getElementById(selId),now=new Date();
+  sel.innerHTML='<option value="all">All months</option>';
+  for(let i=0;i<8;i++){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const val=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl=d.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+    const o=document.createElement('option');
+    o.value=val;o.textContent=lbl;if(i===0)o.selected=true;sel.appendChild(o);
+  }
+}
+
+function renderList(){
+  const mo=document.getElementById('list-month').value;
+  const staffName=document.getElementById('staff-name-input')?.value?.trim()||'';
+  let list=records.filter(r=>listTab==='all'||r.status===listTab);
+  if(!isAdmin&&staffName)list=list.filter(r=>r.name===staffName);
+  if(mo!=='all')list=list.filter(r=>r.date&&r.date.startsWith(mo));
+  const el=document.getElementById('list-content');
+  if(!list.length){el.innerHTML='<div class="empty">No records found</div>';return;}
+  const total=list.reduce((s,r)=>s+r.advTotal,0);
+  const cur=list[0]?.currency||'USD';const s=sym(cur);
+  el.innerHTML=list.map(r=>`
+    <div class="list-card" onclick="showDetail('${r.id}')">
+      <div class="lc-top">
+        <div style="flex:1;min-width:0"><div class="lc-name">${esc(r.name)}</div><div class="lc-project">${esc(r.project)}</div></div>
+        <div style="text-align:right;flex-shrink:0;margin-left:10px">
+          <div class="lc-amount">${s}${new Intl.NumberFormat().format(Math.round(r.advTotal))}</div>
+          <span class="status ${r.status}">${{pending:'⏳ Pending',approved:'✓ Approved',rejected:'✗ Rejected',settled:'Settled'}[r.status]||r.status}</span>
+        </div>
+      </div>
+      <div class="lc-sub">
+        <span>📅 ${fmtD(r.date)}</span><span>🏢 ${r.dept}</span>
+        <span class="diff-chip ${r.diff>0?'diff-under':r.diff<0?'diff-over':'diff-even'}">${r.diff>0?'HAIC +'+s+Math.round(r.diff):r.diff<0?'Return '+s+Math.round(-r.diff):'Balanced ✓'}</span>
+      </div>
+    </div>`).join('')+
+    `<div class="sum-bar"><b>${list.length} records</b>&nbsp;·&nbsp;Total: <b style="color:var(--amber)">${s}${new Intl.NumberFormat().format(Math.round(total))}</b></div>`;
+}
+
+window.showDetail=id=>{
+  const r=records.find(x=>x.id===id);if(!r)return;
+  const f=n=>fmtN(n,r.currency);
+  document.getElementById('modal-body').innerHTML=`
+    <div class="kv"><span class="k">Status</span><span class="v"><span class="status ${r.status}">${{pending:'⏳ Pending',approved:'✓ Approved',rejected:'✗ Rejected',settled:'Settled'}[r.status]}</span></span></div>
+    <div class="kv"><span class="k">Date</span><span class="v">${fmtD(r.date)}</span></div>
+    <div class="kv"><span class="k">Project</span><span class="v">${esc(r.project)}</span></div>
+    <div class="kv"><span class="k">Name</span><span class="v">${esc(r.name)}</span></div>
+    <div class="kv"><span class="k">Department</span><span class="v">${r.dept}</span></div>
+    <div class="section-label">I. Advance Details</div>
+    ${(r.advRows||[]).map((a,i)=>`<div class="kv"><span class="k">${i+1}. ${esc(a.desc)||'—'} <em style="opacity:0.5">${fmtD(a.date)}</em></span><span class="v" style="color:var(--amber)">${f(a.amount)}</span></div>`).join('')}
+    <div class="kv" style="font-weight:700"><span class="k">Total advance</span><span class="v" style="color:var(--amber)">${f(r.advTotal)}</span></div>
+    <div class="section-label">II. Advance Used</div>
+    ${(r.useRows||[]).map((u,i)=>`<div class="kv"><span class="k">${i+1}. ${esc(u.desc)||'—'}</span><span class="v" style="color:var(--green)">${f(u.amount)}</span></div>`).join('')}
+    <div class="kv" style="font-weight:700"><span class="k">Total used</span><span class="v" style="color:var(--green)">${f(r.useTotal)}</span></div>
+    <div class="section-label">III. Final</div>
+    <div class="kv" style="font-weight:700"><span class="k">${r.diff>0?'HAIC pays me':r.diff<0?'Return to HAIC':'Balanced ✓'}</span><span class="v" style="color:${r.diff>0?'var(--green)':r.diff<0?'var(--amber)':'var(--text2)'}">${f(Math.abs(r.diff))}</span></div>
+    ${r.note?`<div class="kv"><span class="k">Note</span><span class="v">${esc(r.note)}</span></div>`:''}
+    ${r.preparer?`<div class="kv"><span class="k">Prepared by</span><span class="v">${esc(r.preparer)}</span></div>`:''}
+    ${isAdmin?`<div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+      ${r.status==='pending'?`<button class="btn btn-outline btn-sm" style="background:var(--red-light);color:var(--red);border-color:var(--red)" onclick="updStatus('${r.id}','rejected');closeModal()">✗ Reject</button><button class="btn btn-primary" style="flex:1" onclick="updStatus('${r.id}','approved');closeModal()">✓ Approve</button>`:''}
+      ${r.status==='approved'?`<button class="btn btn-primary" onclick="updStatus('${r.id}','settled');closeModal()">✓ Mark Settled</button>`:''}
+      ${r.status==='rejected'?`<button class="btn btn-outline" onclick="updStatus('${r.id}','pending');closeModal()">↩ Revert</button>`:''}
+      <button class="btn btn-outline btn-sm" onclick="delRec('${r.id}')" style="background:var(--red-light);color:var(--red);border-color:var(--red)">🗑</button>
+    </div>`:''}`;
+  document.getElementById('modal-bg').classList.add('open');
+};
+
+window.updStatus=async(id,status)=>{
+  if(!isAdmin)return;
+  try{await updateDoc(doc(db,'records',id),{status,updatedAt:serverTimestamp()});toast('✓ '+status);}
+  catch(e){toast('❌ '+e.message);}
+};
+window.delRec=async id=>{
+  if(!isAdmin||!confirm('Xoá record này?'))return;
+  try{await deleteDoc(doc(db,'records',id));closeModal();toast('✓ Deleted');}
+  catch(e){toast('❌ '+e.message);}
+};
+window.closeModal=()=>document.getElementById('modal-bg').classList.remove('open');
+
+function renderSummary(){
+  const mo=document.getElementById('sum-month').value;
+  let list=mo==='all'?records:records.filter(r=>r.date&&r.date.startsWith(mo));
+  const el=document.getElementById('summary-content');
+  if(!list.length){el.innerHTML='<div class="empty">No data</div>';return;}
+  const cur=list[0]?.currency||'USD',s=sym(cur),f=n=>s+new Intl.NumberFormat().format(Math.round(n));
+  const totalAdv=list.reduce((a,r)=>a+r.advTotal,0),totalUsed=list.reduce((a,r)=>a+r.useTotal,0);
+  const pending=list.filter(r=>r.status==='pending').length,approved=list.filter(r=>r.status==='approved').length,settled=list.filter(r=>r.status==='settled').length;
+  const byP={};list.forEach(r=>{if(!byP[r.name])byP[r.name]={adv:0,used:0,count:0};byP[r.name].adv+=r.advTotal;byP[r.name].used+=r.useTotal;byP[r.name].count++;});
+  el.innerHTML=`
+    <div class="stat-grid">
+      <div class="stat-card"><div class="stat-label">Total advance</div><div class="stat-val" style="color:var(--amber)">${f(totalAdv)}</div></div>
+      <div class="stat-card"><div class="stat-label">Total used</div><div class="stat-val" style="color:var(--green)">${f(totalUsed)}</div></div>
+      <div class="stat-card"><div class="stat-label">Balance</div><div class="stat-val">${f(Math.abs(totalUsed-totalAdv))}</div></div>
+      <div class="stat-card"><div class="stat-label">Records</div><div class="stat-val">${list.length}</div></div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <div style="flex:1;background:var(--amber-light);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--amber)">${pending}</div><div style="font-size:11px;color:var(--amber);font-weight:600">Pending</div></div>
+      <div style="flex:1;background:var(--green-light);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700;color:var(--green)">${approved}</div><div style="font-size:11px;color:var(--green);font-weight:600">Approved</div></div>
+      <div style="flex:1;background:var(--bg2);border-radius:var(--radius-md);padding:12px;text-align:center"><div style="font-size:24px;font-weight:700">${settled}</div><div style="font-size:11px;color:var(--text2);font-weight:600">Settled</div></div>
+    </div>
+    <div class="sec"><div class="sec-hdr"><div class="en">By Employee</div><div class="vn">Tổng hợp theo nhân viên</div></div><div class="sec-body" style="padding:10px">
+    ${Object.entries(byP).sort((a,b)=>b[1].adv-a[1].adv).map(([n,v])=>`
+      <div style="border:0.5px solid var(--border1);border-radius:var(--radius-md);padding:11px 12px;margin-bottom:8px">
+        <div style="font-weight:700;margin-bottom:6px">${esc(n)} <span style="font-size:11px;font-weight:400;color:var(--text3)">${v.count} form(s)</span></div>
+        <div style="display:flex;justify-content:space-between"><span style="font-size:12px;color:var(--text2)">Advance</span><span style="font-weight:700;color:var(--amber)">${f(v.adv)}</span></div>
+        <div style="display:flex;justify-content:space-between;margin-top:4px"><span style="font-size:12px;color:var(--text2)">Used</span><span style="font-weight:700;color:var(--green)">${f(v.used)}</span></div>
+      </div>`).join('')}
+    </div></div>`;
+}
+
+window.goTab=t=>{
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('screen-'+t).classList.add('active');
+  if(t==='list')renderList();
+  if(t==='summary')renderSummary();
+};
+</script>
+</body>
+</html>
