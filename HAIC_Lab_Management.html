@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAIC Lab Management System</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#1a2421;
+    --paper:#f6f3ec;
+    --slate:#3c4a47;
+    --line:#d8d2c4;
+    --accent:#c4622d;
+    --accent2:#3f6b5e;
+    --ok:#3f6b5e;
+    --warn:#c8932a;
+    --danger:#b3402f;
+    --card:#ffffff;
+    --sans:'Helvetica Neue',Arial,sans-serif;
+    --serif:'Georgia','Times New Roman',serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;}
+
+  /* ===== LOGIN ===== */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3a36 0%,#1a2421 100%);}
+  .login-box{background:var(--paper);padding:48px 44px;border-radius:2px;width:380px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);border-top:5px solid var(--accent);}
+  .login-box h1{font-family:var(--serif);font-size:26px;margin:0 0 4px;letter-spacing:.5px;}
+  .login-box .sub{font-size:11px;color:var(--slate);text-transform:uppercase;letter-spacing:2px;margin-bottom:32px;}
+  .login-box label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--slate);display:block;margin-bottom:6px;margin-top:16px;}
+  .login-box input{width:100%;padding:11px 12px;border:1px solid var(--line);background:#fff;font-size:15px;border-radius:1px;}
+  .login-box input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .login-box button{margin-top:28px;width:100%;padding:13px;background:var(--ink);color:#fff;border:none;font-size:13px;text-transform:uppercase;letter-spacing:2px;cursor:pointer;border-radius:1px;transition:background .15s;}
+  .login-box button:hover{background:var(--accent);}
+  .login-box button:disabled{opacity:.6;cursor:wait;}
+  .login-err{color:var(--danger);font-size:13px;margin-top:14px;min-height:18px;}
+  .login-foot{margin-top:20px;font-size:11px;color:var(--slate);line-height:1.7;border-top:1px solid var(--line);padding-top:14px;}
+
+  /* ===== APP SHELL ===== */
+  #app{display:none;min-height:100vh;}
+  header{background:var(--ink);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header .brand{display:flex;align-items:baseline;gap:14px;}
+  header .brand h1{font-family:var(--serif);font-size:20px;margin:0;font-weight:600;letter-spacing:.5px;}
+  header .brand .tag{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:#9fb0ab;}
+  header .who{display:flex;align-items:center;gap:12px;font-size:12.5px;}
+  header .who .role-pill{background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px;font-size:10.5px;text-transform:uppercase;letter-spacing:1px;}
+  header .logout{background:transparent;border:1px solid #5a6c67;color:#cfd9d6;padding:6px 14px;border-radius:1px;cursor:pointer;font-size:11.5px;letter-spacing:1px;}
+  header .logout:hover{background:#5a6c67;}
+
+  nav{background:#243530;display:flex;gap:2px;padding:0 28px;overflow-x:auto;}
+  nav button{background:transparent;border:none;color:#aebfba;padding:13px 16px;font-size:12.5px;cursor:pointer;border-bottom:3px solid transparent;letter-spacing:.3px;white-space:nowrap;font-family:var(--sans);line-height:1.3;}
+  nav button .en{display:block;}
+  nav button .vi{display:block;font-size:10px;opacity:.7;}
+  nav button:hover{color:#fff;}
+  nav button.active{color:#fff;border-bottom-color:var(--accent);font-weight:600;}
+
+  main{padding:26px 28px 60px;max-width:1400px;margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  h2.view-title{font-family:var(--serif);font-size:23px;margin:0 0 2px;}
+  h2.view-title .vi{font-size:14px;font-weight:400;color:var(--slate);font-family:var(--sans);}
+  .view-sub{color:var(--slate);font-size:12.5px;margin:6px 0 22px;line-height:1.6;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:16px 18px;border-left:4px solid var(--accent2);}
+  .stat-card.red{border-left-color:var(--danger);}
+  .stat-card.yellow{border-left-color:var(--warn);}
+  .stat-card .num{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1;}
+  .stat-card .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--slate);margin-top:6px;line-height:1.5;}
+
+  .table-wrap{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:24px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:700px;}
+  thead th{background:#eee7d8;text-align:left;padding:10px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);font-weight:600;border-bottom:1px solid var(--line);line-height:1.4;}
+  thead th .vi{display:block;font-size:9px;opacity:.75;text-transform:none;letter-spacing:0;}
+  tbody td{padding:10px 12px;border-bottom:1px solid #ece7da;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fbf9f3;}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;white-space:nowrap;}
+  .badge.green{background:#e3efe9;color:var(--ok);}
+  .badge.yellow{background:#fbf0d8;color:#9a6f1c;}
+  .badge.red{background:#f7e2dd;color:var(--danger);}
+  .badge.grey{background:#ece7da;color:var(--slate);}
+  .badge.purple{background:#eae3f3;color:#6a4c93;}
+
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
+  .dot.green{background:var(--ok);}
+  .dot.yellow{background:var(--warn);}
+  .dot.red{background:var(--danger);}
+
+  .progress-bar{background:#ece7da;border-radius:20px;height:8px;width:100px;overflow:hidden;}
+  .progress-bar .fill{height:100%;background:var(--accent2);}
+
+  .btn{display:inline-block;padding:9px 18px;border:none;border-radius:2px;font-size:12px;cursor:pointer;letter-spacing:.4px;font-family:var(--sans);text-transform:uppercase;font-weight:600;line-height:1.3;}
+  .btn .vi{display:block;font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.8;}
+  .btn-primary{background:var(--ink);color:#fff;}
+  .btn-primary:hover{background:var(--accent);}
+  .btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn-secondary:hover{border-color:var(--ink);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-sm{padding:5px 12px;font-size:11px;}
+  .btn-sm .vi{font-size:9px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,28,25,.55);z-index:100;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.active{display:flex;}
+  .modal{background:var(--paper);width:100%;max-width:640px;max-height:88vh;overflow-y:auto;border-radius:3px;padding:30px 32px;border-top:5px solid var(--accent);position:relative;}
+  .modal h3{font-family:var(--serif);margin:0 0 4px;font-size:19px;}
+  .modal h3 .vi{display:block;font-size:13px;font-weight:400;color:var(--slate);font-family:var(--sans);margin-top:2px;margin-bottom:14px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-grid .full{grid-column:1/-1;}
+  .form-grid label{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--slate);display:block;margin-bottom:5px;line-height:1.5;}
+  .form-grid label .vi{display:block;font-size:9.5px;opacity:.75;text-transform:none;letter-spacing:0;}
+  .form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:9px 10px;border:1px solid var(--line);background:#fff;font-size:14px;border-radius:1px;font-family:var(--sans);}
+  .form-grid textarea{resize:vertical;min-height:60px;}
+  .checklist{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:2px;}
+  .checklist label{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);margin:0;cursor:pointer;}
+  .checklist input[type=checkbox]{width:auto;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
+  .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--slate);}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--slate);}
+  .empty-state .icon{font-size:34px;margin-bottom:10px;}
+  .empty-state .vi{font-size:.88em;}
+
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .pill{background:#ece7da;padding:3px 9px;border-radius:14px;font-size:11px;}
+
+  .test-status-grid{display:flex;flex-direction:column;gap:10px;}
+  .test-status-item{background:#fff;border:1px solid var(--line);border-radius:2px;padding:12px 14px;}
+  .test-status-item .tname{font-weight:600;font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .test-status-item .steps{display:flex;flex-wrap:wrap;gap:14px;}
+  .test-status-item .steps label{display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;line-height:1.3;}
+  .test-status-item .steps label .vi{display:block;font-size:9.5px;color:var(--slate);}
+  .test-status-item .steps input{width:auto;}
+
+  .section-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:18px 20px;margin-bottom:18px;}
+  .section-card h3{font-family:var(--serif);font-size:16px;margin:0 0 14px;}
+
+  .search-input{padding:8px 12px;border:1px solid var(--line);border-radius:2px;font-size:13px;background:#fff;}
+
+  .small-muted{font-size:12px;color:var(--slate);}
+  .small-muted .vi{font-size:.9em;}
+  .login-quickref b{color:var(--ink);}
+
+  .role-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+  @media(max-width:760px){
+    .form-grid{grid-template-columns:1fr;}
+    nav{padding:0 10px;}
+    main{padding:18px 12px 50px;}
+    table{font-size:12px;}
+    thead th, tbody td{padding:8px 8px;}
+    nav button .vi{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>HAIC Lab System</h1>
+    <div class="sub">Laboratory Workload &amp; Progress Management</div>
+
+    <label><span class="en">Email</span> <span style="text-transform:none;">/ Email</span></label>
+    <input type="email" id="loginUser" placeholder="name@gmail.com" autocomplete="username">
+    <label><span class="en">Password</span> <span style="text-transform:none;">/ Mật khẩu</span></label>
+    <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    <button id="loginBtn" onclick="doLogin()">Sign in / Đăng nhập</button>
+    <div class="login-err" id="loginErr"></div>
+
+    <div class="login-foot">
+      <div class="login-quickref">
+        <b>First-time setup / Thiết lập lần đầu:</b><br>
+        The Super Admin account is created automatically on first login using the configured email below.<br>
+        <span class="vi">Tài khoản Super Admin được tạo tự động ở lần đăng nhập đầu tiên với email đã cấu hình sẵn.</span><br><br>
+        Other accounts (Admin, Technician, Report Team) are created by Admins inside the "Staff" tab using Gmail addresses.<br>
+        <span class="vi">Các tài khoản khác do Admin tạo trong tab "Nhân sự", dùng địa chỉ Gmail.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>HAIC Lab System</h1>
+      <span class="tag">Workload &amp; Progress Management</span>
+    </div>
+    <div class="who">
+      <span id="whoName"></span>
+      <span class="role-pill" id="whoRole"></span>
+      <button class="logout" onclick="logout()">Sign out / Đăng xuất</button>
+    </div>
+  </header>
+
+  <nav id="navBar"></nav>
+
+  <main>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="view" id="view-dashboard">
+      <h2 class="view-title">Today Status <span class="vi">— Tổng quan hôm nay</span></h2>
+      <p class="view-sub" id="dashDate"></p>
+
+      <div class="stat-row" id="dashStats"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff<span class="vi">Nhân viên</span></th>
+              <th>Current Work<span class="vi">Công việc đang làm</span></th>
+              <th>Samples<span class="vi">Số mẫu</span></th>
+              <th>Progress<span class="vi">% hoàn thành</span></th>
+              <th>Deadline</th>
+              <th>Status<span class="vi">Trạng thái</span></th>
+            </tr>
+          </thead>
+          <tbody id="dashTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <h3>Deadline Alerts <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Cảnh báo Deadline</span></h3>
+        <div id="dashAlerts"></div>
+      </div>
+    </section>
+
+    <!-- ===================== TASK ASSIGNMENT ===================== -->
+    <section class="view" id="view-tasks">
+      <h2 class="view-title">Task Assignment <span class="vi">— Phân việc &amp; Mẫu thử</span></h2>
+      <p class="view-sub">Create new samples, assign tests and responsible staff. Track raw data progress.<br><span class="vi">Tạo mẫu mới, gán test và người phụ trách. Theo dõi tiến độ raw data.</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="filterStaff" class="search-input" onchange="renderTasks()">
+            <option value="">All staff / Tất cả nhân viên</option>
+          </select>
+          <select id="filterStatus" class="search-input" onchange="renderTasks()">
+            <option value="">All status / Tất cả trạng thái</option>
+            <option value="pending">Not started / Chưa bắt đầu</option>
+            <option value="progress">In progress / Đang làm</option>
+            <option value="done">Completed / Hoàn tất</option>
+            <option value="overdue">Overdue / Quá hạn</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnNewTask" onclick="openTaskModal()">+ New Sample <span class="vi">/ Mẫu mới</span></button>
+      </div>
+
+      <div id="taskList"></div>
+    </section>
+
+    <!-- ===================== DAILY REPORT ===================== -->
+    <section class="view" id="view-daily">
+      <h2 class="view-title">Daily Activity Report <span class="vi">— Báo cáo hằng ngày</span></h2>
+      <p class="view-sub">Update today's work — completed / in progress / problem.<br><span class="vi">Cập nhật công việc trong ngày — đã làm / đang làm / vấn đề.</span></p>
+
+      <div class="section-card" id="dailyEntryCard">
+        <h3>Today's Report <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Báo cáo hôm nay</span></h3>
+        <div class="form-grid">
+          <div class="full">
+            <label><span class="en">Completed (one item per line)</span><span class="vi">Đã hoàn thành (mỗi dòng 1 mục)</span></label>
+            <textarea id="dailyCompleted" placeholder="Sample BH01 moisture&#10;Sieve analysis BH02"></textarea>
+          </div>
+          <div class="full">
+            <label><span class="en">In progress</span><span class="vi">Đang thực hiện</span></label>
+            <textarea id="dailyProgress" placeholder="Direct shear BH02"></textarea>
+          </div>
+          <div class="full">
+            <label><span class="en">Problem / blocker</span><span class="vi">Vấn đề / vướng mắc</span></label>
+            <textarea id="dailyProblem" placeholder="Waiting specimen preparation..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button class="btn btn-primary" onclick="submitDailyReport()">Save report <span class="vi">/ Lưu báo cáo</span></button>
+        </div>
+      </div>
+
+      <h3 style="font-family:var(--serif);margin:26px 0 12px;">Report History <span style="font-size:14px;font-weight:400;color:var(--slate);">/ Lịch sử báo cáo</span></h3>
+      <div id="dailyHistory"></div>
+    </section>
+
+    <!-- ===================== RAW DATA ===================== -->
+    <section class="view" id="view-rawdata">
+      <h2 class="view-title">Raw Data &amp; Test Status <span class="vi">— Theo dõi Raw Data</span></h2>
+      <p class="view-sub">Every test must pass through 5 steps before it can be sent to the report team.<br><span class="vi">Mỗi test phải qua đủ 5 bước trước khi gửi report.</span></p>
+      <div id="rawDataList"></div>
+    </section>
+
+    <!-- ===================== REPORT TEAM ===================== -->
+    <section class="view" id="view-report">
+      <h2 class="view-title">Ready for Report <span class="vi">— Sẵn sàng làm báo cáo</span></h2>
+      <p class="view-sub">Samples with the full checklist completed, ready for the report team.<br><span class="vi">Các mẫu đã hoàn tất toàn bộ checklist, sẵn sàng làm report.</span></p>
+      <div id="reportReadyList"></div>
+    </section>
+
+    <!-- ===================== PERFORMANCE ===================== -->
+    <section class="view" id="view-performance">
+      <h2 class="view-title">Performance Tracking <span class="vi">— Theo dõi hiệu suất</span></h2>
+      <p class="view-sub">Per-staff statistics — total tests, average delay.<br><span class="vi">Thống kê theo nhân viên — tổng số test, độ trễ trung bình.</span></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff<span class="vi">Nhân viên</span></th>
+              <th>Total Tests<span class="vi">Tổng số test</span></th>
+              <th>On time<span class="vi">Đúng hạn</span></th>
+              <th>Late<span class="vi">Trễ hạn</span></th>
+              <th>Avg delay (days)<span class="vi">Trễ TB (ngày)</span></th>
+              <th>On-time rate<span class="vi">Tỷ lệ đúng hạn</span></th>
+            </tr>
+          </thead>
+          <tbody id="perfTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== STAFF / USERS ===================== -->
+    <section class="view" id="view-staff">
+      <h2 class="view-title">Staff &amp; Accounts <span class="vi">— Nhân sự &amp; Tài khoản</span></h2>
+      <p class="view-sub">Create accounts, assign roles, and promote/demote Admins.<br><span class="vi">Tạo tài khoản, gán vai trò, bổ nhiệm/hạ cấp Admin.</span></p>
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary" onclick="openStaffModal()">+ Add staff <span class="vi">/ Thêm nhân viên</span></button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Name<span class="vi">Tên</span></th>
+            <th>Email</th>
+            <th>Role<span class="vi">Vai trò</span></th>
+            <th>Actions<span class="vi">Hành động</span></th>
+          </tr></thead>
+          <tbody id="staffTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODAL: NEW / EDIT TASK ===================== -->
+<div class="modal-bg" id="taskModalBg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('taskModalBg')">&times;</button>
+    <h3>New Sample <span class="vi">/ Mẫu mới</span></h3>
+    <div class="form-grid">
+      <div><label>Client</label><input id="tClient"></div>
+      <div><label>Project</label><input id="tProject"></div>
+      <div><label>Sample ID</label><input id="tSampleId" placeholder="BH-03-5.0m"></div>
+      <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
+      <div>
+        <label>Assigned to<span class="vi">Người phụ trách</span></label>
+        <select id="tAssignee"></select>
+      </div>
+      <div><label>Deadline</label><input type="date" id="tDeadline"></div>
+      <div class="full">
+        <label>Tests required (select multiple)<span class="vi">Loại test (chọn nhiều)</span></label>
+        <div class="checklist" id="tTestsChecklist"></div>
+      </div>
+      <div class="full">
+        <label>Other tests, comma-separated<span class="vi">Thêm loại test khác, phân cách bằng dấu phẩy</span></label>
+        <input id="tCustomTests" placeholder="e.g. Atterberg Limits, CBR">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('taskModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveTask()">Save sample <span class="vi">/ Lưu mẫu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: STAFF ===================== -->
+<div class="modal-bg" id="staffModalBg">
+  <div class="modal" style="max-width:460px;">
+    <button class="modal-close" onclick="closeModal('staffModalBg')">&times;</button>
+    <h3>Add Staff <span class="vi">/ Thêm nhân viên</span></h3>
+    <div class="form-grid">
+      <div class="full"><label>Full name<span class="vi">Họ tên</span></label><input id="sName"></div>
+      <div class="full"><label>Email (Gmail) — used as username<span class="vi">Email (Gmail) — dùng làm username</span></label><input id="sUser" type="email" placeholder="name@gmail.com"></div>
+      <div class="full"><label>Temporary password<span class="vi">Mật khẩu tạm</span></label><input id="sPass" placeholder="min 6 characters"></div>
+      <div class="full">
+        <label>Role<span class="vi">Vai trò</span></label>
+        <select id="sRole">
+          <option value="technician">Technician</option>
+          <option value="report">Report Team</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('staffModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save <span class="vi">/ Lưu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: VIEW SAMPLE DETAIL / CHECKLIST ===================== -->
+<div class="modal-bg" id="detailModalBg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('detailModalBg')">&times;</button>
+    <h3 id="detailTitle"></h3>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   HAIC LAB MANAGEMENT SYSTEM — Firebase version
+   ============================================================ */
+
+/* ---------- CONFIG: replace with your Firebase project config ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
+};
+
+/* Super Admin email — fixed, first login auto-creates this account with role=superadmin */
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const STEP_LABELS = [
+  {k:'testing',     en:'Testing completed',        vi:'Đã test xong'},
+  {k:'calculation', en:'Calculation done',         vi:'Đã tính toán'},
+  {k:'rawdata',     en:'Raw data uploaded',        vi:'Đã có raw data'},
+  {k:'reviewed',    en:'Reviewed by Admin',        vi:'Admin đã review'},
+  {k:'sent',        en:'Sent to report team',      vi:'Đã gửi report team'}
+];
+
+const DEFAULT_TESTS = [
+  'Moisture Content','Grain Size (Sieve Analysis)','Atterberg Limits','Direct Shear',
+  'Proctor Compaction','CBR','Unconfined Compression','Specific Gravity','Chemical Test','Calibration'
+];
+
+const ROLE_LABEL = {
+  superadmin: {en:'Super Admin', vi:'Quản trị tối cao'},
+  admin:      {en:'Admin',       vi:'Quản trị'},
+  technician: {en:'Technician',  vi:'Kỹ thuật viên'},
+  report:     {en:'Report Team', vi:'Tổ Report'}
+};
+
+function nowISO(){ return new Date().toISOString(); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  if(!iso) return '-';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function daysBetween(a,b){
+  const A = new Date(a), B = new Date(b);
+  return Math.round((B-A)/(1000*60*60*24));
+}
+function roleLabel(role){
+  const r = ROLE_LABEL[role] || {en:role,vi:role};
+  return `${r.en} / ${r.vi}`;
+}
+function roleBadgeClass(role){
+  return {superadmin:'purple',admin:'green',technician:'yellow',report:'grey'}[role] || 'grey';
+}
+
+/* ---------- Global state ---------- */
+let SESSION = null;   // {uid,name,email,role}
+let USERS = [];
+let TASKS = [];
+let DAILY_REPORTS = [];
+let unsubUsers=null, unsubTasks=null, unsubDaily=null;
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function setLoginBusy(busy, msg){
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = busy;
+  if(msg!==undefined) document.getElementById('loginErr').textContent = msg;
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(!email || !pass){
+    setLoginBusy(false,'Please enter email and password / Vui lòng nhập email và mật khẩu.');
+    return;
+  }
+  setLoginBusy(true,'');
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(err){
+    if(err.code==='auth/user-not-found' || err.code==='auth/invalid-credential'){
+      if(email.toLowerCase()===SUPER_ADMIN_EMAIL.toLowerCase()){
+        try{
+          const cred = await auth.createUserWithEmailAndPassword(email, pass);
+          await db.collection('users').doc(cred.user.uid).set({
+            name:'Truong', email:email, role:'superadmin', createdAt: nowISO()
+          });
+          return;
+        }catch(err2){
+          setLoginBusy(false, translateAuthError(err2));
+          return;
+        }
+      }
+      setLoginBusy(false,'Account not found / Không tìm thấy tài khoản.');
+      return;
+    }
+    setLoginBusy(false, translateAuthError(err));
+  }
+}
+
+function translateAuthError(err){
+  const map = {
+    'auth/wrong-password':'Wrong password / Sai mật khẩu.',
+    'auth/invalid-email':'Invalid email / Email không hợp lệ.',
+    'auth/weak-password':'Password too weak (min 6 chars) / Mật khẩu quá yếu (tối thiểu 6 ký tự).',
+    'auth/email-already-in-use':'Email already in use / Email đã được sử dụng.',
+    'auth/too-many-requests':'Too many attempts, try later / Thử lại sau ít phút.',
+    'auth/network-request-failed':'Network error / Lỗi kết nối mạng.'
+  };
+  return map[err.code] || (err.message || 'Login error / Lỗi đăng nhập.');
+}
+
+function logout(){
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(async (user)=>{
+  setLoginBusy(false,'');
+  if(!user){
+    SESSION=null;
+    detachListeners();
+    document.getElementById('app').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+    return;
+  }
+  let snap = await db.collection('users').doc(user.uid).get();
+  if(!snap.exists){
+    if(user.email.toLowerCase()===SUPER_ADMIN_EMAIL.toLowerCase()){
+      await db.collection('users').doc(user.uid).set({name:'Truong', email:user.email, role:'superadmin', createdAt:nowISO()});
+      snap = await db.collection('users').doc(user.uid).get();
+    } else {
+      setLoginBusy(false,'Account has no profile, contact Admin / Tài khoản chưa được cấp quyền, liên hệ Admin.');
+      await auth.signOut();
+      return;
+    }
+  }
+  const profile = snap.data();
+  SESSION = {uid:user.uid, email:user.email, name:profile.name, role:profile.role};
+  enterApp();
+});
+
+/* ============================================================
+   FIRESTORE LISTENERS
+   ============================================================ */
+function detachListeners(){
+  if(unsubUsers) unsubUsers();
+  if(unsubTasks) unsubTasks();
+  if(unsubDaily) unsubDaily();
+  unsubUsers=unsubTasks=unsubDaily=null;
+}
+
+function attachListeners(){
+  unsubUsers = db.collection('users').onSnapshot(snap=>{
+    USERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubTasks = db.collection('tasks').onSnapshot(snap=>{
+    TASKS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubDaily = db.collection('dailyReports').onSnapshot(snap=>{
+    DAILY_REPORTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+}
+
+let CURRENT_VIEW = 'dashboard';
+function rerenderCurrentView(){
+  if(document.getElementById('app').style.display==='none') return;
+  goView(CURRENT_VIEW);
+}
+
+/* ============================================================
+   NAV / ROLES
+   ============================================================ */
+const NAV_ITEMS = {
+  superadmin: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['tasks','Tasks','Phân việc'],
+    ['daily','Daily Reports','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['performance','Performance','Hiệu suất'],
+    ['staff','Staff','Nhân sự']
+  ],
+  admin: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['tasks','Tasks','Phân việc'],
+    ['daily','Daily Reports','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['performance','Performance','Hiệu suất'],
+    ['staff','Staff','Nhân sự']
+  ],
+  technician: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['tasks','My Tasks','Việc của tôi'],
+    ['daily','Daily Report','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data']
+  ],
+  report: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['rawdata','Raw Data','Raw Data']
+  ]
+};
+
+function isAdminLike(role){ return role==='superadmin' || role==='admin'; }
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('whoName').textContent = SESSION.name || SESSION.email;
+  document.getElementById('whoRole').textContent = (ROLE_LABEL[SESSION.role]||{en:SESSION.role}).en;
+
+  detachListeners();
+  attachListeners();
+  buildNav();
+  goView(NAV_ITEMS[SESSION.role][0][0]);
+}
+
+function buildNav(){
+  const nav = document.getElementById('navBar');
+  nav.innerHTML='';
+  NAV_ITEMS[SESSION.role].forEach(([key,en,vi])=>{
+    const b=document.createElement('button');
+    b.innerHTML = `<span class="en">${en}</span><span class="vi">${vi}</span>`;
+    b.dataset.view=key;
+    b.onclick=()=>goView(key);
+    nav.appendChild(b);
+  });
+}
+
+function goView(key){
+  CURRENT_VIEW = key;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('#navBar button').forEach(b=>b.classList.toggle('active', b.dataset.view===key));
+  const el = document.getElementById('view-'+key);
+  if(el) el.classList.add('active');
+
+  if(key==='dashboard') renderDashboard();
+  if(key==='tasks') renderTasks();
+  if(key==='daily') renderDaily();
+  if(key==='rawdata') renderRawData();
+  if(key==='report') renderReportReady();
+  if(key==='performance') renderPerformance();
+  if(key==='staff') renderStaff();
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+
+/* ---------- Progress & status helpers ---------- */
+function taskProgress(task){
+  const total = task.tests.length * STEP_LABELS.length;
+  if(total===0) return 0;
+  let done=0;
+  task.tests.forEach(t=>{ STEP_LABELS.forEach(s=>{ if(t.steps[s.k]) done++; }); });
+  return Math.round(done/total*100);
+}
+function taskAllDone(task){
+  return task.tests.every(t=> STEP_LABELS.every(s=>t.steps[s.k]) );
+}
+function taskStatus(task){
+  const pct = taskProgress(task);
+  const today = todayStr();
+  if(pct>=100) return 'done';
+  if(task.deadline && task.deadline < today) return 'overdue';
+  if(pct===0) return 'pending';
+  return 'progress';
+}
+function statusBadge(status){
+  const map = {
+    pending:['grey','Not started','Chưa bắt đầu'],
+    progress:['yellow','In progress','Đang làm'],
+    done:['green','Completed','Hoàn tất'],
+    overdue:['red','Overdue','Quá hạn']
+  };
+  const [c,en,vi]=map[status];
+  return `<span class="badge ${c}">${en} / ${vi}</span>`;
+}
+function trafficDot(task){
+  const pct=taskProgress(task);
+  const today=todayStr();
+  if(pct>=100) return 'green';
+  if(task.deadline){
+    const diff = daysBetween(today, task.deadline);
+    if(diff<0) return 'red';
+    if(diff<=2) return 'yellow';
+  }
+  return 'green';
+}
+function findUser(id){ return USERS.find(u=>u.id===id); }
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  document.getElementById('dashDate').textContent = 'Today / Hôm nay: ' + fmtDate(todayStr());
+
+  let tasks = TASKS;
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+
+  const total = tasks.length;
+  const overdue = tasks.filter(t=>taskStatus(t)==='overdue').length;
+  const atRisk = tasks.filter(t=>{
+    if(taskStatus(t)==='done'||taskStatus(t)==='overdue') return false;
+    if(!t.deadline) return false;
+    return daysBetween(todayStr(), t.deadline) <= 2;
+  }).length;
+  const done = tasks.filter(t=>taskStatus(t)==='done').length;
+
+  document.getElementById('dashStats').innerHTML = `
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">Total samples<br>Tổng số mẫu</div></div>
+    <div class="stat-card"><div class="num">${done}</div><div class="lbl">Completed<br>Hoàn tất</div></div>
+    <div class="stat-card yellow"><div class="num">${atRisk}</div><div class="lbl">At risk (≤2 days)<br>Nguy cơ trễ (≤2 ngày)</div></div>
+    <div class="stat-card red"><div class="num">${overdue}</div><div class="lbl">Overdue<br>Quá hạn</div></div>
+  `;
+
+  const techs = USERS.filter(u=>u.role==='technician');
+  const staffList = SESSION.role==='technician' ? USERS.filter(u=>u.id===SESSION.uid) : techs;
+
+  let rows='';
+  if(staffList.length===0){
+    rows = `<tr><td colspan="6"><div class="empty-state"><div class="icon">🧪</div><span class="en">No technicians yet.</span><br><span class="vi">Chưa có technician nào.</span></div></td></tr>`;
+  } else {
+    staffList.forEach(staff=>{
+      const myTasks = TASKS.filter(t=>t.assigneeId===staff.id && taskStatus(t)!=='done');
+      if(myTasks.length===0){
+        rows += `<tr>
+          <td><strong>${staff.name}</strong></td>
+          <td colspan="3" class="small-muted"><span class="en">No active work</span> / <span class="vi">Không có việc đang chạy</span></td>
+          <td>-</td>
+          <td><span class="badge grey">Idle / Trống</span></td>
+        </tr>`;
+        return;
+      }
+      myTasks.forEach(t=>{
+        const pct = taskProgress(t);
+        const dotc = trafficDot(t);
+        rows += `<tr>
+          <td><strong>${staff.name}</strong></td>
+          <td>${t.project} — ${t.sampleId}<div class="small-muted">${t.tests.map(x=>x.name).join(', ')}</div></td>
+          <td>${t.tests.length}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>
+              <span>${pct}%</span>
+            </div>
+          </td>
+          <td>${fmtDate(t.deadline)}</td>
+          <td><span class="dot ${dotc}"></span>${statusBadge(taskStatus(t))}</td>
+        </tr>`;
+      });
+    });
+  }
+  document.getElementById('dashTableBody').innerHTML = rows;
+
+  const alertTasks = TASKS.filter(t=>{
+    const st=taskStatus(t);
+    if(SESSION.role==='technician' && t.assigneeId!==SESSION.uid) return false;
+    return st==='overdue' || (st==='progress' && t.deadline && daysBetween(todayStr(),t.deadline)<=2);
+  });
+  if(alertTasks.length===0){
+    document.getElementById('dashAlerts').innerHTML = `<div class="small-muted"><span class="en">✅ No samples at risk.</span> <span class="vi">Không có mẫu nào nguy cơ trễ.</span></div>`;
+  } else {
+    let html='';
+    alertTasks.forEach(t=>{
+      const st=taskStatus(t);
+      const assignee = findUser(t.assigneeId);
+      const diff = daysBetween(todayStr(), t.deadline);
+      let msg;
+      if(st==='overdue') msg = `<span class="badge red">Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày</span>`;
+      else msg = `<span class="badge yellow">${diff}d left / Còn ${diff} ngày</span>`;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;">
+        <div><strong>${t.project} — ${t.sampleId}</strong> <span class="small-muted">(${assignee?assignee.name:'?'}) — deadline ${fmtDate(t.deadline)}</span></div>
+        <div>${msg}</div>
+      </div>`;
+    });
+    document.getElementById('dashAlerts').innerHTML = html;
+  }
+}
+
+/* ============================================================
+   TASK ASSIGNMENT
+   ============================================================ */
+function renderTasks(){
+  const filterSel = document.getElementById('filterStaff');
+  const currentVal = filterSel.value;
+  filterSel.innerHTML = '<option value="">All staff / Tất cả nhân viên</option>';
+  USERS.filter(u=>u.role==='technician').forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+    filterSel.appendChild(o);
+  });
+  filterSel.value = currentVal;
+
+  document.getElementById('btnNewTask').style.display = isAdminLike(SESSION.role) ? '' : 'none';
+
+  let tasks = [...TASKS];
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+  const fStaff = filterSel.value;
+  const fStatus = document.getElementById('filterStatus').value;
+  if(fStaff) tasks = tasks.filter(t=>t.assigneeId===fStaff);
+  if(fStatus) tasks = tasks.filter(t=>taskStatus(t)===fStatus);
+
+  tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  if(tasks.length===0){
+    document.getElementById('taskList').innerHTML = `<div class="empty-state"><div class="icon">📋</div>
+      <span class="en">No samples yet.${isAdminLike(SESSION.role)?' Click "+ New Sample" to create one.':''}</span><br>
+      <span class="vi">Chưa có mẫu nào.${isAdminLike(SESSION.role)?' Bấm "+ Mẫu mới" để tạo.':''}</span>
+    </div>`;
+    return;
+  }
+
+  let html='';
+  tasks.forEach(t=>{
+    const assignee = findUser(t.assigneeId);
+    const pct = taskProgress(t);
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
+          <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${assignee?assignee.name:'?'}</strong></div>
+        </div>
+        <div style="text-align:right;">
+          ${statusBadge(taskStatus(t))}
+          <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDate(t.deadline)}</div>
+        </div>
+      </div>
+      <div class="pill-row" style="margin:10px 0;">
+        ${t.tests.map(x=>`<span class="pill">${x.name}</span>`).join('')}
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
+        <span class="small-muted">${pct}% complete / hoàn thành</span>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('taskList').innerHTML = html;
+}
+
+function openTaskModal(){
+  document.getElementById('tClient').value='';
+  document.getElementById('tProject').value='';
+  document.getElementById('tSampleId').value='';
+  document.getElementById('tStandard').value='';
+  document.getElementById('tDeadline').value='';
+  document.getElementById('tCustomTests').value='';
+
+  const sel = document.getElementById('tAssignee');
+  sel.innerHTML='';
+  USERS.filter(u=>u.role==='technician').forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name; sel.appendChild(o);
+  });
+  if(sel.options.length===0){
+    sel.innerHTML='<option value="">-- No technicians yet / Chưa có technician --</option>';
+  }
+
+  const cl = document.getElementById('tTestsChecklist');
+  cl.innerHTML = DEFAULT_TESTS.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('');
+
+  openModal('taskModalBg');
+}
+
+async function saveTask(){
+  const client=document.getElementById('tClient').value.trim();
+  const project=document.getElementById('tProject').value.trim();
+  const sampleId=document.getElementById('tSampleId').value.trim();
+  const standard=document.getElementById('tStandard').value.trim();
+  const assigneeId=document.getElementById('tAssignee').value;
+  const deadline=document.getElementById('tDeadline').value;
+  const custom=document.getElementById('tCustomTests').value.trim();
+
+  if(!project||!sampleId||!assigneeId||!deadline){
+    alert('Please fill in Project, Sample ID, Assignee and Deadline.\nVui lòng điền Project, Sample ID, Người phụ trách và Deadline.');
+    return;
+  }
+
+  const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
+  const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allTests = [...checked, ...customList];
+  if(allTests.length===0){
+    alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+    return;
+  }
+
+  const task = {
+    client, project, sampleId, standard, assigneeId, deadline,
+    createdAt: nowISO(),
+    completedAt: null,
+    tests: allTests.map(name=>({
+      name,
+      steps:{testing:false,calculation:false,rawdata:false,reviewed:false,sent:false}
+    }))
+  };
+  await db.collection('tasks').add(task);
+  closeModal('taskModalBg');
+}
+
+async function deleteTask(id){
+  if(!confirm('Delete this sample? / Xoá mẫu này?')) return;
+  await db.collection('tasks').doc(id).delete();
+}
+
+/* ---------- Detail / checklist modal ---------- */
+function openDetail(taskId){
+  const t = TASKS.find(x=>x.id===taskId);
+  if(!t) return;
+  const assignee = findUser(t.assigneeId);
+  document.getElementById('detailTitle').innerHTML = `${t.project} — ${t.sampleId}`;
+
+  const canEdit = isAdminLike(SESSION.role) || SESSION.uid===t.assigneeId;
+
+  let html = `<div class="small-muted" style="margin-bottom:14px;">
+    Client: ${t.client||'-'} | Standard: ${t.standard||'-'} | Assigned to / Phụ trách: <strong>${assignee?assignee.name:'?'}</strong> | Deadline: ${fmtDate(t.deadline)}
+  </div>
+  <div class="test-status-grid">`;
+
+  t.tests.forEach((test,idx)=>{
+    const allDone = STEP_LABELS.every(s=>test.steps[s.k]);
+    html += `<div class="test-status-item">
+      <div class="tname"><span>${test.name}</span> ${allDone?'<span class="badge green">Done / Xong</span>':''}</div>
+      <div class="steps">`;
+    STEP_LABELS.forEach(s=>{
+      html += `<label>
+        <input type="checkbox" ${test.steps[s.k]?'checked':''} ${canEdit?'':'disabled'}
+          onchange="toggleStep('${t.id}',${idx},'${s.k}',this.checked)">
+        <span><span class="en">${s.en}</span><span class="vi">${s.vi}</span></span>
+      </label>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+
+  if(!canEdit){
+    html += `<div class="small-muted" style="margin-top:12px;"><span class="en">Only an Admin or the assigned technician can update this checklist.</span><br><span class="vi">Chỉ Admin hoặc người phụ trách có thể cập nhật checklist.</span></div>`;
+  }
+
+  document.getElementById('detailBody').innerHTML = html;
+  openModal('detailModalBg');
+}
+
+async function toggleStep(taskId, testIdx, stepKey, value){
+  const t = TASKS.find(x=>x.id===taskId);
+  if(!t) return;
+  const test = t.tests[testIdx];
+  const order = STEP_LABELS.map(s=>s.k);
+  const i = order.indexOf(stepKey);
+
+  if(value){
+    for(let j=0;j<i;j++){
+      if(!test.steps[order[j]]){
+        const lbl = STEP_LABELS[j];
+        alert(`Please complete "${lbl.en}" first.\nPhải hoàn thành "${lbl.vi}" trước.`);
+        openDetail(taskId);
+        return;
+      }
+    }
+  } else {
+    for(let j=i+1;j<order.length;j++) test.steps[order[j]]=false;
+  }
+
+  test.steps[stepKey]=value;
+
+  let completedAt = t.completedAt;
+  if(taskAllDone(t) && !completedAt){
+    completedAt = nowISO();
+  } else if(!taskAllDone(t)){
+    completedAt = null;
+  }
+
+  await db.collection('tasks').doc(taskId).update({ tests: t.tests, completedAt });
+  openDetail(taskId);
+}
+
+/* ============================================================
+   DAILY ACTIVITY REPORT
+   ============================================================ */
+function renderDaily(){
+  const entryCard = document.getElementById('dailyEntryCard');
+  entryCard.style.display = SESSION.role==='technician' ? '' : 'none';
+
+  let reports = [...DAILY_REPORTS];
+  if(SESSION.role==='technician') reports = reports.filter(r=>r.userId===SESSION.uid);
+  reports.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  if(reports.length===0){
+    document.getElementById('dailyHistory').innerHTML = `<div class="empty-state"><div class="icon">📝</div><span class="en">No reports yet.</span><br><span class="vi">Chưa có báo cáo nào.</span></div>`;
+    return;
+  }
+
+  let html='';
+  reports.forEach(r=>{
+    const user = findUser(r.userId);
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <strong>${user?user.name:'?'}</strong>
+        <span class="small-muted">${fmtDate(r.date)}</span>
+      </div>
+      <div style="margin-top:10px;">
+        <div><strong>✓ Completed / Đã hoàn thành:</strong></div>
+        <div class="small-muted" style="white-space:pre-line;margin:4px 0 10px;">${r.completed||'-'}</div>
+        <div><strong>→ In progress / Đang thực hiện:</strong></div>
+        <div class="small-muted" style="white-space:pre-line;margin:4px 0 10px;">${r.progress||'-'}</div>
+        ${r.problem?`<div><strong>⚠ Problem / Vấn đề:</strong></div><div class="small-muted" style="white-space:pre-line;margin:4px 0;">${r.problem}</div>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('dailyHistory').innerHTML = html;
+}
+
+async function submitDailyReport(){
+  const completed = document.getElementById('dailyCompleted').value.trim();
+  const progress = document.getElementById('dailyProgress').value.trim();
+  const problem = document.getElementById('dailyProblem').value.trim();
+
+  if(!completed && !progress && !problem){
+    alert('Please enter at least one item.\nNhập ít nhất một nội dung.');
+    return;
+  }
+
+  const today = todayStr();
+  let report = DAILY_REPORTS.find(r=>r.userId===SESSION.uid && r.date===today);
+  const data = { userId: SESSION.uid, date: today, completed, progress, problem };
+
+  if(report){
+    await db.collection('dailyReports').doc(report.id).update(data);
+  } else {
+    await db.collection('dailyReports').add(data);
+  }
+
+  document.getElementById('dailyCompleted').value='';
+  document.getElementById('dailyProgress').value='';
+  document.getElementById('dailyProblem').value='';
+  alert('Report saved / Đã lưu báo cáo hôm nay.');
+}
+
+/* ============================================================
+   RAW DATA TRACKING
+   ============================================================ */
+function renderRawData(){
+  let tasks = [...TASKS];
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+  tasks = tasks.filter(t=>!taskAllDone(t));
+
+  if(tasks.length===0){
+    document.getElementById('rawDataList').innerHTML = `<div class="empty-state"><div class="icon">✅</div><span class="en">No tests pending raw data.</span><br><span class="vi">Không có test nào đang chờ raw data.</span></div>`;
+    return;
+  }
+
+  let html='';
+  tasks.forEach(t=>{
+    const assignee = findUser(t.assigneeId);
+    html += `<div class="section-card">
+      <h3 style="margin-bottom:2px;">${t.project} — ${t.sampleId}</h3>
+      <div class="small-muted" style="margin-bottom:10px;">Assigned to / Phụ trách: ${assignee?assignee.name:'?'} | Deadline: ${fmtDate(t.deadline)}</div>
+      <div class="test-status-grid">`;
+    t.tests.forEach(test=>{
+      const allDone = STEP_LABELS.every(s=>test.steps[s.k]);
+      if(allDone) return;
+      html += `<div class="test-status-item"><div class="tname"><span>${test.name}</span></div><div class="steps">`;
+      STEP_LABELS.forEach(s=>{
+        html += `<span class="badge ${test.steps[s.k]?'green':'grey'}">${test.steps[s.k]?'✓':'○'} ${s.en} / ${s.vi}</span>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">Update <span class="vi">Cập nhật</span></button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('rawDataList').innerHTML = html;
+}
+
+/* ============================================================
+   READY FOR REPORT
+   ============================================================ */
+function renderReportReady(){
+  const tasks = TASKS.filter(t=>taskAllDone(t));
+  if(tasks.length===0){
+    document.getElementById('reportReadyList').innerHTML = `<div class="empty-state"><div class="icon">📄</div><span class="en">No samples ready for report yet.</span><br><span class="vi">Chưa có mẫu nào sẵn sàng làm report.</span></div>`;
+    return;
+  }
+  let html='';
+  tasks.forEach(t=>{
+    const assignee = findUser(t.assigneeId);
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
+          <div class="small-muted">Client: ${t.client||'-'} | ${t.tests.length} test(s) completed | By / Thực hiện: ${assignee?assignee.name:'?'}</div>
+        </div>
+        <div><span class="badge green">Raw data available · Reviewed ✓</span></div>
+      </div>
+      <div class="pill-row" style="margin-top:10px;">
+        ${t.tests.map(x=>`<span class="pill">${x.name}</span>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('reportReadyList').innerHTML = html;
+}
+
+/* ============================================================
+   PERFORMANCE TRACKING
+   ============================================================ */
+function renderPerformance(){
+  const techs = USERS.filter(u=>u.role==='technician');
+  if(techs.length===0){
+    document.getElementById('perfTableBody').innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="en">No technicians.</span><br><span class="vi">Chưa có technician.</span></div></td></tr>`;
+    return;
+  }
+  let rows='';
+  techs.forEach(staff=>{
+    const myTasks = TASKS.filter(t=>t.assigneeId===staff.id && taskAllDone(t) && t.completedAt);
+    const totalTests = myTasks.reduce((sum,t)=>sum+t.tests.length,0);
+    let onTime=0, late=0, totalDelay=0;
+    myTasks.forEach(t=>{
+      const completedDate = t.completedAt.slice(0,10);
+      const delay = daysBetween(t.deadline, completedDate);
+      if(delay<=0) onTime++; else late++;
+      totalDelay += Math.max(0,delay);
+    });
+    const avgDelay = myTasks.length? (totalDelay/myTasks.length).toFixed(1) : '0.0';
+    const rate = myTasks.length? Math.round(onTime/myTasks.length*100)+'%' : '-';
+
+    rows += `<tr>
+      <td><strong>${staff.name}</strong></td>
+      <td>${totalTests}</td>
+      <td>${onTime}</td>
+      <td>${late}</td>
+      <td>${avgDelay}</td>
+      <td>${rate}</td>
+    </tr>`;
+  });
+  document.getElementById('perfTableBody').innerHTML = rows;
+}
+
+/* ============================================================
+   STAFF MANAGEMENT
+   ============================================================ */
+function renderStaff(){
+  let rows='';
+  USERS.forEach(u=>{
+    const isSuper = u.role==='superadmin';
+    let actions = '';
+
+    if(SESSION.role==='superadmin' && u.id!==SESSION.uid){
+      if(u.role==='admin'){
+        actions += `<button class="btn btn-secondary btn-sm" onclick="changeRole('${u.id}','technician')">Demote <span class="vi">Hạ cấp</span></button> `;
+      } else if(u.role==='technician' || u.role==='report'){
+        actions += `<button class="btn btn-secondary btn-sm" onclick="changeRole('${u.id}','admin')">Make Admin <span class="vi">Bổ nhiệm</span></button> `;
+      }
+    }
+    if(isAdminLike(SESSION.role) && !isSuper && u.id!==SESSION.uid){
+      actions += `<button class="btn btn-danger btn-sm" onclick="deleteStaff('${u.id}')">Delete <span class="vi">Xoá</span></button>`;
+    }
+    if(isSuper){
+      actions = `<span class="small-muted">Super Admin — fixed / cố định</span>`;
+    }
+
+    rows += `<tr>
+      <td>${u.name}</td>
+      <td><code>${u.email}</code></td>
+      <td><span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
+      <td><div class="role-actions">${actions}</div></td>
+    </tr>`;
+  });
+  document.getElementById('staffTableBody').innerHTML = rows;
+}
+
+function openStaffModal(){
+  document.getElementById('sName').value='';
+  document.getElementById('sUser').value='';
+  document.getElementById('sPass').value='';
+  document.getElementById('sRole').value='technician';
+
+  const roleSel = document.getElementById('sRole');
+  const adminOpt = roleSel.querySelector('option[value="admin"]');
+  adminOpt.style.display = (SESSION.role==='superadmin') ? '' : 'none';
+
+  openModal('staffModalBg');
+}
+
+async function saveStaff(){
+  const name=document.getElementById('sName').value.trim();
+  const email=document.getElementById('sUser').value.trim();
+  const password=document.getElementById('sPass').value;
+  const role=document.getElementById('sRole').value;
+
+  if(!name||!email||!password){
+    alert('Please fill in all fields.\nĐiền đủ thông tin.');
+    return;
+  }
+  if(password.length<6){
+    alert('Password must be at least 6 characters.\nMật khẩu tối thiểu 6 ký tự.');
+    return;
+  }
+  if(role==='admin' && SESSION.role!=='superadmin'){
+    alert('Only Super Admin can create Admin accounts.\nChỉ Super Admin được tạo tài khoản Admin.');
+    return;
+  }
+
+  try{
+    // Use a secondary Firebase Auth app instance so creating the new account
+    // does not sign out the current Admin/Super Admin session.
+    const secondaryApp = firebase.apps.find(a=>a.name==='secondary') || firebase.initializeApp(firebaseConfig,'secondary');
+    const secondaryAuth = secondaryApp.auth();
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    await db.collection('users').doc(cred.user.uid).set({
+      name, email, role, createdAt: nowISO()
+    });
+    await secondaryAuth.signOut();
+    closeModal('staffModalBg');
+    alert('Account created / Đã tạo tài khoản.');
+  }catch(err){
+    alert(translateAuthError(err));
+  }
+}
+
+async function changeRole(userId, newRole){
+  if(SESSION.role!=='superadmin'){
+    alert('Only Super Admin can change Admin roles.\nChỉ Super Admin được thay đổi cấp Admin.');
+    return;
+  }
+  const u = findUser(userId);
+  const confirmMsg = newRole==='admin'
+    ? `Promote ${u.name} to Admin?\nBổ nhiệm ${u.name} làm Admin?`
+    : `Demote ${u.name} to Technician?\nHạ cấp ${u.name} xuống Technician?`;
+  if(!confirm(confirmMsg)) return;
+  await db.collection('users').doc(userId).update({role:newRole});
+}
+
+async function deleteStaff(userId){
+  const u = findUser(userId);
+  if(u.role==='superadmin'){ alert('Cannot delete Super Admin.\nKhông thể xoá Super Admin.'); return; }
+  if(u.role==='admin' && SESSION.role!=='superadmin'){
+    alert('Only Super Admin can delete an Admin account.\nChỉ Super Admin được xoá tài khoản Admin.');
+    return;
+  }
+  if(TASKS.some(t=>t.assigneeId===userId)){
+    if(!confirm('This staff has assigned samples. Delete the account anyway?\nNhân viên này đang có mẫu được gán. Vẫn xoá tài khoản?')) return;
+  } else {
+    if(!confirm(`Delete account for ${u.name}?\nXoá tài khoản của ${u.name}?`)) return;
+  }
+  await db.collection('users').doc(userId).delete();
+  alert('Profile removed. The login record (Firebase Auth) must be removed separately via Firebase Console.\nĐã xoá hồ sơ. Tài khoản đăng nhập (Firebase Auth) cần xoá riêng qua Firebase Console.');
+}
+
+/* ============================================================
+   BOOTSTRAP
+   ============================================================ */
+document.getElementById('loginPass').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doLogin();
+});
+document.getElementById('loginUser').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doLogin();
+});
+</script>
+</body>
+</html>
