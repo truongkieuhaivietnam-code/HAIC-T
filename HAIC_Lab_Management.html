@@ -239,6 +239,19 @@
       </div>
     </section>
 
+    <!-- ===================== PROJECTS ===================== -->
+    <section class="view" id="view-projects">
+      <h2 class="view-title">Projects <span class="vi">— Dự án</span></h2>
+      <p class="view-sub">Each project groups multiple samples/tasks. Overall progress is calculated from its child tasks.<br><span class="vi">Mỗi dự án (mẹ) gồm nhiều mẫu/đầu việc (con). Tiến độ tổng được tính từ các task con.</span></p>
+
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary" id="btnNewProject" onclick="openProjectModal()">+ New Project <span class="vi">/ Dự án mới</span></button>
+      </div>
+
+      <div id="projectList"></div>
+    </section>
+
     <!-- ===================== TASK ASSIGNMENT ===================== -->
     <section class="view" id="view-tasks">
       <h2 class="view-title">Task Assignment <span class="vi">— Phân việc &amp; Mẫu thử</span></h2>
@@ -352,6 +365,36 @@
   </main>
 </div>
 
+<!-- ===================== MODAL: NEW PROJECT ===================== -->
+<div class="modal-bg" id="projectModalBg">
+  <div class="modal" style="max-width:520px;">
+    <button class="modal-close" onclick="closeModal('projectModalBg')">&times;</button>
+    <h3>New Project <span class="vi">/ Dự án mới</span></h3>
+    <div class="form-grid">
+      <div><label>Project Code<span class="vi">Mã dự án</span></label><input id="pCode" placeholder="HAIC-2026-001"></div>
+      <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
+      <div><label>Client</label><input id="pClient"></div>
+      <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
+      <div class="full">
+        <label>Status<span class="vi">Trạng thái</span></label>
+        <select id="pStatus">
+          <option value="active">Active / Đang triển khai</option>
+          <option value="onhold">On hold / Tạm dừng</option>
+          <option value="completed">Completed / Hoàn tất</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Notes<span class="vi">Ghi chú</span></label>
+        <textarea id="pNotes"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('projectModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveProject()">Save project <span class="vi">/ Lưu dự án</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL: NEW / EDIT TASK ===================== -->
 <div class="modal-bg" id="taskModalBg">
   <div class="modal">
@@ -359,7 +402,10 @@
     <h3>New Sample <span class="vi">/ Mẫu mới</span></h3>
     <div class="form-grid">
       <div><label>Client</label><input id="tClient"></div>
-      <div><label>Project</label><input id="tProject"></div>
+      <div>
+        <label>Project<span class="vi">Dự án</span></label>
+        <select id="tProject"></select>
+      </div>
       <div><label>Sample ID</label><input id="tSampleId" placeholder="BH-03-5.0m"></div>
       <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
       <div>
@@ -483,7 +529,9 @@ let SESSION = null;   // {uid,name,email,role}
 let USERS = [];
 let TASKS = [];
 let DAILY_REPORTS = [];
-let unsubUsers=null, unsubTasks=null, unsubDaily=null;
+let PROJECTS = [];
+let TASKS_PROJECT_FILTER = '';
+let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null;
 
 /* ============================================================
    AUTH
@@ -573,7 +621,8 @@ function detachListeners(){
   if(unsubUsers) unsubUsers();
   if(unsubTasks) unsubTasks();
   if(unsubDaily) unsubDaily();
-  unsubUsers=unsubTasks=unsubDaily=null;
+  if(unsubProjects) unsubProjects();
+  unsubUsers=unsubTasks=unsubDaily=unsubProjects=null;
 }
 
 function attachListeners(){
@@ -587,6 +636,10 @@ function attachListeners(){
   });
   unsubDaily = db.collection('dailyReports').onSnapshot(snap=>{
     DAILY_REPORTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubProjects = db.collection('projects').onSnapshot(snap=>{
+    PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
     rerenderCurrentView();
   });
 }
@@ -603,6 +656,7 @@ function rerenderCurrentView(){
 const NAV_ITEMS = {
   superadmin: [
     ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
     ['tasks','Tasks','Phân việc'],
     ['daily','Daily Reports','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data'],
@@ -612,6 +666,7 @@ const NAV_ITEMS = {
   ],
   admin: [
     ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
     ['tasks','Tasks','Phân việc'],
     ['daily','Daily Reports','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data'],
@@ -621,12 +676,14 @@ const NAV_ITEMS = {
   ],
   technician: [
     ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
     ['tasks','My Tasks','Việc của tôi'],
     ['daily','Daily Report','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data']
   ],
   report: [
     ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
     ['report','Ready for Report','Sẵn sàng Report'],
     ['rawdata','Raw Data','Raw Data']
   ]
@@ -666,6 +723,7 @@ function goView(key){
   if(el) el.classList.add('active');
 
   if(key==='dashboard') renderDashboard();
+  if(key==='projects') renderProjects();
   if(key==='tasks') renderTasks();
   if(key==='daily') renderDaily();
   if(key==='rawdata') renderRawData();
@@ -718,6 +776,10 @@ function trafficDot(task){
   return 'green';
 }
 function findUser(id){ return USERS.find(u=>u.id===id); }
+function assigneeUsers(){
+  const ids = new Set(TASKS.map(t=>t.assigneeId));
+  return USERS.filter(u=>u.role==='technician' || ids.has(u.id));
+}
 
 /* ============================================================
    DASHBOARD
@@ -744,7 +806,7 @@ function renderDashboard(){
     <div class="stat-card red"><div class="num">${overdue}</div><div class="lbl">Overdue<br>Quá hạn</div></div>
   `;
 
-  const techs = USERS.filter(u=>u.role==='technician');
+  const techs = assigneeUsers();
   const staffList = SESSION.role==='technician' ? USERS.filter(u=>u.id===SESSION.uid) : techs;
 
   let rows='';
@@ -815,8 +877,9 @@ function renderTasks(){
   const filterSel = document.getElementById('filterStaff');
   const currentVal = filterSel.value;
   filterSel.innerHTML = '<option value="">All staff / Tất cả nhân viên</option>';
-  USERS.filter(u=>u.role==='technician').forEach(u=>{
-    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+  USERS.filter(u=>u.role==='technician' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
     filterSel.appendChild(o);
   });
   filterSel.value = currentVal;
@@ -829,11 +892,22 @@ function renderTasks(){
   const fStatus = document.getElementById('filterStatus').value;
   if(fStaff) tasks = tasks.filter(t=>t.assigneeId===fStaff);
   if(fStatus) tasks = tasks.filter(t=>taskStatus(t)===fStatus);
+  if(TASKS_PROJECT_FILTER) tasks = tasks.filter(t=>t.projectId===TASKS_PROJECT_FILTER);
 
   tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
 
+  // project filter banner
+  let bannerHtml='';
+  if(TASKS_PROJECT_FILTER){
+    const proj = PROJECTS.find(p=>p.id===TASKS_PROJECT_FILTER);
+    bannerHtml = `<div class="section-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px;">
+      <div class="small-muted">Filtering by project / Lọc theo dự án: <strong>${proj ? (proj.code?proj.code+' — ':'')+proj.name : '(unknown)'}</strong></div>
+      <button class="btn btn-secondary btn-sm" onclick="clearProjectFilter()">Clear filter <span class="vi">Bỏ lọc</span></button>
+    </div>`;
+  }
+
   if(tasks.length===0){
-    document.getElementById('taskList').innerHTML = `<div class="empty-state"><div class="icon">📋</div>
+    document.getElementById('taskList').innerHTML = bannerHtml + `<div class="empty-state"><div class="icon">📋</div>
       <span class="en">No samples yet.${isAdminLike(SESSION.role)?' Click "+ New Sample" to create one.':''}</span><br>
       <span class="vi">Chưa có mẫu nào.${isAdminLike(SESSION.role)?' Bấm "+ Mẫu mới" để tạo.':''}</span>
     </div>`;
@@ -868,24 +942,43 @@ function renderTasks(){
       </div>
     </div>`;
   });
-  document.getElementById('taskList').innerHTML = html;
+  document.getElementById('taskList').innerHTML = bannerHtml + html;
+}
+
+function clearProjectFilter(){
+  TASKS_PROJECT_FILTER='';
+  renderTasks();
 }
 
 function openTaskModal(){
   document.getElementById('tClient').value='';
-  document.getElementById('tProject').value='';
   document.getElementById('tSampleId').value='';
   document.getElementById('tStandard').value='';
   document.getElementById('tDeadline').value='';
   document.getElementById('tCustomTests').value='';
 
+  const psel = document.getElementById('tProject');
+  psel.innerHTML='';
+  if(PROJECTS.length===0){
+    psel.innerHTML='<option value="">-- No projects yet, create one in Projects tab / Chưa có dự án, tạo ở tab Projects --</option>';
+  } else {
+    PROJECTS.forEach(p=>{
+      const o=document.createElement('option');
+      o.value=p.id;
+      o.textContent = `${p.code ? p.code+' — ' : ''}${p.name}`;
+      psel.appendChild(o);
+    });
+  }
+
   const sel = document.getElementById('tAssignee');
   sel.innerHTML='';
-  USERS.filter(u=>u.role==='technician').forEach(u=>{
-    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name; sel.appendChild(o);
+  USERS.filter(u=>u.role==='technician' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
+    sel.appendChild(o);
   });
   if(sel.options.length===0){
-    sel.innerHTML='<option value="">-- No technicians yet / Chưa có technician --</option>';
+    sel.innerHTML='<option value="">-- No staff available / Chưa có nhân viên --</option>';
   }
 
   const cl = document.getElementById('tTestsChecklist');
@@ -896,17 +989,19 @@ function openTaskModal(){
 
 async function saveTask(){
   const client=document.getElementById('tClient').value.trim();
-  const project=document.getElementById('tProject').value.trim();
+  const projectId=document.getElementById('tProject').value;
   const sampleId=document.getElementById('tSampleId').value.trim();
   const standard=document.getElementById('tStandard').value.trim();
   const assigneeId=document.getElementById('tAssignee').value;
   const deadline=document.getElementById('tDeadline').value;
   const custom=document.getElementById('tCustomTests').value.trim();
 
-  if(!project||!sampleId||!assigneeId||!deadline){
-    alert('Please fill in Project, Sample ID, Assignee and Deadline.\nVui lòng điền Project, Sample ID, Người phụ trách và Deadline.');
+  if(!projectId||!sampleId||!assigneeId||!deadline){
+    alert('Please fill in Project, Sample ID, Assignee and Deadline.\nVui lòng chọn Project, điền Sample ID, Người phụ trách và Deadline.');
     return;
   }
+  const projectObj = PROJECTS.find(p=>p.id===projectId);
+  const project = projectObj ? `${projectObj.code ? projectObj.code+' — ':''}${projectObj.name}` : '(unknown project)';
 
   const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
   const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
@@ -917,7 +1012,7 @@ async function saveTask(){
   }
 
   const task = {
-    client, project, sampleId, standard, assigneeId, deadline,
+    client, project, projectId, sampleId, standard, assigneeId, deadline,
     createdAt: nowISO(),
     completedAt: null,
     tests: allTests.map(name=>({
@@ -932,6 +1027,116 @@ async function saveTask(){
 async function deleteTask(id){
   if(!confirm('Delete this sample? / Xoá mẫu này?')) return;
   await db.collection('tasks').doc(id).delete();
+}
+
+/* ============================================================
+   PROJECTS
+   ============================================================ */
+const PROJECT_STATUS_LABEL = {
+  active:    {en:'Active',    vi:'Đang triển khai', cls:'green'},
+  onhold:    {en:'On hold',   vi:'Tạm dừng',        cls:'yellow'},
+  completed: {en:'Completed', vi:'Hoàn tất',        cls:'grey'}
+};
+
+function projectTaskList(projectId){
+  return TASKS.filter(t=>t.projectId===projectId);
+}
+function projectProgress(projectId){
+  const tasks = projectTaskList(projectId);
+  if(tasks.length===0) return 0;
+  const sum = tasks.reduce((s,t)=>s+taskProgress(t),0);
+  return Math.round(sum/tasks.length);
+}
+
+function renderProjects(){
+  document.getElementById('btnNewProject').style.display = isAdminLike(SESSION.role) ? '' : 'none';
+
+  if(PROJECTS.length===0){
+    document.getElementById('projectList').innerHTML = `<div class="empty-state"><div class="icon">📁</div>
+      <span class="en">No projects yet.${isAdminLike(SESSION.role)?' Click "+ New Project" to create one.':''}</span><br>
+      <span class="vi">Chưa có dự án nào.${isAdminLike(SESSION.role)?' Bấm "+ Dự án mới" để tạo.':''}</span>
+    </div>`;
+    return;
+  }
+
+  let projects = [...PROJECTS];
+  projects.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  let html='';
+  projects.forEach(p=>{
+    const tasks = projectTaskList(p.id);
+    const pct = projectProgress(p.id);
+    const st = PROJECT_STATUS_LABEL[p.status] || PROJECT_STATUS_LABEL.active;
+    const overdueCount = tasks.filter(t=>taskStatus(t)==='overdue').length;
+
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${p.code ? p.code+' — ' : ''}${p.name}</h3>
+          <div class="small-muted">Client: ${p.client||'-'} &nbsp;|&nbsp; Deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="badge ${st.cls}">${st.en} / ${st.vi}</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+        <div class="progress-bar" style="width:200px;"><div class="fill" style="width:${pct}%"></div></div>
+        <span class="small-muted">${pct}% overall / tổng tiến độ</span>
+      </div>
+      ${p.notes?`<div class="small-muted" style="margin-bottom:10px;">${p.notes}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="filterTasksByProject('${p.id}')">View tasks <span class="vi">Xem việc</span></button>
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">Delete <span class="vi">Xoá</span></button>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('projectList').innerHTML = html;
+}
+
+function filterTasksByProject(projectId){
+  goView('tasks');
+  // store filter and re-render
+  TASKS_PROJECT_FILTER = projectId;
+  renderTasks();
+}
+
+function openProjectModal(){
+  document.getElementById('pCode').value='';
+  document.getElementById('pName').value='';
+  document.getElementById('pClient').value='';
+  document.getElementById('pDeadline').value='';
+  document.getElementById('pStatus').value='active';
+  document.getElementById('pNotes').value='';
+  openModal('projectModalBg');
+}
+
+async function saveProject(){
+  const code=document.getElementById('pCode').value.trim();
+  const name=document.getElementById('pName').value.trim();
+  const client=document.getElementById('pClient').value.trim();
+  const deadline=document.getElementById('pDeadline').value;
+  const status=document.getElementById('pStatus').value;
+  const notes=document.getElementById('pNotes').value.trim();
+
+  if(!name||!deadline){
+    alert('Please fill in Project Name and Deadline.\nVui lòng điền Tên dự án và Deadline.');
+    return;
+  }
+
+  await db.collection('projects').add({
+    code, name, client, deadline, status, notes, createdAt: nowISO()
+  });
+  closeModal('projectModalBg');
+}
+
+async function deleteProject(id){
+  const hasTasks = TASKS.some(t=>t.projectId===id);
+  if(hasTasks){
+    if(!confirm('This project has tasks linked to it. Delete anyway? (tasks will remain but show an unknown project)\nDự án này có task đang gắn vào. Vẫn xoá? (task sẽ giữ nguyên nhưng hiện dự án không xác định)')) return;
+  } else {
+    if(!confirm('Delete this project? / Xoá dự án này?')) return;
+  }
+  await db.collection('projects').doc(id).delete();
 }
 
 /* ---------- Detail / checklist modal ---------- */
@@ -1137,7 +1342,7 @@ function renderReportReady(){
    PERFORMANCE TRACKING
    ============================================================ */
 function renderPerformance(){
-  const techs = USERS.filter(u=>u.role==='technician');
+  const techs = assigneeUsers();
   if(techs.length===0){
     document.getElementById('perfTableBody').innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="en">No technicians.</span><br><span class="vi">Chưa có technician.</span></div></td></tr>`;
     return;
