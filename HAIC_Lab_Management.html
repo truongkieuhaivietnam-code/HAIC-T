@@ -684,6 +684,7 @@ const NAV_ITEMS = {
   report: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['daily','Daily Report','Báo cáo ngày'],
     ['report','Ready for Report','Sẵn sàng Report'],
     ['rawdata','Raw Data','Raw Data']
   ]
@@ -1215,10 +1216,9 @@ async function toggleStep(taskId, testIdx, stepKey, value){
    ============================================================ */
 function renderDaily(){
   const entryCard = document.getElementById('dailyEntryCard');
-  entryCard.style.display = SESSION.role==='technician' ? '' : 'none';
+  entryCard.style.display = '';
 
   let reports = [...DAILY_REPORTS];
-  if(SESSION.role==='technician') reports = reports.filter(r=>r.userId===SESSION.uid);
   reports.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
 
   if(reports.length===0){
