@@ -394,12 +394,18 @@
     <button class="modal-close" onclick="closeModal('projectModalBg')">&times;</button>
     <h3 id="projectModalHeading">New Project <span class="vi">/ Dự án mới</span></h3>
     <div class="form-grid">
-      <div><label>Project Code<span class="vi">Mã dự án</span></label><input id="pCode" placeholder="HAIC-2026-001"></div>
+      <div>
+        <label>Project Code<span class="vi">Mã dự án</span></label>
+        <div style="display:flex;gap:6px;">
+          <input id="pCode" placeholder="SI-2026-001" style="flex:1;">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap;" onclick="suggestProjectCode()">Suggest <span class="vi">Gợi ý</span></button>
+        </div>
+      </div>
       <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
       <div><label>Client</label><input id="pClient"></div>
       <div>
         <label>Project Type<span class="vi">Loại dự án</span></label>
-        <select id="pType">
+        <select id="pType" onchange="suggestProjectCode()">
           <option value="soil">Soil Investigation / Khảo sát địa kỹ thuật</option>
           <option value="materials">Construction Materials Testing / Kiểm tra vật liệu xây dựng</option>
           <option value="topo">Topographical Survey / Khảo sát địa hình</option>
@@ -1228,6 +1234,33 @@ const PROJECT_TYPE_LABEL = {
   topo:        {en:'Topographical Survey',            vi:'Khảo sát địa hình',          cls:'green'},
   calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'}
 };
+const PROJECT_CODE_PREFIX = {
+  soil:        'SI',
+  materials:   'CMT',
+  topo:        'TOPO',
+  calibration: 'CAL'
+};
+
+function suggestProjectCode(){
+  const type = document.getElementById('pType').value;
+  const prefix = PROJECT_CODE_PREFIX[type] || 'PRJ';
+  const year = new Date().getFullYear();
+  const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`, 'i');
+
+  let maxNum = 0;
+  PROJECTS.forEach(p=>{
+    if(!p.code) return;
+    const m = p.code.trim().match(pattern);
+    if(m){
+      const n = parseInt(m[1],10);
+      if(n>maxNum) maxNum = n;
+    }
+  });
+
+  const nextNum = maxNum+1;
+  const code = `${prefix}-${year}-${String(nextNum).padStart(3,'0')}`;
+  document.getElementById('pCode').value = code;
+}
 let PROJECTS_TYPE_FILTER = '';
 let PROJECTS_CLIENT_FILTER = '';
 
@@ -1348,6 +1381,8 @@ function openProjectModal(projectId){
   document.getElementById('projectModalHeading').innerHTML = EDIT_PROJECT_ID
     ? `Edit Project <span class="vi">/ Sửa dự án</span>`
     : `New Project <span class="vi">/ Dự án mới</span>`;
+
+  if(!EDIT_PROJECT_ID) suggestProjectCode();
 
   openModal('projectModalBg');
 }
