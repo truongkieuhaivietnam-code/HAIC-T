@@ -237,6 +237,18 @@
         <h3>Deadline Alerts <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Cảnh báo Deadline</span></h3>
         <div id="dashAlerts"></div>
       </div>
+
+      <div class="section-card">
+        <div class="toolbar" style="margin-bottom:14px;">
+          <h3 style="margin:0;">Completed in Period <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Hoàn thành theo khoảng thời gian</span></h3>
+          <select id="dashPeriod" class="search-input" onchange="renderDashboard()">
+            <option value="week">This week / Tuần này</option>
+            <option value="month">This month / Tháng này</option>
+            <option value="all">All time / Tất cả</option>
+          </select>
+        </div>
+        <div id="dashPeriodStats"></div>
+      </div>
     </section>
 
     <!-- ===================== PROJECTS ===================== -->
@@ -399,7 +411,7 @@
 <div class="modal-bg" id="taskModalBg">
   <div class="modal">
     <button class="modal-close" onclick="closeModal('taskModalBg')">&times;</button>
-    <h3>New Sample <span class="vi">/ Mẫu mới</span></h3>
+    <h3 id="taskModalHeading">New Sample <span class="vi">/ Mẫu mới</span></h3>
     <div class="form-grid">
       <div><label>Client</label><input id="tClient"></div>
       <div>
@@ -413,11 +425,11 @@
         <select id="tAssignee"></select>
       </div>
       <div><label>Deadline</label><input type="date" id="tDeadline"></div>
-      <div class="full">
+      <div class="full" id="tTestsSection">
         <label>Tests required (select multiple)<span class="vi">Loại test (chọn nhiều)</span></label>
         <div class="checklist" id="tTestsChecklist"></div>
       </div>
-      <div class="full">
+      <div class="full" id="tCustomTestsSection">
         <label>Other tests, comma-separated<span class="vi">Thêm loại test khác, phân cách bằng dấu phẩy</span></label>
         <input id="tCustomTests" placeholder="e.g. Atterberg Limits, CBR">
       </div>
@@ -733,7 +745,10 @@ function goView(key){
   if(key==='staff') renderStaff();
 }
 
-function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+function closeModal(id){
+  document.getElementById(id).classList.remove('active');
+  if(id==='taskModalBg') EDIT_TASK_ID = null;
+}
 function openModal(id){ document.getElementById(id).classList.add('active'); }
 
 /* ---------- Progress & status helpers ---------- */
@@ -869,6 +884,84 @@ function renderDashboard(){
     });
     document.getElementById('dashAlerts').innerHTML = html;
   }
+
+  renderDashPeriodStats();
+}
+
+function getPeriodRange(period){
+  const today = new Date();
+  let start;
+  if(period==='week'){
+    const day = today.getDay(); // 0=Sun
+    const diffToMonday = (day===0?6:day-1);
+    start = new Date(today);
+    start.setDate(today.getDate()-diffToMonday);
+  } else if(period==='month'){
+    start = new Date(today.getFullYear(), today.getMonth(), 1);
+  } else {
+    start = null; // all time
+  }
+  return start ? start.toISOString().slice(0,10) : null;
+}
+
+function renderDashPeriodStats(){
+  const period = document.getElementById('dashPeriod').value;
+  const startDate = getPeriodRange(period);
+  const todayD = todayStr();
+
+  let tasksInRange = TASKS.filter(t=>{
+    if(SESSION.role==='technician' && t.assigneeId!==SESSION.uid) return false;
+    if(!t.completedAt) return false;
+    const completedDate = t.completedAt.slice(0,10);
+    if(startDate && completedDate < startDate) return false;
+    if(completedDate > todayD) return false;
+    return true;
+  });
+
+  const totalSamples = tasksInRange.length;
+  const totalTests = tasksInRange.reduce((s,t)=>s+t.tests.length,0);
+
+  // group by staff
+  const byStaff = {};
+  tasksInRange.forEach(t=>{
+    const uid = t.assigneeId;
+    if(!byStaff[uid]) byStaff[uid] = {samples:0, tests:0};
+    byStaff[uid].samples++;
+    byStaff[uid].tests += t.tests.length;
+  });
+
+  let rows='';
+  Object.keys(byStaff).forEach(uid=>{
+    const u = findUser(uid);
+    const d = byStaff[uid];
+    rows += `<tr>
+      <td><strong>${u?u.name:'?'}</strong></td>
+      <td>${d.samples}</td>
+      <td>${d.tests}</td>
+    </tr>`;
+  });
+
+  if(totalSamples===0){
+    document.getElementById('dashPeriodStats').innerHTML = `<div class="small-muted"><span class="en">No samples completed in this period.</span> <span class="vi">Không có mẫu nào hoàn thành trong khoảng này.</span></div>`;
+    return;
+  }
+
+  document.getElementById('dashPeriodStats').innerHTML = `
+    <div class="stat-row" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="num">${totalSamples}</div><div class="lbl">Samples completed<br>Mẫu hoàn thành</div></div>
+      <div class="stat-card"><div class="num">${totalTests}</div><div class="lbl">Tests completed<br>Test hoàn thành</div></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:0;">
+      <table>
+        <thead><tr>
+          <th>Staff<span class="vi">Nhân viên</span></th>
+          <th>Samples<span class="vi">Số mẫu</span></th>
+          <th>Tests<span class="vi">Số test</span></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 /* ============================================================
@@ -939,6 +1032,7 @@ function renderTasks(){
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Edit <span class="vi">Sửa</span></button>`:''}
         ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
       </div>
     </div>`;
@@ -951,12 +1045,17 @@ function clearProjectFilter(){
   renderTasks();
 }
 
-function openTaskModal(){
-  document.getElementById('tClient').value='';
-  document.getElementById('tSampleId').value='';
-  document.getElementById('tStandard').value='';
-  document.getElementById('tDeadline').value='';
-  document.getElementById('tCustomTests').value='';
+let EDIT_TASK_ID = null;
+
+function openTaskModal(taskId){
+  EDIT_TASK_ID = taskId || null;
+  const t = EDIT_TASK_ID ? TASKS.find(x=>x.id===EDIT_TASK_ID) : null;
+
+  document.getElementById('tClient').value = t ? (t.client||'') : '';
+  document.getElementById('tSampleId').value = t ? t.sampleId : '';
+  document.getElementById('tStandard').value = t ? (t.standard||'') : '';
+  document.getElementById('tDeadline').value = t ? t.deadline : '';
+  document.getElementById('tCustomTests').value = '';
 
   const psel = document.getElementById('tProject');
   psel.innerHTML='';
@@ -970,6 +1069,7 @@ function openTaskModal(){
       psel.appendChild(o);
     });
   }
+  if(t && t.projectId) psel.value = t.projectId;
 
   const sel = document.getElementById('tAssignee');
   sel.innerHTML='';
@@ -981,9 +1081,23 @@ function openTaskModal(){
   if(sel.options.length===0){
     sel.innerHTML='<option value="">-- No staff available / Chưa có nhân viên --</option>';
   }
+  if(t) sel.value = t.assigneeId;
 
   const cl = document.getElementById('tTestsChecklist');
-  cl.innerHTML = DEFAULT_TESTS.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('');
+  const testSection = document.getElementById('tTestsSection');
+  if(EDIT_TASK_ID){
+    // Editing: tests list is locked (changing tests would break existing progress tracking)
+    testSection.style.display='none';
+    document.getElementById('tCustomTestsSection').style.display='none';
+  } else {
+    testSection.style.display='';
+    document.getElementById('tCustomTestsSection').style.display='';
+    cl.innerHTML = DEFAULT_TESTS.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('');
+  }
+
+  document.getElementById('taskModalHeading').innerHTML = EDIT_TASK_ID
+    ? `Edit Sample <span class="vi">/ Sửa mẫu</span>`
+    : `New Sample <span class="vi">/ Mẫu mới</span>`;
 
   openModal('taskModalBg');
 }
@@ -995,7 +1109,6 @@ async function saveTask(){
   const standard=document.getElementById('tStandard').value.trim();
   const assigneeId=document.getElementById('tAssignee').value;
   const deadline=document.getElementById('tDeadline').value;
-  const custom=document.getElementById('tCustomTests').value.trim();
 
   if(!projectId||!sampleId||!assigneeId||!deadline){
     alert('Please fill in Project, Sample ID, Assignee and Deadline.\nVui lòng chọn Project, điền Sample ID, Người phụ trách và Deadline.');
@@ -1004,6 +1117,17 @@ async function saveTask(){
   const projectObj = PROJECTS.find(p=>p.id===projectId);
   const project = projectObj ? `${projectObj.code ? projectObj.code+' — ':''}${projectObj.name}` : '(unknown project)';
 
+  if(EDIT_TASK_ID){
+    // Editing existing task: only update metadata, keep tests/progress untouched
+    await db.collection('tasks').doc(EDIT_TASK_ID).update({
+      client, project, projectId, sampleId, standard, assigneeId, deadline
+    });
+    EDIT_TASK_ID = null;
+    closeModal('taskModalBg');
+    return;
+  }
+
+  const custom=document.getElementById('tCustomTests').value.trim();
   const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
   const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
   const allTests = [...checked, ...customList];
