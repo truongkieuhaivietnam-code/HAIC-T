@@ -123,7 +123,11 @@
   .form-grid label .vi{display:block;font-size:9.5px;opacity:.75;text-transform:none;letter-spacing:0;}
   .form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:9px 10px;border:1px solid var(--line);background:#fff;font-size:14px;border-radius:1px;font-family:var(--sans);}
   .form-grid textarea{resize:vertical;min-height:60px;}
-  .checklist{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:2px;}
+  .checklist{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:2px;max-height:320px;overflow-y:auto;}
+  .test-group{margin-bottom:10px;}
+  .test-group:last-child{margin-bottom:0;}
+  .test-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent2);background:#f3f0e6;padding:6px 8px;border-radius:2px;margin-bottom:4px;line-height:1.4;}
+  .test-group-title .vi{font-weight:400;text-transform:none;letter-spacing:0;color:var(--slate);}
   .checklist label{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);margin:0;cursor:pointer;}
   .checklist input[type=checkbox]{width:auto;}
   .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
@@ -257,7 +261,14 @@
       <p class="view-sub">Each project groups multiple samples/tasks. Overall progress is calculated from its child tasks.<br><span class="vi">Mỗi dự án (mẹ) gồm nhiều mẫu/đầu việc (con). Tiến độ tổng được tính từ các task con.</span></p>
 
       <div class="toolbar">
-        <div></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="projectTypeFilter" class="search-input" onchange="setProjectsTypeFilter(this.value)">
+            <option value="">All types / Tất cả loại dự án</option>
+          </select>
+          <select id="projectClientFilter" class="search-input" onchange="setProjectsClientFilter(this.value)">
+            <option value="">All clients / Tất cả khách hàng</option>
+          </select>
+        </div>
         <button class="btn btn-primary" id="btnNewProject" onclick="openProjectModal()">+ New Project <span class="vi">/ Dự án mới</span></button>
       </div>
 
@@ -386,6 +397,15 @@
       <div><label>Project Code<span class="vi">Mã dự án</span></label><input id="pCode" placeholder="HAIC-2026-001"></div>
       <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
       <div><label>Client</label><input id="pClient"></div>
+      <div>
+        <label>Project Type<span class="vi">Loại dự án</span></label>
+        <select id="pType">
+          <option value="soil">Soil Investigation / Khảo sát địa kỹ thuật</option>
+          <option value="materials">Construction Materials Testing / Kiểm tra vật liệu xây dựng</option>
+          <option value="topo">Topographical Survey / Khảo sát địa hình</option>
+          <option value="calibration">Equipment Calibration / Hiệu chuẩn thiết bị</option>
+        </select>
+      </div>
       <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
       <div class="full">
         <label>Status<span class="vi">Trạng thái</span></label>
@@ -505,9 +525,43 @@ const STEP_LABELS = [
   {k:'sent',        en:'Sent to report team',      vi:'Đã gửi report team'}
 ];
 
-const DEFAULT_TESTS = [
-  'Moisture Content','Grain Size (Sieve Analysis)','Atterberg Limits','Direct Shear',
-  'Proctor Compaction','CBR','Unconfined Compression','Specific Gravity','Chemical Test','Calibration'
+const TEST_GROUPS = [
+  { key:'A', en:'Soil Identification & Classification Tests', vi:'Thí nghiệm nhận dạng và phân loại đất', tests:[
+    'Moisture Content Test','Particle Size Distribution (Sieve Analysis)','Hydrometer Analysis',
+    'Atterberg Limits Test (Liquid Limit, Plastic Limit)','Bulk Density / Unit Weight Test',
+    'Soil Classification (USCS Classification)','Visual Soil Classification','Organic Content Test','Loss on Ignition (LOI)'
+  ]},
+  { key:'B', en:'Soil Strength Tests', vi:'Thí nghiệm sức kháng cắt', tests:[
+    'Consolidated Direct Shear Test','Unconfined Compressive Strength Test (UCS)','Triaxial Compression Test (UU)',
+    'Consolidated Undrained Triaxial Test (CU)','Consolidated Drained Triaxial Test (CD)'
+  ]},
+  { key:'C', en:'Compressibility & Settlement Tests', vi:'Biến dạng - lún', tests:[
+    'One-Dimensional Consolidation Test (Oedometer Test)','Swell Test / Expansion Index'
+  ]},
+  { key:'D', en:'Compaction & Earthwork Tests', vi:'Đầm nén đất', tests:[
+    'Standard Proctor Compaction Test','Modified Proctor Compaction Test','California Bearing Ratio (CBR) Test'
+  ]},
+  { key:'E', en:'Soil Permeability Tests', vi:'Thấm nước', tests:[
+    'Constant Head Permeability Test','Falling Head Permeability Test'
+  ]},
+  { key:'F', en:'Chemical Tests', vi:'Thí nghiệm hóa đất/nước', tests:[
+    'pH Value Test','Chloride Content Test','Sulfate Content Test','Carbonate Content'
+  ]},
+  { key:'G', en:'Rock Laboratory Tests', vi:'Thí nghiệm đá', tests:[
+    'Rock Description & Petrography','Point Load Strength Test','Uniaxial Compressive Strength of Rock',
+    'Rock Density & Porosity','Water Absorption of Rock','Slake Durability Test','Brazilian Tensile Strength Test'
+  ]},
+  { key:'H', en:'Construction Materials Testing', vi:'Kiểm tra vật liệu xây dựng', tests:[
+    'Cement Testing','Aggregate Testing','Concrete Compressive Strength Test (Bê tông)',
+    'Mortar & Grout Testing (Vữa, grout)','Asphalt Testing (Bê tông nhựa)','Steel Reinforcement Testing (Thép)'
+  ]},
+  { key:'I', en:'Equipment Calibration', vi:'Hiệu chuẩn thiết bị', tests:[
+    'Hydraulic Jack','Compression Machine','Tension Machine','Dial Gauge','Pressure Gauge',
+    'Weight Scale','Oven','Batching/Mixing Plant','Auto Level','Total Station'
+  ]},
+  { key:'K', en:'Topographical Survey', vi:'Khảo sát địa hình', tests:[
+    'Drone Survey','RTK Survey','Benchmark Establishment','Total Station Survey','Auto Level Survey'
+  ]}
 ];
 
 const ROLE_LABEL = {
@@ -1092,7 +1146,12 @@ function openTaskModal(taskId){
   } else {
     testSection.style.display='';
     document.getElementById('tCustomTestsSection').style.display='';
-    cl.innerHTML = DEFAULT_TESTS.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('');
+    cl.innerHTML = TEST_GROUPS.map(g=>`
+      <div class="test-group">
+        <div class="test-group-title">${g.key}. ${g.en} <span class="vi">/ ${g.vi}</span></div>
+        ${g.tests.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('')}
+      </div>
+    `).join('');
   }
 
   document.getElementById('taskModalHeading').innerHTML = EDIT_TASK_ID
@@ -1162,6 +1221,14 @@ const PROJECT_STATUS_LABEL = {
   onhold:    {en:'On hold',   vi:'Tạm dừng',        cls:'yellow'},
   completed: {en:'Completed', vi:'Hoàn tất',        cls:'grey'}
 };
+const PROJECT_TYPE_LABEL = {
+  soil:        {en:'Soil Investigation',              vi:'Khảo sát địa kỹ thuật',     cls:'purple'},
+  materials:   {en:'Construction Materials Testing',  vi:'Kiểm tra vật liệu xây dựng', cls:'yellow'},
+  topo:        {en:'Topographical Survey',            vi:'Khảo sát địa hình',          cls:'green'},
+  calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'}
+};
+let PROJECTS_TYPE_FILTER = '';
+let PROJECTS_CLIENT_FILTER = '';
 
 function projectTaskList(projectId){
   return TASKS.filter(t=>t.projectId===projectId);
@@ -1176,6 +1243,28 @@ function projectProgress(projectId){
 function renderProjects(){
   document.getElementById('btnNewProject').style.display = isAdminLike(SESSION.role) ? '' : 'none';
 
+  // populate type filter
+  const typeSel = document.getElementById('projectTypeFilter');
+  if(typeSel.options.length<=1){
+    Object.keys(PROJECT_TYPE_LABEL).forEach(k=>{
+      const o=document.createElement('option');
+      o.value=k;
+      o.textContent = `${PROJECT_TYPE_LABEL[k].en} / ${PROJECT_TYPE_LABEL[k].vi}`;
+      typeSel.appendChild(o);
+    });
+  }
+
+  // populate client filter
+  const clientSel = document.getElementById('projectClientFilter');
+  const currentClient = clientSel.value;
+  clientSel.innerHTML = '<option value="">All clients / Tất cả khách hàng</option>';
+  const clients = [...new Set(PROJECTS.map(p=>p.client).filter(Boolean))].sort();
+  clients.forEach(c=>{
+    const o=document.createElement('option'); o.value=c; o.textContent=c;
+    clientSel.appendChild(o);
+  });
+  clientSel.value = currentClient;
+
   if(PROJECTS.length===0){
     document.getElementById('projectList').innerHTML = `<div class="empty-state"><div class="icon">📁</div>
       <span class="en">No projects yet.${isAdminLike(SESSION.role)?' Click "+ New Project" to create one.':''}</span><br>
@@ -1185,13 +1274,24 @@ function renderProjects(){
   }
 
   let projects = [...PROJECTS];
+  if(PROJECTS_TYPE_FILTER) projects = projects.filter(p=>p.type===PROJECTS_TYPE_FILTER);
+  if(PROJECTS_CLIENT_FILTER) projects = projects.filter(p=>p.client===PROJECTS_CLIENT_FILTER);
   projects.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  if(projects.length===0){
+    document.getElementById('projectList').innerHTML = `<div class="empty-state"><div class="icon">🔍</div>
+      <span class="en">No projects match this filter.</span><br>
+      <span class="vi">Không có dự án phù hợp với bộ lọc.</span>
+    </div>`;
+    return;
+  }
 
   let html='';
   projects.forEach(p=>{
     const tasks = projectTaskList(p.id);
     const pct = projectProgress(p.id);
     const st = PROJECT_STATUS_LABEL[p.status] || PROJECT_STATUS_LABEL.active;
+    const ty = PROJECT_TYPE_LABEL[p.type];
     const overdueCount = tasks.filter(t=>taskStatus(t)==='overdue').length;
 
     html += `<div class="section-card">
@@ -1200,8 +1300,9 @@ function renderProjects(){
           <h3 style="margin-bottom:4px;">${p.code ? p.code+' — ' : ''}${p.name}</h3>
           <div class="small-muted">Client: ${p.client||'-'} &nbsp;|&nbsp; Deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
         </div>
-        <div style="text-align:right;">
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="badge ${st.cls}">${st.en} / ${st.vi}</span>
+          ${ty?`<span class="badge ${ty.cls}">${ty.en} / ${ty.vi}</span>`:''}
         </div>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
@@ -1218,6 +1319,9 @@ function renderProjects(){
   document.getElementById('projectList').innerHTML = html;
 }
 
+function setProjectsTypeFilter(val){ PROJECTS_TYPE_FILTER=val; renderProjects(); }
+function setProjectsClientFilter(val){ PROJECTS_CLIENT_FILTER=val; renderProjects(); }
+
 function filterTasksByProject(projectId){
   goView('tasks');
   // store filter and re-render
@@ -1229,6 +1333,7 @@ function openProjectModal(){
   document.getElementById('pCode').value='';
   document.getElementById('pName').value='';
   document.getElementById('pClient').value='';
+  document.getElementById('pType').value='soil';
   document.getElementById('pDeadline').value='';
   document.getElementById('pStatus').value='active';
   document.getElementById('pNotes').value='';
@@ -1239,6 +1344,7 @@ async function saveProject(){
   const code=document.getElementById('pCode').value.trim();
   const name=document.getElementById('pName').value.trim();
   const client=document.getElementById('pClient').value.trim();
+  const type=document.getElementById('pType').value;
   const deadline=document.getElementById('pDeadline').value;
   const status=document.getElementById('pStatus').value;
   const notes=document.getElementById('pNotes').value.trim();
@@ -1249,7 +1355,7 @@ async function saveProject(){
   }
 
   await db.collection('projects').add({
-    code, name, client, deadline, status, notes, createdAt: nowISO()
+    code, name, client, type, deadline, status, notes, createdAt: nowISO()
   });
   closeModal('projectModalBg');
 }
