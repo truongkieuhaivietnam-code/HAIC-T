@@ -392,7 +392,7 @@
 <div class="modal-bg" id="projectModalBg">
   <div class="modal" style="max-width:520px;">
     <button class="modal-close" onclick="closeModal('projectModalBg')">&times;</button>
-    <h3>New Project <span class="vi">/ Dự án mới</span></h3>
+    <h3 id="projectModalHeading">New Project <span class="vi">/ Dự án mới</span></h3>
     <div class="form-grid">
       <div><label>Project Code<span class="vi">Mã dự án</span></label><input id="pCode" placeholder="HAIC-2026-001"></div>
       <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
@@ -802,6 +802,7 @@ function goView(key){
 function closeModal(id){
   document.getElementById(id).classList.remove('active');
   if(id==='taskModalBg') EDIT_TASK_ID = null;
+  if(id==='projectModalBg') EDIT_PROJECT_ID = null;
 }
 function openModal(id){ document.getElementById(id).classList.add('active'); }
 
@@ -1312,6 +1313,7 @@ function renderProjects(){
       ${p.notes?`<div class="small-muted" style="margin-bottom:10px;">${p.notes}</div>`:''}
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
         <button class="btn btn-secondary btn-sm" onclick="filterTasksByProject('${p.id}')">View tasks <span class="vi">Xem việc</span></button>
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">Edit <span class="vi">Sửa</span></button>`:''}
         ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">Delete <span class="vi">Xoá</span></button>`:''}
       </div>
     </div>`;
@@ -1329,14 +1331,24 @@ function filterTasksByProject(projectId){
   renderTasks();
 }
 
-function openProjectModal(){
-  document.getElementById('pCode').value='';
-  document.getElementById('pName').value='';
-  document.getElementById('pClient').value='';
-  document.getElementById('pType').value='soil';
-  document.getElementById('pDeadline').value='';
-  document.getElementById('pStatus').value='active';
-  document.getElementById('pNotes').value='';
+let EDIT_PROJECT_ID = null;
+
+function openProjectModal(projectId){
+  EDIT_PROJECT_ID = projectId || null;
+  const p = EDIT_PROJECT_ID ? PROJECTS.find(x=>x.id===EDIT_PROJECT_ID) : null;
+
+  document.getElementById('pCode').value = p ? (p.code||'') : '';
+  document.getElementById('pName').value = p ? p.name : '';
+  document.getElementById('pClient').value = p ? (p.client||'') : '';
+  document.getElementById('pType').value = p ? (p.type||'soil') : 'soil';
+  document.getElementById('pDeadline').value = p ? p.deadline : '';
+  document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
+  document.getElementById('pNotes').value = p ? (p.notes||'') : '';
+
+  document.getElementById('projectModalHeading').innerHTML = EDIT_PROJECT_ID
+    ? `Edit Project <span class="vi">/ Sửa dự án</span>`
+    : `New Project <span class="vi">/ Dự án mới</span>`;
+
   openModal('projectModalBg');
 }
 
@@ -1351,6 +1363,15 @@ async function saveProject(){
 
   if(!name||!deadline){
     alert('Please fill in Project Name and Deadline.\nVui lòng điền Tên dự án và Deadline.');
+    return;
+  }
+
+  if(EDIT_PROJECT_ID){
+    await db.collection('projects').doc(EDIT_PROJECT_ID).update({
+      code, name, client, type, deadline, status, notes
+    });
+    EDIT_PROJECT_ID = null;
+    closeModal('projectModalBg');
     return;
   }
 
