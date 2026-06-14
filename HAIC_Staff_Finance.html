@@ -324,6 +324,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
   background:var(--gold-soft); color:var(--forest); letter-spacing:.04em; margin-left:6px;
 }
 .section-spacer{height:80px;}
+.divider-label{font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:14px 0 4px;}
 </style>
 </head>
 <body>
@@ -540,6 +541,27 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
       </div>
 
+      <div class="settings-section">
+        <h4 data-i18n="setMyAccount">Tài khoản của tôi</h4>
+        <div class="card">
+          <div class="form-grid">
+            <div class="form-group">
+              <label data-i18n="lblCurrentPassword">Mật khẩu hiện tại</label>
+              <input type="password" id="currentPasswordInput" autocomplete="current-password">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblNewPassword">Mật khẩu mới</label>
+              <input type="password" id="newPasswordInput" autocomplete="new-password">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblConfirmPassword">Xác nhận mật khẩu mới</label>
+              <input type="password" id="confirmPasswordInput" autocomplete="new-password">
+            </div>
+            <button class="btn btn-forest btn-block" id="btnChangePassword" data-i18n="btnChangePassword">Đổi mật khẩu</button>
+          </div>
+        </div>
+      </div>
+
       <div class="settings-section" id="approvalLimitsSection">
         <h4 data-i18n="setApprovalLimits">Hạn mức phê duyệt</h4>
         <div class="card">
@@ -559,9 +581,16 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       </div>
 
       <div class="settings-section" id="categoryMgmtSection">
-        <h4 data-i18n="setCategories">Danh mục chi phí</h4>
+        <h4 data-i18n="setCategories">Danh mục thu/chi</h4>
         <div class="card">
           <div id="categoryMgmtList"></div>
+          <div class="form-row2" style="margin-bottom:10px;">
+            <select id="newCategoryType">
+              <option value="expense" data-i18n="typeExpense">Chi</option>
+              <option value="income" data-i18n="typeIncome">Thu</option>
+            </select>
+            <input type="text" id="newCategoryIcon" placeholder="📦" maxlength="2" style="text-align:center; border:1.5px solid var(--line); border-radius:8px; padding:9px 12px;">
+          </div>
           <div class="btn-row">
             <input type="text" id="newCategoryName" placeholder="Tên danh mục mới" style="flex:1; border:1.5px solid var(--line); border-radius:8px; padding:9px 12px;">
             <button class="btn btn-gold btn-sm" id="btnAddCategory" data-i18n="btnAdd">+ Thêm</button>
@@ -710,7 +739,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <input type="text" id="customerPhone" placeholder="">
       </div>
       <div class="form-group">
-        <label data-i18n="lblCustomerInitialDebt">Công nợ ban đầu ($)</label>
+        <label data-i18n="lblCustomerInitialDebt">Công nợ đầu kỳ ($)</label>
         <input type="number" id="customerInitialDebt" placeholder="0" min="0" step="0.01">
       </div>
       <div class="form-group">
@@ -730,38 +759,117 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <button class="modal-close" onclick="closeModal('modalCustomerDetail')">✕</button>
     </div>
     <div class="card" style="margin-bottom:14px;">
-      <div class="cat-row"><div class="name" data-i18n="lblCustomerCurrentDebt">Công nợ hiện tại</div><div class="pct" id="customerDetailDebt">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblCustomerCurrentDebt">Tổng công nợ</div><div class="pct" id="customerDetailDebt">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblCustomerInitialDebt">Công nợ đầu kỳ</div><div class="pct" id="customerDetailInitialDebt">$0</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblCustomerPhone">Số điện thoại</div><div class="pct" id="customerDetailPhone">—</div></div>
     </div>
-    <div class="card" id="addPaymentCard">
-      <h3 data-i18n="addPaymentTitle">Ghi nhận thanh toán</h3>
-      <div class="form-grid">
-        <div class="form-row2">
-          <div class="form-group">
-            <label data-i18n="lblAmount">Số tiền ($)</label>
-            <input type="number" id="paymentAmount" placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="form-group">
-            <label data-i18n="lblDate">Ngày</label>
-            <input type="date" id="paymentDate">
-          </div>
-        </div>
-        <div class="form-group">
-          <label data-i18n="lblNote">Ghi chú</label>
-          <input type="text" id="paymentNote">
-        </div>
-        <button class="btn btn-forest btn-block" id="btnAddPayment" data-i18n="btnAddPayment">Ghi nhận</button>
-      </div>
-    </div>
     <div class="card">
-      <h3 data-i18n="paymentHistoryTitle">Lịch sử thanh toán</h3>
-      <div id="paymentHistoryList"></div>
+      <h3>
+        <span data-i18n="invoicesTitle">Hóa đơn</span>
+        <button class="more btn-gold" style="padding:5px 12px; border-radius:8px; font-weight:700;" id="btnAddInvoice" data-i18n="btnAddInvoice">+ Thêm hóa đơn</button>
+      </h3>
+      <div id="invoicesList"></div>
+      <div class="empty-state hidden" id="invoicesEmpty">
+        <div class="ico">🧾</div>
+        <p data-i18n="emptyInvoices">Chưa có hóa đơn nào</p>
+      </div>
     </div>
     <div class="card" id="customerActionsCard">
       <button class="btn btn-outline btn-block" id="btnEditCustomer" data-i18n="btnEditCustomer">Sửa thông tin khách hàng</button>
     </div>
   </div>
 </div>
+
+<!-- Invoice Modal (create/edit invoice) -->
+<div class="modal-overlay" id="modalInvoice">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="invoiceModalTitle" data-i18n="invoiceModalAdd">Thêm hóa đơn</h3>
+      <button class="modal-close" onclick="closeModal('modalInvoice')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label data-i18n="lblInvoiceDate">Ngày xuất hóa đơn</label>
+        <input type="date" id="invoiceDate">
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</label>
+          <input type="text" id="invoiceVatNo" placeholder="">
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</label>
+          <input type="text" id="invoiceCommNo" placeholder="">
+        </div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label data-i18n="lblInvoiceContractAmount">Số tiền theo hợp đồng ($)</label>
+          <input type="number" id="invoiceContractAmount" placeholder="0.00" min="0" step="0.01">
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblInvoiceActualAmount">Số tiền theo khối lượng thực tế ($)</label>
+          <input type="number" id="invoiceActualAmount" placeholder="0.00" min="0" step="0.01">
+        </div>
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblNote">Ghi chú</label>
+        <textarea id="invoiceNote" rows="2"></textarea>
+      </div>
+      <button class="btn btn-forest btn-block" id="btnSaveInvoice" data-i18n="btnSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Invoice Detail Modal -->
+<div class="modal-overlay" id="modalInvoiceDetail">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="invoiceDetailTitle">—</h3>
+      <button class="modal-close" onclick="closeModal('modalInvoiceDetail')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceDate">Ngày xuất hóa đơn</div><div class="pct" id="invDetailDate">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</div><div class="pct" id="invDetailVatNo">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</div><div class="pct" id="invDetailCommNo">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceContractAmount">Số tiền theo hợp đồng</div><div class="pct" id="invDetailContractAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceActualAmount">Số tiền theo khối lượng thực tế</div><div class="pct" id="invDetailActualAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoicePaid">Đã thanh toán</div><div class="pct" id="invDetailPaid">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceRemaining">Còn lại chưa thanh toán</div><div class="pct" id="invDetailRemaining">$0</div></div>
+    </div>
+    <div class="card" id="addInvoicePaymentCard">
+      <h3 data-i18n="addPaymentTitle">Ghi nhận thanh toán</h3>
+      <div class="form-grid">
+        <div class="form-row2">
+          <div class="form-group">
+            <label data-i18n="lblAmount">Số tiền ($)</label>
+            <input type="number" id="invPaymentAmount" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label data-i18n="lblDate">Ngày</label>
+            <input type="date" id="invPaymentDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblNote">Ghi chú</label>
+          <input type="text" id="invPaymentNote">
+        </div>
+        <button class="btn btn-forest btn-block" id="btnAddInvoicePayment" data-i18n="btnAddPayment">Ghi nhận</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="paymentHistoryTitle">Lịch sử thanh toán</h3>
+      <div id="invPaymentHistoryList"></div>
+    </div>
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-outline" id="btnEditInvoice" data-i18n="btnEditInvoice">Sửa hóa đơn</button>
+        <button class="btn btn-danger" id="btnDeleteInvoice" data-i18n="btnDeleteInvoice">Xóa hóa đơn</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- Project Modal -->
 <div class="modal-overlay" id="modalProject">
@@ -878,7 +986,7 @@ const I18N = {
     setApprovalLimits: "Hạn mức phê duyệt",
     setAutoLimit: "Tự động duyệt nếu dưới",
     btnSave: "Lưu",
-    setCategories: "Danh mục chi phí",
+    setCategories: "Danh mục thu/chi",
     setUsers: "Quản lý người dùng",
     setAuditLog: "Lịch sử hệ thống",
     btnLogout: "Đăng xuất",
@@ -906,8 +1014,8 @@ const I18N = {
     customerModalEdit: "Sửa khách hàng",
     lblCustomerName: "Tên khách hàng",
     lblCustomerPhone: "Số điện thoại",
-    lblCustomerInitialDebt: "Công nợ ban đầu ($)",
-    lblCustomerCurrentDebt: "Công nợ hiện tại",
+    lblCustomerInitialDebt: "Công nợ đầu kỳ ($)",
+    lblCustomerCurrentDebt: "Tổng công nợ",
     addPaymentTitle: "Ghi nhận thanh toán",
     btnAddPayment: "Ghi nhận",
     paymentHistoryTitle: "Lịch sử thanh toán",
@@ -915,6 +1023,22 @@ const I18N = {
     cardTotalDebt: "Tổng công nợ",
     emptyCustomers: "Chưa có khách hàng nào",
     noPaymentHistory: "Chưa có lịch sử thanh toán",
+    invoicesTitle: "Hóa đơn",
+    btnAddInvoice: "+ Thêm hóa đơn",
+    emptyInvoices: "Chưa có hóa đơn nào",
+    invoiceModalAdd: "Thêm hóa đơn",
+    invoiceModalEdit: "Sửa hóa đơn",
+    lblInvoiceDate: "Ngày xuất hóa đơn",
+    lblInvoiceVatNo: "Số hóa đơn VAT",
+    lblInvoiceCommNo: "Số hóa đơn thương mại",
+    lblInvoiceContractAmount: "Số tiền theo hợp đồng",
+    lblInvoiceActualAmount: "Số tiền theo khối lượng thực tế",
+    lblInvoicePaid: "Đã thanh toán",
+    lblInvoiceRemaining: "Còn lại chưa thanh toán",
+    btnEditInvoice: "Sửa hóa đơn",
+    btnDeleteInvoice: "Xóa hóa đơn",
+    confirmDeleteInvoice: "Bạn có chắc muốn xóa hóa đơn này?",
+    invoiceFully_paid: "Đã thanh toán đủ",
     projectModalAdd: "Thêm công trình",
     projectModalEdit: "Sửa công trình",
     lblProjectName: "Tên công trình",
@@ -963,6 +1087,19 @@ const I18N = {
     auditPurchase: "đề xuất mua hàng",
     advanceStatusInfo: "Trạng thái sau khi lưu",
     toastSaved: "Đã lưu thành công",
+    btnDelete: "Xóa",
+    confirmDelete: "Bạn có chắc muốn xóa?",
+    setMyAccount: "Tài khoản của tôi",
+    lblCurrentPassword: "Mật khẩu hiện tại",
+    lblNewPassword: "Mật khẩu mới",
+    lblConfirmPassword: "Xác nhận mật khẩu mới",
+    btnChangePassword: "Đổi mật khẩu",
+    btnResetPassword: "Đặt lại mật khẩu",
+    promptNewPasswordFor: "Mật khẩu mới cho",
+    toastCurrentPasswordWrong: "Mật khẩu hiện tại không đúng",
+    toastPasswordTooShort: "Mật khẩu phải có ít nhất 4 ký tự",
+    toastPasswordMismatch: "Mật khẩu xác nhận không khớp",
+    toastPasswordChanged: "Đã đổi mật khẩu thành công",
     toastApproved: "Đã duyệt",
     toastRejected: "Đã từ chối",
     toastLoginError: "Email hoặc mật khẩu không đúng",
@@ -1032,7 +1169,7 @@ const I18N = {
     setApprovalLimits: "Approval Limits",
     setAutoLimit: "Auto-approve if under",
     btnSave: "Save",
-    setCategories: "Expense Categories",
+    setCategories: "Income/Expense Categories",
     setUsers: "User Management",
     setAuditLog: "Audit Log",
     btnLogout: "Log Out",
@@ -1060,8 +1197,8 @@ const I18N = {
     customerModalEdit: "Edit Customer",
     lblCustomerName: "Customer Name",
     lblCustomerPhone: "Phone Number",
-    lblCustomerInitialDebt: "Initial Debt ($)",
-    lblCustomerCurrentDebt: "Current Debt",
+    lblCustomerInitialDebt: "Opening Balance ($)",
+    lblCustomerCurrentDebt: "Total Debt",
     addPaymentTitle: "Record Payment",
     btnAddPayment: "Record",
     paymentHistoryTitle: "Payment History",
@@ -1069,6 +1206,22 @@ const I18N = {
     cardTotalDebt: "Total Debt",
     emptyCustomers: "No customers yet",
     noPaymentHistory: "No payment history yet",
+    invoicesTitle: "Invoices",
+    btnAddInvoice: "+ Add Invoice",
+    emptyInvoices: "No invoices yet",
+    invoiceModalAdd: "Add Invoice",
+    invoiceModalEdit: "Edit Invoice",
+    lblInvoiceDate: "Invoice Date",
+    lblInvoiceVatNo: "VAT Invoice No.",
+    lblInvoiceCommNo: "Commercial Invoice No.",
+    lblInvoiceContractAmount: "Contract Amount",
+    lblInvoiceActualAmount: "Actual Volume Amount",
+    lblInvoicePaid: "Paid",
+    lblInvoiceRemaining: "Remaining",
+    btnEditInvoice: "Edit Invoice",
+    btnDeleteInvoice: "Delete Invoice",
+    confirmDeleteInvoice: "Are you sure you want to delete this invoice?",
+    invoiceFully_paid: "Fully Paid",
     projectModalAdd: "Add Project",
     projectModalEdit: "Edit Project",
     lblProjectName: "Project Name",
@@ -1116,6 +1269,19 @@ const I18N = {
     auditPurchase: "purchase request",
     advanceStatusInfo: "Status after saving",
     toastSaved: "Saved successfully",
+    btnDelete: "Delete",
+    confirmDelete: "Are you sure you want to delete?",
+    setMyAccount: "My Account",
+    lblCurrentPassword: "Current Password",
+    lblNewPassword: "New Password",
+    lblConfirmPassword: "Confirm New Password",
+    btnChangePassword: "Change Password",
+    btnResetPassword: "Reset Password",
+    promptNewPasswordFor: "New password for",
+    toastCurrentPasswordWrong: "Current password is incorrect",
+    toastPasswordTooShort: "Password must be at least 4 characters",
+    toastPasswordMismatch: "Passwords do not match",
+    toastPasswordChanged: "Password changed successfully",
     toastApproved: "Approved",
     toastRejected: "Rejected",
     toastLoginError: "Incorrect email or password",
@@ -1263,6 +1429,28 @@ function ensureStructure() {
   if (!STORE.customers) STORE.customers = [];
   if (!STORE.projects) STORE.projects = [];
   if (!STORE.notifications) STORE.notifications = [];
+
+  // Migrate old per-customer "payments" (flat) into invoices structure
+  STORE.customers.forEach(c => {
+    if (!c.invoices) c.invoices = [];
+    if (c.payments && c.payments.length > 0 && c.invoices.length === 0) {
+      // Move old direct payments to reduce against initialDebt by creating a migration invoice
+      const totalOldPaid = c.payments.reduce((s, p) => s + p.amount, 0);
+      c.invoices.push({
+        id: genId("inv"),
+        date: c.payments[0].date,
+        vatNo: "",
+        commNo: currentLang === "vi" ? "Công nợ cũ (di chuyển)" : "Migrated balance",
+        contractAmount: c.initialDebt || 0,
+        actualAmount: c.initialDebt || 0,
+        note: currentLang === "vi" ? "Tự động chuyển từ dữ liệu cũ" : "Auto-migrated from old data",
+        payments: c.payments,
+        createdAt: nowISO(),
+      });
+      c.initialDebt = 0;
+      delete c.payments;
+    }
+  });
 }
 ensureStructure();
 
@@ -2485,9 +2673,19 @@ function renderCustomersPage() {
   }).join("");
 }
 
+function calcInvoiceRemaining(invoice) {
+  const totalPaid = (invoice.payments || []).reduce((s, p) => s + p.amount, 0);
+  return Math.max(0, (invoice.actualAmount || 0) - totalPaid);
+}
+
+function calcInvoicePaid(invoice) {
+  return (invoice.payments || []).reduce((s, p) => s + p.amount, 0);
+}
+
 function calcCustomerDebt(customer) {
-  const totalPaid = (customer.payments || []).reduce((s, p) => s + p.amount, 0);
-  return Math.max(0, (customer.initialDebt || 0) - totalPaid);
+  const openingBalance = customer.initialDebt || 0;
+  const invoiceTotal = (customer.invoices || []).reduce((s, inv) => s + calcInvoiceRemaining(inv), 0);
+  return Math.max(0, openingBalance + invoiceTotal);
 }
 
 function setupCustomerModal() {
@@ -2524,7 +2722,7 @@ function saveCustomer() {
     c.name = name; c.phone = phone; c.initialDebt = initialDebt; c.note = note;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "khách hàng" : "customer", detail: name });
   } else {
-    STORE.customers.push({ id: genId("cust"), name, phone, initialDebt, note, payments: [], createdAt: nowISO() });
+    STORE.customers.push({ id: genId("cust"), name, phone, initialDebt, note, invoices: [], createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "khách hàng" : "customer", detail: name });
   }
 
@@ -2532,26 +2730,26 @@ function saveCustomer() {
   closeModal("modalCustomer");
   showToast(t("toastSaved"), "success");
 
-  // if we were editing from detail modal, refresh it
   if (currentCustomerDetailId === editingCustomerId) {
     renderCustomerDetail(editingCustomerId);
   }
   renderCustomersPage();
 }
 
-// ===================== CUSTOMER DETAIL =====================
+// ===================== CUSTOMER DETAIL (INVOICE LIST) =====================
 function setupCustomerDetailModal() {
-  document.getElementById("btnAddPayment").addEventListener("click", addCustomerPayment);
   document.getElementById("btnEditCustomer").addEventListener("click", () => {
     openCustomerModal(currentCustomerDetailId);
   });
+  document.getElementById("btnAddInvoice").addEventListener("click", () => openInvoiceModal(null));
+  document.getElementById("btnSaveInvoice").addEventListener("click", saveInvoice);
+  document.getElementById("btnAddInvoicePayment").addEventListener("click", addInvoicePayment);
+  document.getElementById("btnEditInvoice").addEventListener("click", () => openInvoiceModal(currentInvoiceDetailId));
+  document.getElementById("btnDeleteInvoice").addEventListener("click", deleteInvoice);
 }
 
 function openCustomerDetail(customerId) {
   currentCustomerDetailId = customerId;
-  document.getElementById("paymentDate").value = todayStr();
-  document.getElementById("paymentAmount").value = "";
-  document.getElementById("paymentNote").value = "";
   renderCustomerDetail(customerId);
   openModal("modalCustomerDetail");
 }
@@ -2559,16 +2757,158 @@ function openCustomerDetail(customerId) {
 function renderCustomerDetail(customerId) {
   const c = STORE.customers.find(c2 => c2.id === customerId);
   if (!c) return;
+  if (!c.invoices) c.invoices = [];
 
   document.getElementById("customerDetailName").textContent = c.name;
   document.getElementById("customerDetailPhone").textContent = c.phone || "—";
+  document.getElementById("customerDetailInitialDebt").textContent = formatCurrency(c.initialDebt || 0);
+
   const debt = calcCustomerDebt(c);
   const debtEl = document.getElementById("customerDetailDebt");
   debtEl.textContent = formatCurrency(debt);
   debtEl.style.color = debt > 0 ? "var(--bad)" : "var(--good)";
 
-  const history = (c.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
-  const historyList = document.getElementById("paymentHistoryList");
+  const invoices = c.invoices.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const list = document.getElementById("invoicesList");
+  const empty = document.getElementById("invoicesEmpty");
+
+  if (invoices.length === 0) {
+    list.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  list.innerHTML = invoices.map(inv => {
+    const remaining = calcInvoiceRemaining(inv);
+    const statusClass = remaining <= 0 ? "approved" : "pending";
+    const statusLabel = remaining <= 0 ? t("invoiceFully_paid") : t("statusPending");
+    return `
+      <div class="payment-history-item" style="cursor:pointer;" onclick="openInvoiceDetail('${c.id}','${inv.id}')">
+        <div>
+          <div style="font-weight:600;">${escapeHtml(inv.vatNo || inv.commNo || "—")}</div>
+          <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="pamt" style="color:${remaining > 0 ? 'var(--bad)' : 'var(--good)'}">${formatCurrency(remaining)}</div>
+          <span class="status-pill ${statusClass}" style="margin-top:4px;">${statusLabel}</span>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ===================== INVOICE MODAL (create/edit) =====================
+let editingInvoiceId = null;
+let currentInvoiceDetailId = null;
+
+function openInvoiceModal(invoiceId) {
+  editingInvoiceId = invoiceId;
+  const c = STORE.customers.find(c2 => c2.id === currentCustomerDetailId);
+  const inv = invoiceId ? (c.invoices || []).find(i => i.id === invoiceId) : null;
+
+  document.getElementById("invoiceModalTitle").textContent = inv ? t("invoiceModalEdit") : t("invoiceModalAdd");
+  document.getElementById("invoiceDate").value = inv ? inv.date : todayStr();
+  document.getElementById("invoiceVatNo").value = inv ? (inv.vatNo || "") : "";
+  document.getElementById("invoiceCommNo").value = inv ? (inv.commNo || "") : "";
+  document.getElementById("invoiceContractAmount").value = inv ? inv.contractAmount : "";
+  document.getElementById("invoiceActualAmount").value = inv ? inv.actualAmount : "";
+  document.getElementById("invoiceNote").value = inv ? (inv.note || "") : "";
+
+  openModal("modalInvoice");
+}
+
+function saveInvoice() {
+  const date = document.getElementById("invoiceDate").value;
+  const vatNo = document.getElementById("invoiceVatNo").value.trim();
+  const commNo = document.getElementById("invoiceCommNo").value.trim();
+  const contractAmount = parseFloat(document.getElementById("invoiceContractAmount").value) || 0;
+  const actualAmount = parseFloat(document.getElementById("invoiceActualAmount").value) || 0;
+  const note = document.getElementById("invoiceNote").value.trim();
+
+  if (!date || (!vatNo && !commNo)) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+
+  const c = STORE.customers.find(c2 => c2.id === currentCustomerDetailId);
+  if (!c) return;
+  if (!c.invoices) c.invoices = [];
+
+  if (editingInvoiceId) {
+    const inv = c.invoices.find(i => i.id === editingInvoiceId);
+    inv.date = date; inv.vatNo = vatNo; inv.commNo = commNo;
+    inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.note = note;
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
+  } else {
+    c.invoices.push({
+      id: genId("inv"), date, vatNo, commNo, contractAmount, actualAmount, note,
+      payments: [], createdBy: currentUser.id, createdAt: nowISO()
+    });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
+  }
+
+  persistDebounced();
+  closeModal("modalInvoice");
+  showToast(t("toastSaved"), "success");
+  renderCustomerDetail(currentCustomerDetailId);
+  renderCustomersPage();
+
+  // If we were editing from invoice detail, refresh that too
+  if (currentInvoiceDetailId === editingInvoiceId && editingInvoiceId) {
+    renderInvoiceDetail(currentCustomerDetailId, editingInvoiceId);
+  }
+}
+
+function deleteInvoice() {
+  if (!confirm(t("confirmDeleteInvoice"))) return;
+  const c = STORE.customers.find(c2 => c2.id === currentCustomerDetailId);
+  if (!c) return;
+  const inv = (c.invoices || []).find(i => i.id === currentInvoiceDetailId);
+  c.invoices = c.invoices.filter(i => i.id !== currentInvoiceDetailId);
+
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${inv ? (inv.vatNo || inv.commNo) : ""} - ${c.name}` });
+
+  persistDebounced();
+  closeModal("modalInvoiceDetail");
+  showToast(t("toastSaved"), "success");
+  renderCustomerDetail(currentCustomerDetailId);
+  renderCustomersPage();
+}
+
+// ===================== INVOICE DETAIL (payments) =====================
+function openInvoiceDetail(customerId, invoiceId) {
+  currentCustomerDetailId = customerId;
+  currentInvoiceDetailId = invoiceId;
+  document.getElementById("invPaymentDate").value = todayStr();
+  document.getElementById("invPaymentAmount").value = "";
+  document.getElementById("invPaymentNote").value = "";
+  renderInvoiceDetail(customerId, invoiceId);
+  openModal("modalInvoiceDetail");
+}
+
+function renderInvoiceDetail(customerId, invoiceId) {
+  const c = STORE.customers.find(c2 => c2.id === customerId);
+  if (!c) return;
+  const inv = (c.invoices || []).find(i => i.id === invoiceId);
+  if (!inv) return;
+
+  document.getElementById("invoiceDetailTitle").textContent = inv.vatNo || inv.commNo || (currentLang === "vi" ? "Hóa đơn" : "Invoice");
+  document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
+  document.getElementById("invDetailVatNo").textContent = inv.vatNo || "—";
+  document.getElementById("invDetailCommNo").textContent = inv.commNo || "—";
+  document.getElementById("invDetailContractAmount").textContent = formatCurrency(inv.contractAmount || 0);
+  document.getElementById("invDetailActualAmount").textContent = formatCurrency(inv.actualAmount || 0);
+
+  const paid = calcInvoicePaid(inv);
+  const remaining = calcInvoiceRemaining(inv);
+  document.getElementById("invDetailPaid").textContent = formatCurrency(paid);
+  const remEl = document.getElementById("invDetailRemaining");
+  remEl.textContent = formatCurrency(remaining);
+  remEl.style.color = remaining > 0 ? "var(--bad)" : "var(--good)";
+
+  const history = (inv.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const historyList = document.getElementById("invPaymentHistoryList");
   if (history.length === 0) {
     historyList.innerHTML = `<div class="empty-state"><p>${t("noPaymentHistory")}</p></div>`;
   } else {
@@ -2584,10 +2924,10 @@ function renderCustomerDetail(customerId) {
   }
 }
 
-function addCustomerPayment() {
-  const amount = parseFloat(document.getElementById("paymentAmount").value);
-  const date = document.getElementById("paymentDate").value;
-  const note = document.getElementById("paymentNote").value.trim();
+function addInvoicePayment() {
+  const amount = parseFloat(document.getElementById("invPaymentAmount").value);
+  const date = document.getElementById("invPaymentDate").value;
+  const note = document.getElementById("invPaymentNote").value.trim();
 
   if (!amount || amount <= 0 || !date) {
     showToast(t("toastFillRequired"), "error");
@@ -2596,22 +2936,26 @@ function addCustomerPayment() {
 
   const c = STORE.customers.find(c2 => c2.id === currentCustomerDetailId);
   if (!c) return;
-  if (!c.payments) c.payments = [];
-  c.payments.push({ id: genId("pay"), amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
+  const inv = (c.invoices || []).find(i => i.id === currentInvoiceDetailId);
+  if (!inv) return;
+  if (!inv.payments) inv.payments = [];
+  inv.payments.push({ id: genId("pay"), amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
 
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "created",
     targetType: currentLang === "vi" ? "thanh toán" : "payment",
-    detail: `${formatCurrency(amount)} - ${c.name}`
+    detail: `${formatCurrency(amount)} - ${c.name} (${inv.vatNo || inv.commNo || ""})`
   });
 
   persistDebounced();
-  document.getElementById("paymentAmount").value = "";
-  document.getElementById("paymentNote").value = "";
+  document.getElementById("invPaymentAmount").value = "";
+  document.getElementById("invPaymentNote").value = "";
   showToast(t("paymentRecorded"), "success");
+  renderInvoiceDetail(currentCustomerDetailId, currentInvoiceDetailId);
   renderCustomerDetail(currentCustomerDetailId);
   renderCustomersPage();
 }
+
 
 // ===================== PROJECTS =====================
 function renderProjectsPage() {
@@ -2719,23 +3063,38 @@ function renderSettingsPage() {
 
 function renderCategoryMgmt() {
   const container = document.getElementById("categoryMgmtList");
-  const allCats = [
-    ...STORE.categories.expense.map(c => ({ ...c, kind: "expense" })),
-    ...STORE.categories.income.map(c => ({ ...c, kind: "income" })),
-  ];
-  container.innerHTML = allCats.map(c => `
+  const groupHtml = (list, kind) => list.map(c => `
     <div class="settings-row">
-      <div class="lbl">${c.icon} ${currentLang === "vi" ? c.name_vi : c.name_en} <span class="text-muted" style="font-size:11px;">(${c.kind === "expense" ? t("typeExpense") : t("typeIncome")})</span></div>
+      <div class="lbl">${c.icon} ${currentLang === "vi" ? c.name_vi : c.name_en}</div>
+      <button class="btn btn-sm btn-outline" onclick="deleteCategory('${kind}','${c.id}')">${t("btnDelete")}</button>
     </div>
   `).join("");
+
+  container.innerHTML = `
+    <div class="divider-label" style="margin-top:0;">${t("typeExpense")}</div>
+    ${groupHtml(STORE.categories.expense, "expense")}
+    <div class="divider-label">${t("typeIncome")}</div>
+    ${groupHtml(STORE.categories.income, "income")}
+  `;
+}
+
+function deleteCategory(kind, catId) {
+  if (!confirm(t("confirmDelete"))) return;
+  STORE.categories[kind] = STORE.categories[kind].filter(c => c.id !== catId);
+  persistDebounced();
+  showToast(t("toastSaved"), "success");
+  renderCategoryMgmt();
 }
 
 function setupCategoryHandlers() {
   document.getElementById("btnAddCategory").addEventListener("click", () => {
     const name = document.getElementById("newCategoryName").value.trim();
+    const kind = document.getElementById("newCategoryType").value;
+    const icon = document.getElementById("newCategoryIcon").value.trim() || "📦";
     if (!name) return;
-    STORE.categories.expense.push({ id: genId("cat"), name_vi: name, name_en: name, icon: "📦" });
+    STORE.categories[kind].push({ id: genId("cat"), name_vi: name, name_en: name, icon });
     document.getElementById("newCategoryName").value = "";
+    document.getElementById("newCategoryIcon").value = "";
     persistDebounced();
     showToast(t("categoryAdded"), "success");
     renderCategoryMgmt();
@@ -2750,11 +3109,32 @@ function renderUserMgmt() {
         <div class="lbl">${u.name} ${u.id === currentUser.id ? "<span class='role-badge'>" + t("you") + "</span>" : ""}</div>
         <div class="sub">${u.email} • ${roleLabel(u.role)}</div>
       </div>
-      ${u.role !== "superadmin" ? `
-        <button class="btn btn-sm btn-outline" onclick="toggleUserActive('${u.id}')">${u.active === false ? t("activate") : t("deactivate")}</button>
-      ` : ""}
+      <div style="display:flex; gap:6px;">
+        ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-outline" onclick="openResetPasswordPrompt('${u.id}')">${t("btnResetPassword")}</button>` : ""}
+        ${u.role !== "superadmin" ? `
+          <button class="btn btn-sm btn-outline" onclick="toggleUserActive('${u.id}')">${u.active === false ? t("activate") : t("deactivate")}</button>
+        ` : ""}
+      </div>
     </div>
   `).join("");
+}
+
+function openResetPasswordPrompt(userId) {
+  const u = STORE.users.find(u2 => u2.id === userId);
+  if (!u) return;
+  const newPass = prompt(t("promptNewPasswordFor") + " " + u.name + ":");
+  if (newPass === null) return;
+  if (!newPass || newPass.length < 4) {
+    showToast(t("toastPasswordTooShort"), "error");
+    return;
+  }
+  u.password = newPass;
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name, action: "edited",
+    targetType: currentLang === "vi" ? "mật khẩu" : "password", detail: u.name
+  });
+  persistDebounced();
+  showToast(t("toastSaved"), "success");
 }
 
 function toggleUserActive(userId) {
@@ -2822,8 +3202,47 @@ function setupSettingsHandlers() {
     showToast(t("settingsSavedLimits"), "success");
   });
 
+  document.getElementById("btnChangePassword").addEventListener("click", changeOwnPassword);
+
   document.getElementById("btnLogout").addEventListener("click", logout);
   setupCategoryHandlers();
+}
+
+function changeOwnPassword() {
+  const currentPass = document.getElementById("currentPasswordInput").value;
+  const newPass = document.getElementById("newPasswordInput").value;
+  const confirmPass = document.getElementById("confirmPasswordInput").value;
+
+  if (!currentPass || !newPass || !confirmPass) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+
+  const u = STORE.users.find(u2 => u2.id === currentUser.id);
+  if (!u || u.password !== currentPass) {
+    showToast(t("toastCurrentPasswordWrong"), "error");
+    return;
+  }
+  if (newPass.length < 4) {
+    showToast(t("toastPasswordTooShort"), "error");
+    return;
+  }
+  if (newPass !== confirmPass) {
+    showToast(t("toastPasswordMismatch"), "error");
+    return;
+  }
+
+  u.password = newPass;
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name, action: "edited",
+    targetType: currentLang === "vi" ? "mật khẩu" : "password", detail: currentLang === "vi" ? "Tự đổi mật khẩu" : "Self password change"
+  });
+
+  persistDebounced();
+  document.getElementById("currentPasswordInput").value = "";
+  document.getElementById("newPasswordInput").value = "";
+  document.getElementById("confirmPasswordInput").value = "";
+  showToast(t("toastPasswordChanged"), "success");
 }
 
 // ===================== EXPORT =====================
