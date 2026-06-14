@@ -439,6 +439,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <h2 data-i18n="navTransactions">Thu chi</h2>
           <div class="sub" data-i18n="txSub">Thu chi hàng ngày</div>
         </div>
+        <select id="txUserFilter" class="tab-btn hidden" style="border:1.5px solid var(--line); background:var(--paper);"></select>
       </div>
       <div class="tabbar" id="txFilterTabs"></div>
       <div class="card">
@@ -795,6 +796,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <span data-i18n="invoicesTitle">Hóa đơn</span>
         <button class="more btn-gold" style="padding:5px 12px; border-radius:8px; font-weight:700;" id="btnAddInvoice" data-i18n="btnAddInvoice">+ Thêm hóa đơn</button>
       </h3>
+      <select id="invoiceProjectFilter" style="width:100%; margin-bottom:12px; border:1.5px solid var(--line); border-radius:8px; padding:9px 12px; background:var(--cream);"></select>
       <div id="invoicesList"></div>
       <div class="empty-state hidden" id="invoicesEmpty">
         <div class="ico">🧾</div>
@@ -840,6 +842,10 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
       </div>
       <div class="form-group">
+        <label data-i18n="lblProject">Công trình (tùy chọn)</label>
+        <select id="invoiceProject"></select>
+      </div>
+      <div class="form-group">
         <label data-i18n="lblNote">Ghi chú</label>
         <textarea id="invoiceNote" rows="2"></textarea>
       </div>
@@ -859,6 +865,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceDate">Ngày xuất hóa đơn</div><div class="pct" id="invDetailDate">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</div><div class="pct" id="invDetailVatNo">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</div><div class="pct" id="invDetailCommNo">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblProject">Công trình</div><div class="pct" id="invDetailProject">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceContractAmount">Số tiền theo hợp đồng</div><div class="pct" id="invDetailContractAmount">$0</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceActualAmount">Số tiền theo khối lượng thực tế</div><div class="pct" id="invDetailActualAmount">$0</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoicePaid">Đã thanh toán</div><div class="pct" id="invDetailPaid">$0</div></div>
@@ -1677,6 +1684,7 @@ function determineAdvanceStatus(amount, role) {
 // ===================== APP =====================
 let currentDashMonth = null;
 let txFilterStatus = "all";
+let txFilterUserId = "all";
 let advanceFilterStatus = "all";
 let approvalsTab = "pending";
 let editingTxId = null;
@@ -2227,6 +2235,7 @@ function renderTransactionsPage() {
   document.getElementById("page-transactions").querySelector(".sub").textContent =
     can("viewAllTx") ? t("txSubAdmin") : t("txSub");
 
+  setupTxUserFilter();
   renderTxFilterTabs();
   const filtered = getFilteredTransactions();
   const container = document.getElementById("allTxList");
@@ -2243,9 +2252,28 @@ function renderTransactionsPage() {
   container.innerHTML = sorted.map(tx => renderTxItem(tx)).join("");
 }
 
+function setupTxUserFilter() {
+  const select = document.getElementById("txUserFilter");
+  if (!can("viewAllTx")) {
+    select.classList.add("hidden");
+    txFilterUserId = "all";
+    return;
+  }
+  select.classList.remove("hidden");
+  const activeUsers = STORE.users.filter(u => u.active !== false);
+  select.innerHTML = `<option value="all">${currentLang === "vi" ? "Tất cả nhân viên" : "All staff"}</option>` +
+    activeUsers.map(u => `<option value="${u.id}" ${u.id === txFilterUserId ? "selected" : ""}>${u.name}</option>`).join("");
+  select.value = txFilterUserId;
+  select.onchange = () => {
+    txFilterUserId = select.value;
+    renderTransactionsPage();
+  };
+}
+
 function getFilteredTransactions() {
   let txs = STORE.transactions.filter(tx => {
     if (!can("viewAllTx") && tx.userId !== currentUser.id) return false;
+    if (can("viewAllTx") && txFilterUserId !== "all" && tx.userId !== txFilterUserId) return false;
     return true;
   });
   if (txFilterStatus === "income") txs = txs.filter(tx => tx.type === "income");
@@ -2956,8 +2984,11 @@ function setupCustomerDetailModal() {
   document.getElementById("btnDeleteInvoice").addEventListener("click", deleteInvoice);
 }
 
+let currentInvoiceProjectFilter = "all";
+
 function openCustomerDetail(customerId) {
   currentCustomerDetailId = customerId;
+  currentInvoiceProjectFilter = "all";
   renderCustomerDetail(customerId);
   openModal("modalCustomerDetail");
 }
@@ -2976,7 +3007,33 @@ function renderCustomerDetail(customerId) {
   debtEl.textContent = formatCurrency(debt);
   debtEl.style.color = debt > 0 ? "var(--bad)" : "var(--good)";
 
-  const invoices = c.invoices.slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  // Project filter dropdown
+  const projectFilter = document.getElementById("invoiceProjectFilter");
+  const usedProjectIds = new Set((c.invoices || []).map(inv => inv.projectId).filter(Boolean));
+  const filterProjects = STORE.projects.filter(p => usedProjectIds.has(p.id));
+  if (filterProjects.length === 0) {
+    projectFilter.classList.add("hidden");
+    currentInvoiceProjectFilter = "all";
+  } else {
+    projectFilter.classList.remove("hidden");
+    projectFilter.innerHTML = `<option value="all">${currentLang === "vi" ? "Tất cả công trình" : "All projects"}</option>` +
+      `<option value="none">${currentLang === "vi" ? "Không gắn công trình" : "No project"}</option>` +
+      filterProjects.map(p => `<option value="${p.id}" ${p.id === currentInvoiceProjectFilter ? "selected" : ""}>${p.name}</option>`).join("");
+    projectFilter.value = currentInvoiceProjectFilter;
+    projectFilter.onchange = () => {
+      currentInvoiceProjectFilter = projectFilter.value;
+      renderCustomerDetail(customerId);
+    };
+  }
+
+  let invoices = c.invoices.slice();
+  if (currentInvoiceProjectFilter === "none") {
+    invoices = invoices.filter(inv => !inv.projectId);
+  } else if (currentInvoiceProjectFilter !== "all") {
+    invoices = invoices.filter(inv => inv.projectId === currentInvoiceProjectFilter);
+  }
+  invoices = invoices.sort((a, b) => new Date(b.date) - new Date(a.date));
+
   const list = document.getElementById("invoicesList");
   const empty = document.getElementById("invoicesEmpty");
 
@@ -2991,11 +3048,12 @@ function renderCustomerDetail(customerId) {
     const remaining = calcInvoiceRemaining(inv);
     const statusClass = remaining <= 0 ? "approved" : "pending";
     const statusLabel = remaining <= 0 ? t("invoiceFully_paid") : t("statusPending");
+    const project = inv.projectId ? getProjectById(inv.projectId) : null;
     return `
       <div class="payment-history-item" style="cursor:pointer;" onclick="openInvoiceDetail('${c.id}','${inv.id}')">
         <div>
           <div style="font-weight:600;">${escapeHtml(inv.vatNo || inv.commNo || "—")}</div>
-          <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}</div>
+          <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}${project ? ` • <span class="project-pill">${escapeHtml(project.name)}</span>` : ""}</div>
         </div>
         <div style="text-align:right;">
           <div class="pamt" style="color:${remaining > 0 ? 'var(--bad)' : 'var(--good)'}">${formatCurrency(remaining)}</div>
@@ -3021,6 +3079,8 @@ function openInvoiceModal(invoiceId) {
   document.getElementById("invoiceCommNo").value = inv ? (inv.commNo || "") : "";
   document.getElementById("invoiceContractAmount").value = inv ? inv.contractAmount : "";
   document.getElementById("invoiceActualAmount").value = inv ? inv.actualAmount : "";
+  populateProjectOptions(document.getElementById("invoiceProject"));
+  document.getElementById("invoiceProject").value = inv ? (inv.projectId || "") : "";
   document.getElementById("invoiceNote").value = inv ? (inv.note || "") : "";
 
   openModal("modalInvoice");
@@ -3032,6 +3092,7 @@ function saveInvoice() {
   const commNo = document.getElementById("invoiceCommNo").value.trim();
   const contractAmount = parseFloat(document.getElementById("invoiceContractAmount").value) || 0;
   const actualAmount = parseFloat(document.getElementById("invoiceActualAmount").value) || 0;
+  const projectId = document.getElementById("invoiceProject").value || null;
   const note = document.getElementById("invoiceNote").value.trim();
 
   if (!date || (!vatNo && !commNo)) {
@@ -3046,11 +3107,11 @@ function saveInvoice() {
   if (editingInvoiceId) {
     const inv = c.invoices.find(i => i.id === editingInvoiceId);
     inv.date = date; inv.vatNo = vatNo; inv.commNo = commNo;
-    inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.note = note;
+    inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.projectId = projectId; inv.note = note;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
   } else {
     c.invoices.push({
-      id: genId("inv"), date, vatNo, commNo, contractAmount, actualAmount, note,
+      id: genId("inv"), date, vatNo, commNo, contractAmount, actualAmount, projectId, note,
       payments: [], createdBy: currentUser.id, createdAt: nowISO()
     });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
@@ -3105,6 +3166,8 @@ function renderInvoiceDetail(customerId, invoiceId) {
   document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
   document.getElementById("invDetailVatNo").textContent = inv.vatNo || "—";
   document.getElementById("invDetailCommNo").textContent = inv.commNo || "—";
+  const proj = inv.projectId ? getProjectById(inv.projectId) : null;
+  document.getElementById("invDetailProject").textContent = proj ? proj.name : "—";
   document.getElementById("invDetailContractAmount").textContent = formatCurrency(inv.contractAmount || 0);
   document.getElementById("invDetailActualAmount").textContent = formatCurrency(inv.actualAmount || 0);
 
