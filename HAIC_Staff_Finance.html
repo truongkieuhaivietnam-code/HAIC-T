@@ -486,13 +486,37 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
         <button class="btn btn-sm btn-gold" id="btnAddCustomer" data-i18n="btnAdd">+ Thêm</button>
       </div>
-      <div class="card">
-        <h3 data-i18n="cardTotalDebt">Tổng công nợ</h3>
-        <div class="hero-card" style="background:linear-gradient(135deg,var(--forest),var(--forest-light)); margin-bottom:0;">
-          <div class="month" data-i18n="cardTotalDebt">Tổng công nợ</div>
-          <div class="balance" id="totalDebtAmount">$0</div>
+      <div class="hero-card">
+        <div class="month" data-i18n="cardTotalDebt">Tổng công nợ</div>
+        <div class="balance" id="totalDebtAmount">$0</div>
+        <div class="hero-row">
+          <div class="hero-stat">
+            <div class="lbl" data-i18n="lblTotalInvoiced">Tổng giá trị hóa đơn</div>
+            <div class="val" id="totalInvoicedAmount">$0</div>
+          </div>
+          <div class="hero-stat income">
+            <div class="lbl" data-i18n="lblTotalCollected">Tổng đã thu</div>
+            <div class="val" id="totalCollectedAmount">$0</div>
+          </div>
+          <div class="hero-stat expense">
+            <div class="lbl" data-i18n="lblTotalOutstanding">Còn nợ</div>
+            <div class="val" id="totalOutstandingAmount">$0</div>
+          </div>
         </div>
       </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3 data-i18n="cardDebtByCustomer">Công nợ theo khách hàng</h3>
+          <div class="chart-wrap small"><canvas id="debtPieChart"></canvas></div>
+          <div id="debtLegend"></div>
+        </div>
+        <div class="card">
+          <h3 data-i18n="cardCollectedVsOutstanding">Đã thu / Còn nợ</h3>
+          <div class="chart-wrap small"><canvas id="debtBarChart"></canvas></div>
+        </div>
+      </div>
+
       <div class="card">
         <div id="customersList"></div>
         <div class="empty-state hidden" id="customersEmpty">
@@ -661,7 +685,10 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <label data-i18n="lblNote">Ghi chú</label>
         <textarea id="txNote" rows="2" placeholder=""></textarea>
       </div>
-      <button class="btn btn-forest btn-block" id="btnSaveTx" data-i18n="btnSave">Lưu</button>
+      <div class="btn-row">
+        <button class="btn btn-forest" id="btnSaveTx" data-i18n="btnSave">Lưu</button>
+        <button class="btn btn-danger hidden" id="btnDeleteTx" data-i18n="btnDelete">Xóa</button>
+      </div>
     </div>
   </div>
 </div>
@@ -1043,6 +1070,11 @@ const I18N = {
     paymentHistoryTitle: "Lịch sử thanh toán",
     btnEditCustomer: "Sửa thông tin khách hàng",
     cardTotalDebt: "Tổng công nợ",
+    lblTotalInvoiced: "Tổng giá trị hóa đơn",
+    lblTotalCollected: "Tổng đã thu",
+    lblTotalOutstanding: "Còn nợ",
+    cardDebtByCustomer: "Công nợ theo khách hàng",
+    cardCollectedVsOutstanding: "Đã thu / Còn nợ",
     emptyCustomers: "Chưa có khách hàng nào",
     noPaymentHistory: "Chưa có lịch sử thanh toán",
     invoicesTitle: "Hóa đơn",
@@ -1226,6 +1258,11 @@ const I18N = {
     paymentHistoryTitle: "Payment History",
     btnEditCustomer: "Edit Customer Info",
     cardTotalDebt: "Total Debt",
+    lblTotalInvoiced: "Total Invoiced",
+    lblTotalCollected: "Total Collected",
+    lblTotalOutstanding: "Outstanding",
+    cardDebtByCustomer: "Debt by Customer",
+    cardCollectedVsOutstanding: "Collected / Outstanding",
     emptyCustomers: "No customers yet",
     noPaymentHistory: "No payment history yet",
     invoicesTitle: "Invoices",
@@ -2249,6 +2286,7 @@ function setupFab() {
 function setupTxModal() {
   document.getElementById("txType").addEventListener("change", populateCategoryOptions);
   document.getElementById("btnSaveTx").addEventListener("click", saveTransaction);
+  document.getElementById("btnDeleteTx").addEventListener("click", deleteTransaction);
 }
 
 function populateCategoryOptions() {
@@ -2270,7 +2308,32 @@ function openTxModal(tx) {
   document.getElementById("txProject").value = tx ? (tx.projectId || "") : "";
   document.getElementById("txNote").value = tx ? (tx.note || "") : "";
 
+  const canDelete = tx && (tx.userId === currentUser.id || isSuperAdmin());
+  document.getElementById("btnDeleteTx").classList.toggle("hidden", !canDelete);
+
   openModal("modalTx");
+}
+
+function deleteTransaction() {
+  if (!editingTxId) return;
+  if (!confirm(t("confirmDelete"))) return;
+
+  const tx = STORE.transactions.find(t2 => t2.id === editingTxId);
+  if (!tx) return;
+  if (!(tx.userId === currentUser.id || isSuperAdmin())) return;
+
+  STORE.transactions = STORE.transactions.filter(t2 => t2.id !== editingTxId);
+
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name,
+    action: "deleted", targetType: tx.type === "income" ? t("auditIncome") : t("auditExpense"),
+    detail: `${getCategoryById(tx.categoryId, tx.type).name_vi} - ${formatCurrency(tx.amount)}`
+  });
+
+  persistDebounced();
+  closeModal("modalTx");
+  showToast(t("toastSaved"), "success");
+  renderAll();
 }
 
 function saveTransaction() {
@@ -2685,6 +2748,9 @@ function rejectAdvance(advanceId, note) {
   renderAll();
 }
 // ===================== CUSTOMERS (DEBT) =====================
+let debtPieChartInstance = null;
+let debtBarChartInstance = null;
+
 function renderCustomersPage() {
   if (!can("manageCustomers")) {
     document.getElementById("page-customers").innerHTML = `<div class="empty-state"><div class="ico">🔒</div><p>${t("noAccess")}</p></div>`;
@@ -2694,8 +2760,25 @@ function renderCustomersPage() {
   document.getElementById("customersSub").textContent = currentLang === "vi" ? "Quản lý công nợ khách hàng" : "Manage customer debts";
 
   const customers = STORE.customers || [];
-  const totalDebt = customers.reduce((s, c) => s + calcCustomerDebt(c), 0);
+
+  // Compute totals
+  let totalInvoiced = 0, totalCollected = 0, totalOutstanding = 0, totalOpening = 0;
+  customers.forEach(c => {
+    totalOpening += c.initialDebt || 0;
+    (c.invoices || []).forEach(inv => {
+      totalInvoiced += inv.actualAmount || 0;
+      totalCollected += calcInvoicePaid(inv);
+      totalOutstanding += calcInvoiceRemaining(inv);
+    });
+  });
+  const totalDebt = totalOpening + totalOutstanding;
+
   document.getElementById("totalDebtAmount").textContent = formatCurrency(totalDebt);
+  document.getElementById("totalInvoicedAmount").textContent = formatCurrency(totalInvoiced + totalOpening);
+  document.getElementById("totalCollectedAmount").textContent = "+" + formatCurrency(totalCollected);
+  document.getElementById("totalOutstandingAmount").textContent = "-" + formatCurrency(totalOutstanding + totalOpening);
+
+  renderDebtCharts(customers, totalCollected, totalOutstanding + totalOpening);
 
   const list = document.getElementById("customersList");
   const empty = document.getElementById("customersEmpty");
@@ -2724,6 +2807,78 @@ function renderCustomersPage() {
       </div>
     `;
   }).join("");
+}
+
+function renderDebtCharts(customers, totalCollected, totalOutstanding) {
+  // Pie chart: debt breakdown by customer (only customers with debt > 0)
+  const debtItems = customers
+    .map(c => ({ name: c.name, debt: calcCustomerDebt(c) }))
+    .filter(c => c.debt > 0)
+    .sort((a, b) => b.debt - a.debt);
+
+  const pieCtx = document.getElementById("debtPieChart");
+  if (debtPieChartInstance) debtPieChartInstance.destroy();
+
+  if (debtItems.length === 0) {
+    document.getElementById("debtLegend").innerHTML = `<div class="empty-state"><div class="ico">📊</div><p>${t("noData")}</p></div>`;
+    debtPieChartInstance = new Chart(pieCtx, {
+      type: "doughnut",
+      data: { labels: ["—"], datasets: [{ data: [1], backgroundColor: ["#e4ddcd"] }] },
+      options: { plugins: { legend: { display: false }, tooltip: { enabled: false } }, cutout: "65%" }
+    });
+  } else {
+    const total = debtItems.reduce((s, c) => s + c.debt, 0);
+    debtPieChartInstance = new Chart(pieCtx, {
+      type: "doughnut",
+      data: {
+        labels: debtItems.map(c => c.name),
+        datasets: [{
+          data: debtItems.map(c => c.debt),
+          backgroundColor: debtItems.map((_, idx) => CHART_COLORS[idx % CHART_COLORS.length]),
+          borderWidth: 0,
+        }]
+      },
+      options: {
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => `${ctx.label}: ${formatCurrency(ctx.raw)}` } }
+        },
+        cutout: "62%",
+        maintainAspectRatio: false,
+      }
+    });
+
+    document.getElementById("debtLegend").innerHTML = debtItems.map((c, idx) => `
+      <div class="cat-row">
+        <div class="cat-dot" style="background:${CHART_COLORS[idx % CHART_COLORS.length]}"></div>
+        <div class="name">${escapeHtml(c.name)}</div>
+        <div class="pct">${total > 0 ? Math.round((c.debt / total) * 1000) / 10 : 0}%</div>
+      </div>
+    `).join("");
+  }
+
+  // Bar chart: collected vs outstanding
+  const barCtx = document.getElementById("debtBarChart");
+  if (debtBarChartInstance) debtBarChartInstance.destroy();
+  debtBarChartInstance = new Chart(barCtx, {
+    type: "bar",
+    data: {
+      labels: [t("lblTotalCollected"), t("lblTotalOutstanding")],
+      datasets: [{
+        data: [totalCollected, totalOutstanding],
+        backgroundColor: ["#3f7d5c", "#b54b3f"],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 11 } } },
+        y: { grid: { color: "#eee" }, ticks: { font: { size: 10 }, callback: v => formatCurrency(v) } }
+      }
+    }
+  });
 }
 
 function calcInvoiceRemaining(invoice) {
