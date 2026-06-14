@@ -932,6 +932,28 @@ main{padding:16px; max-width:880px; margin:0 auto;}
   </div>
 </div>
 
+<!-- Member Transactions Modal -->
+<div class="modal-overlay" id="modalMemberTx">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="memberTxTitle">—</h3>
+      <button class="modal-close" onclick="closeModal('modalMemberTx')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblIncome">Thu</div><div class="pct" id="memberTxIncome" style="color:var(--good)">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblExpense">Chi</div><div class="pct" id="memberTxExpense" style="color:var(--bad)">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblBalance">Còn lại</div><div class="pct" id="memberTxBalance">$0</div></div>
+    </div>
+    <div class="card">
+      <div class="tx-list" id="memberTxList"></div>
+      <div class="empty-state hidden" id="memberTxEmpty">
+        <div class="ico">📭</div>
+        <p data-i18n="emptyTx">Chưa có giao dịch nào</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- More menu -->
 <div class="modal-overlay" id="modalMore">
   <div class="modal-sheet">
@@ -2073,7 +2095,7 @@ function renderMemberSpending() {
   const activeUsers = STORE.users.filter(u => u.active !== false);
   const sorted = activeUsers.slice().sort((a, b) => (spendingByUser[b.id] || 0) - (spendingByUser[a.id] || 0));
   document.getElementById("memberSpendingList").innerHTML = sorted.map(u => `
-    <div class="member-row">
+    <div class="member-row" style="cursor:pointer;" onclick="openMemberTxDetail('${u.id}')">
       <div class="member-avatar">${u.name.charAt(0).toUpperCase()}</div>
       <div class="member-info">
         <div class="nm">${u.name}${u.id === currentUser.id ? " (" + t("you") + ")" : ""}</div>
@@ -2082,6 +2104,37 @@ function renderMemberSpending() {
       <div class="member-amt">${formatCurrency(spendingByUser[u.id] || 0)}</div>
     </div>
   `).join("");
+}
+
+function openMemberTxDetail(userId) {
+  if (!can("viewAllTx")) return;
+  const user = getUserById(userId);
+  const txs = STORE.transactions.filter(tx => tx.userId === userId && monthKey(tx.date) === currentDashMonth);
+
+  let income = 0, expense = 0;
+  txs.forEach(tx => {
+    if (tx.type === "income") income += tx.amount;
+    else expense += tx.amount;
+  });
+
+  document.getElementById("memberTxTitle").textContent = `${user.name} — ${formatMonthLabel(currentDashMonth)}`;
+  document.getElementById("memberTxIncome").textContent = "+" + formatCurrency(income);
+  document.getElementById("memberTxExpense").textContent = "-" + formatCurrency(expense);
+  document.getElementById("memberTxBalance").textContent = formatCurrency(income - expense);
+
+  const list = document.getElementById("memberTxList");
+  const empty = document.getElementById("memberTxEmpty");
+
+  if (txs.length === 0) {
+    list.innerHTML = "";
+    empty.classList.remove("hidden");
+  } else {
+    empty.classList.add("hidden");
+    const sorted = txs.slice().sort((a, b) => new Date(b.date + "T" + (b.timestamp || "00:00")) - new Date(a.date + "T" + (a.timestamp || "00:00")));
+    list.innerHTML = sorted.map(tx => renderTxItem(tx)).join("");
+  }
+
+  openModal("modalMemberTx");
 }
 
 function renderRecentTransactions(opts) {
