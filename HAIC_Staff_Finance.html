@@ -835,6 +835,14 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <label data-i18n="lblCustomerPhone">Số điện thoại</label>
         <input type="text" id="customerPhone" placeholder="">
       </div>
+      <div class="form-group" id="customerBranchGroup">
+        <label data-i18n="lblUserBranch">Chi nhánh</label>
+        <select id="customerBranch">
+          <option value="cambodia" data-i18n="branchCambodia">Campuchia</option>
+          <option value="laos" data-i18n="branchLaos">Lào</option>
+          <option value="vietnam" data-i18n="branchVietnam">Việt Nam</option>
+        </select>
+      </div>
       <div class="form-group">
         <label data-i18n="lblCustomerInitialDebt">Công nợ đầu kỳ ($)</label>
         <input type="number" id="customerInitialDebt" placeholder="0" min="0" step="0.01">
@@ -994,6 +1002,14 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <option value="onhold" data-i18n="projectStatusOnHold">Tạm dừng</option>
         </select>
       </div>
+      <div class="form-group" id="projectBranchGroup">
+        <label data-i18n="lblUserBranch">Chi nhánh</label>
+        <select id="projectBranch">
+          <option value="cambodia" data-i18n="branchCambodia">Campuchia</option>
+          <option value="laos" data-i18n="branchLaos">Lào</option>
+          <option value="vietnam" data-i18n="branchVietnam">Việt Nam</option>
+        </select>
+      </div>
       <div class="form-group">
         <label data-i18n="lblNote">Ghi chú</label>
         <textarea id="projectNote" rows="2"></textarea>
@@ -1027,7 +1043,16 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <label data-i18n="lblUserRole">Vai trò</label>
         <select id="newUserRole">
           <option value="admin" data-i18n="roleAdmin">Admin</option>
+          <option value="branch_manager" data-i18n="roleBranchManager">Quản lý chi nhánh</option>
           <option value="member" data-i18n="roleMember">Nhân viên</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblUserBranch">Chi nhánh</label>
+        <select id="newUserBranch">
+          <option value="cambodia" data-i18n="branchCambodia">Campuchia</option>
+          <option value="laos" data-i18n="branchLaos">Lào</option>
+          <option value="vietnam" data-i18n="branchVietnam">Việt Nam</option>
         </select>
       </div>
       <button class="btn btn-forest btn-block" id="btnSaveUser" data-i18n="btnSave">Lưu</button>
@@ -1186,6 +1211,11 @@ const I18N = {
     roleAdmin: "Admin",
     roleMember: "Nhân viên",
     roleSuperAdmin: "Super Admin",
+    roleBranchManager: "Quản lý chi nhánh",
+    branchCambodia: "Campuchia",
+    branchLaos: "Lào",
+    branchVietnam: "Việt Nam",
+    lblUserBranch: "Chi nhánh",
     // dynamic
     totalBalance: "Số dư",
     pendingApprovalTitle: "Đề xuất chờ duyệt",
@@ -1406,6 +1436,11 @@ const I18N = {
     roleAdmin: "Admin",
     roleMember: "Staff",
     roleSuperAdmin: "Super Admin",
+    roleBranchManager: "Branch Manager",
+    branchCambodia: "Cambodia",
+    branchLaos: "Laos",
+    branchVietnam: "Vietnam",
+    lblUserBranch: "Branch",
     totalBalance: "Balance",
     pendingApprovalTitle: "Pending Approval",
     pendingApprovalSub: "requests",
@@ -1641,6 +1676,11 @@ function ensureStructure() {
   if (!STORE.projects) STORE.projects = [];
   if (!STORE.notifications) STORE.notifications = [];
 
+  // Default branch for existing data (pre-branch migration)
+  STORE.users.forEach(u => { if (!u.branch && u.role !== "superadmin") u.branch = "cambodia"; });
+  STORE.customers.forEach(c => { if (!c.branch) c.branch = "cambodia"; });
+  STORE.projects.forEach(p => { if (!p.branch) p.branch = "cambodia"; });
+
   // Migrate old per-customer "payments" (flat) into invoices structure
   STORE.customers.forEach(c => {
     if (!c.invoices) c.invoices = [];
@@ -1745,18 +1785,18 @@ function formatCurrency(amount) {
 const SESSION_KEY = "staffFinanceSession_v1";
 let currentUser = null;
 
-// Roles: superadmin, admin, member
+// Roles: superadmin, admin, branch_manager, member
 const PERMISSIONS = {
-  createTx:          { superadmin: true, admin: true,  member: true },  // own daily transactions
-  viewAllTx:         { superadmin: true, admin: true,  member: false }, // view all staff transactions
-  createAdvance:     { superadmin: true, admin: true,  member: true },
-  approveAdvance:    { superadmin: true, admin: true,  member: false },
-  manageCustomers:   { superadmin: true, admin: true,  member: false },
-  manageProjects:    { superadmin: true, admin: false, member: false },
-  manageUsers:       { superadmin: true, admin: false, member: false },
-  manageCategories:  { superadmin: true, admin: false, member: false },
-  manageSettings:    { superadmin: true, admin: false, member: false },
-  exportReports:     { superadmin: true, admin: true,  member: false },
+  createTx:          { superadmin: true, admin: true,  branch_manager: true, member: true },  // own daily transactions
+  viewAllTx:         { superadmin: true, admin: true,  branch_manager: "branch", member: false }, // view staff transactions
+  createAdvance:     { superadmin: true, admin: true,  branch_manager: true, member: true },
+  approveAdvance:    { superadmin: true, admin: true,  branch_manager: "branch", member: false },
+  manageCustomers:   { superadmin: true, admin: true,  branch_manager: "branch", member: false },
+  manageProjects:    { superadmin: true, admin: false, branch_manager: "branch", member: false },
+  manageUsers:       { superadmin: true, admin: false, branch_manager: false, member: false },
+  manageCategories:  { superadmin: true, admin: false, branch_manager: false, member: false },
+  manageSettings:    { superadmin: true, admin: false, branch_manager: false, member: false },
+  exportReports:     { superadmin: true, admin: true,  branch_manager: "branch", member: false },
 };
 
 function can(permission, ownerId) {
@@ -1767,6 +1807,26 @@ function can(permission, ownerId) {
   if (val === true) return true;
   if (val === false || val === undefined) return false;
   if (val === "own") return ownerId === currentUser.id;
+  if (val === "branch") return true; // branch-scoped access; actual filtering done by canAccessUser/branch checks
+  return false;
+}
+
+// Returns true if currentUser may view/manage data belonging to targetUserId (based on branch for branch_manager)
+function canAccessUser(targetUserId) {
+  if (!currentUser) return false;
+  if (currentUser.role === "superadmin" || currentUser.role === "admin") return true;
+  if (currentUser.role === "branch_manager") {
+    const targetUser = getUserById(targetUserId);
+    return targetUser && targetUser.branch === currentUser.branch;
+  }
+  return targetUserId === currentUser.id;
+}
+
+// Returns true if currentUser may view/manage data tagged with the given branch (customers, projects)
+function canAccessBranch(branch) {
+  if (!currentUser) return false;
+  if (currentUser.role === "superadmin" || currentUser.role === "admin") return true;
+  if (currentUser.role === "branch_manager") return branch === currentUser.branch;
   return false;
 }
 
@@ -1779,7 +1839,7 @@ function attemptLogin(email, password) {
   const user = STORE.users.find(u => u.email.toLowerCase() === email && u.active !== false);
   if (!user) return { success: false, error: "notfound" };
   if (user.password !== password) return { success: false, error: "badpassword" };
-  currentUser = { id: user.id, name: user.name, email: user.email, role: user.role };
+  currentUser = { id: user.id, name: user.name, email: user.email, role: user.role, branch: user.branch || null };
   saveSession();
   return { success: true, user: currentUser };
 }
@@ -1798,7 +1858,7 @@ function restoreSession() {
       localStorage.removeItem(SESSION_KEY);
       return false;
     }
-    currentUser = { id: user.id, name: user.name, email: user.email, role: user.role };
+    currentUser = { id: user.id, name: user.name, email: user.email, role: user.role, branch: user.branch || null };
     return true;
   } catch (e) {
     return false;
@@ -1816,12 +1876,20 @@ function logout() {
 function roleLabel(role) {
   if (role === "superadmin") return t("roleSuperAdmin");
   if (role === "admin") return t("roleAdmin");
+  if (role === "branch_manager") return t("roleBranchManager");
   return t("roleMember");
+}
+
+function branchLabel(branch) {
+  if (branch === "cambodia") return t("branchCambodia");
+  if (branch === "laos") return t("branchLaos");
+  if (branch === "vietnam") return t("branchVietnam");
+  return "—";
 }
 
 // ---------- Advance approval logic ----------
 function determineAdvanceStatus(amount, role) {
-  if (role === "superadmin" || role === "admin") return "approved";
+  if (role === "superadmin" || role === "admin" || role === "branch_manager") return "approved";
   const limitAuto = STORE.settings.limitAuto || 50;
   if (amount < limitAuto) return "approved";
   return "pending";
@@ -2093,7 +2161,10 @@ function getProjectById(projectId) {
 }
 
 function populateProjectOptions(selectEl) {
-  const projects = STORE.projects.filter(p => p.status !== "completed");
+  let projects = STORE.projects.filter(p => p.status !== "completed");
+  if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+    projects = projects.filter(p => (p.branch || "cambodia") === currentUser.branch);
+  }
   selectEl.innerHTML = `<option value="">${t("noneOption")}</option>` +
     projects.map(p => `<option value="${p.id}">${p.name}</option>`).join("");
 }
@@ -2109,6 +2180,7 @@ function getTxForMonth(monthKeyStr, opts) {
     if (monthKey(tx.date) !== monthKeyStr) return false;
     if (opts.scopeUser) {
       if (!can("viewAllTx") && tx.userId !== currentUser.id) return false;
+      if (currentUser.role === "branch_manager" && !canAccessUser(tx.userId)) return false;
     }
     return true;
   });
@@ -2285,7 +2357,7 @@ function renderMemberSpending() {
       spendingByUser[tx.userId] = (spendingByUser[tx.userId] || 0) + tx.amount;
     });
 
-  const activeUsers = STORE.users.filter(u => u.active !== false);
+  const activeUsers = getScopedActiveUsers();
   const sorted = activeUsers.slice().sort((a, b) => (spendingByUser[b.id] || 0) - (spendingByUser[a.id] || 0));
   document.getElementById("memberSpendingList").innerHTML = sorted.map(u => `
     <div class="member-row" style="cursor:pointer;" onclick="openMemberTxDetail('${u.id}')">
@@ -2300,7 +2372,7 @@ function renderMemberSpending() {
 }
 
 function openMemberTxDetail(userId) {
-  if (!can("viewAllTx")) return;
+  if (!can("viewAllTx") || !canAccessUser(userId)) return;
   const user = getUserById(userId);
   const txs = STORE.transactions.filter(tx => tx.userId === userId && monthKey(tx.date) === currentDashMonth);
 
@@ -2400,6 +2472,15 @@ function renderTransactionsPage() {
   container.innerHTML = sorted.map(tx => renderTxItem(tx)).join("");
 }
 
+// Returns the list of users whose data the current user is allowed to see (for viewAllTx scope)
+function getScopedActiveUsers() {
+  const activeUsers = STORE.users.filter(u => u.active !== false);
+  if (currentUser.role === "branch_manager") {
+    return activeUsers.filter(u => u.branch === currentUser.branch);
+  }
+  return activeUsers;
+}
+
 function setupTxUserFilter() {
   const select = document.getElementById("txUserFilter");
   if (!can("viewAllTx")) {
@@ -2408,9 +2489,9 @@ function setupTxUserFilter() {
     return;
   }
   select.classList.remove("hidden");
-  const activeUsers = STORE.users.filter(u => u.active !== false);
+  const visibleUsers = getScopedActiveUsers();
   select.innerHTML = `<option value="all">${currentLang === "vi" ? "Tất cả nhân viên" : "All staff"}</option>` +
-    activeUsers.map(u => `<option value="${u.id}" ${u.id === txFilterUserId ? "selected" : ""}>${u.name}</option>`).join("");
+    visibleUsers.map(u => `<option value="${u.id}" ${u.id === txFilterUserId ? "selected" : ""}>${u.name}</option>`).join("");
   select.value = txFilterUserId;
   select.onchange = () => {
     txFilterUserId = select.value;
@@ -2421,6 +2502,7 @@ function setupTxUserFilter() {
 function getFilteredTransactions() {
   let txs = STORE.transactions.filter(tx => {
     if (!can("viewAllTx") && tx.userId !== currentUser.id) return false;
+    if (currentUser.role === "branch_manager" && !canAccessUser(tx.userId)) return false;
     if (can("viewAllTx") && txFilterUserId !== "all" && tx.userId !== txFilterUserId) return false;
     return true;
   });
@@ -2602,6 +2684,7 @@ function renderAdvancesPage() {
 function getFilteredAdvances() {
   let advs = STORE.advances.filter(a => {
     if (!can("viewAllTx") && a.userId !== currentUser.id) return false;
+    if (currentUser.role === "branch_manager" && !canAccessUser(a.userId)) return false;
     return true;
   });
   if (advanceFilterStatus !== "all") advs = advs.filter(a => a.status === advanceFilterStatus);
@@ -2636,10 +2719,10 @@ function renderAdvanceCard(a) {
   const typeIcon = a.advanceType === "purchase" ? "🛒" : "💵";
   const showOwner = can("viewAllTx");
   const canEdit = a.userId === currentUser.id && a.status === "pending";
-  const canMarkPaid = can("approveAdvance") && a.status === "approved";
+  const canMarkPaid = can("approveAdvance") && canAccessUser(a.userId) && a.status === "approved";
   const canSubmitSettlement = a.userId === currentUser.id && a.status === "paid";
   const canResubmitSettlement = a.userId === currentUser.id && a.status === "settlement_returned";
-  const canConfirmSettlement = can("approveAdvance") && a.status === "settlement_pending";
+  const canConfirmSettlement = can("approveAdvance") && canAccessUser(a.userId) && a.status === "settlement_pending";
 
   return `
     <div class="approval-card">
@@ -3104,14 +3187,17 @@ function renderApprovalsPage() {
   }
 
   if (approvalsTab === "pending") {
-    const pending = STORE.advances.filter(a => a.status === "pending").sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    const pending = STORE.advances
+      .filter(a => a.status === "pending" && (currentUser.role !== "branch_manager" || canAccessUser(a.userId)))
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
     if (pending.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="ico">✅</div><p>${t("noApprovalsPending")}</p></div>`;
       return;
     }
     container.innerHTML = pending.map(a => renderApprovalCard(a)).join("");
   } else {
-    const history = STORE.advances.filter(a => a.approvedBy && (a.status === "approved" || a.status === "rejected" || a.status === "paid"))
+    const history = STORE.advances
+      .filter(a => a.approvedBy && (a.status === "approved" || a.status === "rejected" || a.status === "paid") && (currentUser.role !== "branch_manager" || canAccessUser(a.userId)))
       .sort((a, b) => new Date(b.approvedAt || b.createdAt) - new Date(a.approvedAt || a.createdAt));
     if (history.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="ico">📋</div><p>${t("noApprovalsHistory")}</p></div>`;
@@ -3250,7 +3336,7 @@ function renderCustomersPage() {
   document.getElementById("btnAddCustomer").classList.toggle("hidden", !can("manageCustomers"));
   document.getElementById("customersSub").textContent = currentLang === "vi" ? "Quản lý công nợ khách hàng" : "Manage customer debts";
 
-  const customers = STORE.customers || [];
+  const customers = (STORE.customers || []).filter(c => canAccessBranch(c.branch || "cambodia"));
 
   // Compute totals
   let totalInvoiced = 0, totalCollected = 0, totalOutstanding = 0, totalOpening = 0;
@@ -3285,11 +3371,12 @@ function renderCustomersPage() {
   list.innerHTML = sorted.map(c => {
     const debt = calcCustomerDebt(c);
     const debtClass = debt > 0 ? "positive" : "zero";
+    const showBranch = currentUser.role !== "branch_manager";
     return `
       <div class="customer-row" onclick="openCustomerDetail('${c.id}')">
         <div class="customer-avatar">${c.name.charAt(0).toUpperCase()}</div>
         <div class="customer-info">
-          <div class="nm">${escapeHtml(c.name)}</div>
+          <div class="nm">${escapeHtml(c.name)} ${showBranch ? `<span class="project-pill">${branchLabel(c.branch || "cambodia")}</span>` : ""}</div>
           <div class="sub">${c.phone || "—"}</div>
         </div>
         <div class="customer-debt">
@@ -3402,6 +3489,16 @@ function openCustomerModal(customerId) {
   document.getElementById("customerInitialDebt").value = c ? c.initialDebt : "0";
   document.getElementById("customerNote").value = c ? (c.note || "") : "";
 
+  const branchGroup = document.getElementById("customerBranchGroup");
+  const branchSelect = document.getElementById("customerBranch");
+  if (currentUser.role === "branch_manager") {
+    branchGroup.classList.add("hidden");
+    branchSelect.value = currentUser.branch;
+  } else {
+    branchGroup.classList.remove("hidden");
+    branchSelect.value = c ? (c.branch || "cambodia") : "cambodia";
+  }
+
   openModal("modalCustomer");
 }
 
@@ -3410,6 +3507,7 @@ function saveCustomer() {
   const phone = document.getElementById("customerPhone").value.trim();
   const initialDebt = parseFloat(document.getElementById("customerInitialDebt").value) || 0;
   const note = document.getElementById("customerNote").value.trim();
+  const branch = currentUser.role === "branch_manager" ? currentUser.branch : document.getElementById("customerBranch").value;
 
   if (!name) {
     showToast(t("toastFillRequired"), "error");
@@ -3418,10 +3516,10 @@ function saveCustomer() {
 
   if (editingCustomerId) {
     const c = STORE.customers.find(c2 => c2.id === editingCustomerId);
-    c.name = name; c.phone = phone; c.initialDebt = initialDebt; c.note = note;
+    c.name = name; c.phone = phone; c.initialDebt = initialDebt; c.note = note; c.branch = branch;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "khách hàng" : "customer", detail: name });
   } else {
-    STORE.customers.push({ id: genId("cust"), name, phone, initialDebt, note, invoices: [], createdAt: nowISO() });
+    STORE.customers.push({ id: genId("cust"), name, phone, initialDebt, note, branch, invoices: [], createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "khách hàng" : "customer", detail: name });
   }
 
@@ -3695,7 +3793,7 @@ function addInvoicePayment() {
 function renderProjectsPage() {
   document.getElementById("btnAddProject").classList.toggle("hidden", !can("manageProjects"));
   const card = document.getElementById("projectsCard");
-  const projects = STORE.projects || [];
+  const projects = (STORE.projects || []).filter(p => canAccessBranch(p.branch || "cambodia"));
 
   if (projects.length === 0) {
     card.innerHTML = `<div class="empty-state"><div class="ico">🏗️</div><p>${t("noProjects")}</p></div>`;
@@ -3703,11 +3801,12 @@ function renderProjectsPage() {
   }
 
   const statusColors = { active: "approved", completed: "paid", onhold: "pending" };
+  const showBranch = currentUser.role !== "branch_manager";
 
   card.innerHTML = projects.map(p => `
     <div class="settings-row" ${can("manageProjects") ? `style="cursor:pointer;" onclick="openProjectModal('${p.id}')"` : ""}>
       <div>
-        <div class="lbl">${p.name}</div>
+        <div class="lbl">${p.name} ${showBranch ? `<span class="project-pill">${branchLabel(p.branch || "cambodia")}</span>` : ""}</div>
         ${p.note ? `<div class="sub">${escapeHtml(p.note)}</div>` : ""}
       </div>
       <span class="status-pill ${statusColors[p.status] || "draft"}">${t("projectStatus" + capitalize(p.status === "onhold" ? "OnHold" : p.status))}</span>
@@ -3729,6 +3828,16 @@ function openProjectModal(projectId) {
   document.getElementById("projectStatus").value = p ? p.status : "active";
   document.getElementById("projectNote").value = p ? (p.note || "") : "";
 
+  const branchGroup = document.getElementById("projectBranchGroup");
+  const branchSelect = document.getElementById("projectBranch");
+  if (currentUser.role === "branch_manager") {
+    branchGroup.classList.add("hidden");
+    branchSelect.value = currentUser.branch;
+  } else {
+    branchGroup.classList.remove("hidden");
+    branchSelect.value = p ? (p.branch || "cambodia") : "cambodia";
+  }
+
   openModal("modalProject");
 }
 
@@ -3736,6 +3845,7 @@ function saveProject() {
   const name = document.getElementById("projectName").value.trim();
   const status = document.getElementById("projectStatus").value;
   const note = document.getElementById("projectNote").value.trim();
+  const branch = currentUser.role === "branch_manager" ? currentUser.branch : document.getElementById("projectBranch").value;
 
   if (!name) {
     showToast(t("toastFillRequired"), "error");
@@ -3744,10 +3854,10 @@ function saveProject() {
 
   if (editingProjectId) {
     const p = STORE.projects.find(p2 => p2.id === editingProjectId);
-    p.name = name; p.status = status; p.note = note;
+    p.name = name; p.status = status; p.note = note; p.branch = branch;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "công trình" : "project", detail: name });
   } else {
-    STORE.projects.push({ id: genId("proj"), name, status, note, createdAt: nowISO() });
+    STORE.projects.push({ id: genId("proj"), name, status, note, branch, createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "công trình" : "project", detail: name });
   }
 
@@ -3764,8 +3874,8 @@ function renderReportsPage() {
   }
   document.getElementById("reportsSub").textContent = formatMonthLabel(currentDashMonth);
 
-  const summary = calcMonthSummary(currentDashMonth, {});
-  const pendingAdvances = STORE.advances.filter(a => a.status === "pending");
+  const summary = calcMonthSummary(currentDashMonth, { scopeUser: true });
+  const pendingAdvances = STORE.advances.filter(a => a.status === "pending" && (currentUser.role !== "branch_manager" || canAccessUser(a.userId)));
   const pendingTotal = pendingAdvances.reduce((s, a) => s + a.amount, 0);
 
   document.getElementById("reportSummaryCard").innerHTML = `
@@ -3841,7 +3951,7 @@ function renderUserMgmt() {
     <div class="settings-row">
       <div>
         <div class="lbl">${u.name} ${u.id === currentUser.id ? "<span class='role-badge'>" + t("you") + "</span>" : ""}</div>
-        <div class="sub">${u.email} • ${roleLabel(u.role)}</div>
+        <div class="sub">${u.email} • ${roleLabel(u.role)}${u.branch ? " • " + branchLabel(u.branch) : ""}</div>
       </div>
       <div style="display:flex; gap:6px;">
         ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-outline" onclick="openResetPasswordPrompt('${u.id}')">${t("btnResetPassword")}</button>` : ""}
@@ -3890,6 +4000,7 @@ function saveNewUser() {
   const email = document.getElementById("newUserEmail").value.trim().toLowerCase();
   const password = document.getElementById("newUserPassword").value;
   const role = document.getElementById("newUserRole").value;
+  const branch = document.getElementById("newUserBranch").value;
 
   if (!name || !email || !password) {
     showToast(t("toastFillRequired"), "error");
@@ -3899,10 +4010,10 @@ function saveNewUser() {
     showToast(currentLang === "vi" ? "Email đã tồn tại" : "Email already exists", "error");
     return;
   }
-  STORE.users.push({ id: genId("user"), name, email, password, role, active: true });
+  STORE.users.push({ id: genId("user"), name, email, password, role, branch, active: true });
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "created",
-    targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)})`
+    targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)} - ${branchLabel(branch)})`
   });
 
   persistDebounced();
@@ -3988,6 +4099,7 @@ function setupExportButtons() {
 function getMonthTxRows() {
   const txs = STORE.transactions
     .filter(tx => monthKey(tx.date) === currentDashMonth)
+    .filter(tx => currentUser.role !== "branch_manager" || canAccessUser(tx.userId))
     .sort((a, b) => new Date(a.date) - new Date(b.date));
 
   return txs.map(tx => {
@@ -4070,7 +4182,7 @@ function exportPdf() {
   y += 5;
   doc.line(14, y - 2, 196, y - 2);
 
-  const txs = STORE.transactions.filter(tx => monthKey(tx.date) === currentDashMonth).sort((a,b) => new Date(a.date) - new Date(b.date));
+  const txs = STORE.transactions.filter(tx => monthKey(tx.date) === currentDashMonth).filter(tx => currentUser.role !== "branch_manager" || canAccessUser(tx.userId)).sort((a,b) => new Date(a.date) - new Date(b.date));
   txs.forEach(tx => {
     if (y > 280) { doc.addPage(); y = 18; }
     const cat = getCategoryById(tx.categoryId, tx.type);
