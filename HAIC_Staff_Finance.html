@@ -172,6 +172,9 @@ main{padding:16px; max-width:880px; margin:0 auto;}
 .status-pill.approved{background:#dcf0e3; color:var(--good);}
 .status-pill.rejected{background:#fbe1dd; color:var(--bad);}
 .status-pill.paid{background:#dde9f5; color:#3c6aa8;}
+.status-pill.settlement_pending{background:#fdeccd; color:var(--warn);}
+.status-pill.settled{background:#dcf0e3; color:var(--good);}
+.status-pill.settlement_returned{background:#fbe1dd; color:var(--bad);}
 .status-pill.draft{background:#eee; color:var(--muted);}
 
 .empty-state{text-align:center; padding:36px 16px; color:var(--muted);}
@@ -733,6 +736,72 @@ main{padding:16px; max-width:880px; margin:0 auto;}
   </div>
 </div>
 
+<!-- Settlement Submission Modal -->
+<div class="modal-overlay" id="modalSettlement">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 data-i18n="settlementModalTitle">Giải trình chi phí tạm ứng</h3>
+      <button class="modal-close" onclick="closeModal('modalSettlement')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="settlementOrigAmount">Số tiền tạm ứng</div><div class="pct" id="settlementOrigAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="settlementTotalSpent">Tổng đã chi</div><div class="pct" id="settlementTotalSpent">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="settlementBalance">Còn dư / Thiếu</div><div class="pct" id="settlementBalance">$0</div></div>
+    </div>
+    <div id="settlementReturnNoteBox" class="card hidden" style="background:#fdeccd;">
+      <div class="note" id="settlementReturnNoteText"></div>
+    </div>
+    <div class="card">
+      <h3>
+        <span data-i18n="settlementItemsTitle">Các khoản chi</span>
+        <button class="more btn-gold" style="padding:5px 12px; border-radius:8px; font-weight:700;" id="btnAddSettlementItem" data-i18n="btnAddSettlementItem">+ Thêm khoản chi</button>
+      </h3>
+      <div id="settlementItemsList"></div>
+    </div>
+    <button class="btn btn-forest btn-block" id="btnSubmitSettlement" data-i18n="btnSubmitForConfirmation">Nộp giải trình</button>
+  </div>
+</div>
+
+<!-- Settlement Detail Modal (for approver) -->
+<div class="modal-overlay" id="modalSettlementDetail">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 data-i18n="settlementDetailTitle">Chi tiết giải trình</h3>
+      <button class="modal-close" onclick="closeModal('modalSettlementDetail')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="settlementOrigAmount">Số tiền tạm ứng</div><div class="pct" id="sdOrigAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="settlementTotalSpent">Tổng đã chi</div><div class="pct" id="sdTotalSpent">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="settlementBalance">Còn dư / Thiếu</div><div class="pct" id="sdBalance">$0</div></div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="settlementItemsTitle">Các khoản chi</h3>
+      <div id="settlementDetailItemsList"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-forest" id="btnConfirmSettlement" data-i18n="btnConfirmSettlement">✓ Xác nhận giải trình</button>
+      <button class="btn btn-outline" id="btnRequestMoreInfo" data-i18n="btnRequestMoreInfo">↩ Yêu cầu bổ sung</button>
+    </div>
+  </div>
+</div>
+
+<!-- Request More Info Modal -->
+<div class="modal-overlay" id="modalRequestMoreInfo">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 data-i18n="requestMoreInfoModalTitle">Yêu cầu bổ sung giải trình</h3>
+      <button class="modal-close" onclick="closeModal('modalRequestMoreInfo')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label data-i18n="lblRequestMoreInfoNote">Lý do / Yêu cầu cụ thể</label>
+        <textarea id="requestMoreInfoNote" rows="3"></textarea>
+      </div>
+      <button class="btn btn-forest btn-block" id="btnConfirmRequestMoreInfo" data-i18n="btnConfirmRequestMoreInfo">Gửi yêu cầu</button>
+    </div>
+  </div>
+</div>
+
 <!-- Reject reason modal -->
 <div class="modal-overlay" id="modalReject">
   <div class="modal-sheet">
@@ -1126,11 +1195,43 @@ const I18N = {
     statusApproved: "Đã duyệt",
     statusRejected: "Đã từ chối",
     statusPaid: "Đã thanh toán",
+    statusSettlement_pending: "Chờ xác nhận giải trình",
+    statusSettled: "Đã hoàn ứng",
+    statusSettlement_returned: "Yêu cầu bổ sung",
     autoApproved: "Sẽ được tự động duyệt",
     needApproval: "Cần phê duyệt",
     btnApprove: "✓ Duyệt",
     btnReject: "✕ Từ chối",
     btnMarkPaid: "💰 Đánh dấu đã chi",
+    btnSubmitSettlement: "📋 Nộp giải trình",
+    settlementModalTitle: "Giải trình chi phí tạm ứng",
+    settlementOrigAmount: "Số tiền tạm ứng",
+    settlementTotalSpent: "Tổng đã chi",
+    settlementBalance: "Còn dư / Thiếu",
+    settlementItemsTitle: "Các khoản chi",
+    btnAddSettlementItem: "+ Thêm khoản chi",
+    btnRemoveItem: "Xóa",
+    lblSettlementItemCategory: "Danh mục",
+    lblSettlementItemAmount: "Số tiền ($)",
+    lblSettlementItemNote: "Mô tả",
+    lblSettlementItemReceipt: "Ảnh hóa đơn",
+    btnSubmitForConfirmation: "Nộp giải trình",
+    settlementDetailTitle: "Chi tiết giải trình",
+    btnConfirmSettlement: "✓ Xác nhận giải trình",
+    btnRequestMoreInfo: "↩ Yêu cầu bổ sung",
+    requestMoreInfoModalTitle: "Yêu cầu bổ sung giải trình",
+    lblRequestMoreInfoNote: "Lý do / Yêu cầu cụ thể",
+    btnConfirmRequestMoreInfo: "Gửi yêu cầu",
+    toastSettlementSubmitted: "Đã nộp giải trình",
+    toastSettlementConfirmed: "Đã xác nhận giải trình",
+    toastSettlementReturned: "Đã yêu cầu bổ sung",
+    settlementReturnNote: "Yêu cầu bổ sung từ Admin",
+    auditSubmittedSettlement: "đã nộp giải trình",
+    auditConfirmedSettlement: "đã xác nhận giải trình",
+    auditReturnedSettlement: "đã yêu cầu bổ sung giải trình",
+    settlementBalanceRefund: "Hoàn lại công ty (dư)",
+    settlementBalanceShortfall: "Công ty bù thêm (thiếu)",
+    settlementNoItems: "Vui lòng thêm ít nhất 1 khoản chi",
     noApprovalsPending: "Không có đề xuất chờ duyệt",
     noApprovalsHistory: "Chưa có lịch sử phê duyệt",
     createdBy: "Người tạo",
@@ -1313,11 +1414,43 @@ const I18N = {
     statusApproved: "Approved",
     statusRejected: "Rejected",
     statusPaid: "Paid",
+    statusSettlement_pending: "Settlement Pending",
+    statusSettled: "Settled",
+    statusSettlement_returned: "More Info Requested",
     autoApproved: "Will be auto-approved",
     needApproval: "Needs Approval",
     btnApprove: "✓ Approve",
     btnReject: "✕ Reject",
     btnMarkPaid: "💰 Mark as Paid",
+    btnSubmitSettlement: "📋 Submit Settlement",
+    settlementModalTitle: "Advance Expense Settlement",
+    settlementOrigAmount: "Advance Amount",
+    settlementTotalSpent: "Total Spent",
+    settlementBalance: "Balance (Refund/Shortfall)",
+    settlementItemsTitle: "Expense Items",
+    btnAddSettlementItem: "+ Add Expense Item",
+    btnRemoveItem: "Remove",
+    lblSettlementItemCategory: "Category",
+    lblSettlementItemAmount: "Amount ($)",
+    lblSettlementItemNote: "Description",
+    lblSettlementItemReceipt: "Receipt Image",
+    btnSubmitForConfirmation: "Submit Settlement",
+    settlementDetailTitle: "Settlement Details",
+    btnConfirmSettlement: "✓ Confirm Settlement",
+    btnRequestMoreInfo: "↩ Request More Info",
+    requestMoreInfoModalTitle: "Request More Information",
+    lblRequestMoreInfoNote: "Reason / Specific request",
+    btnConfirmRequestMoreInfo: "Send Request",
+    toastSettlementSubmitted: "Settlement submitted",
+    toastSettlementConfirmed: "Settlement confirmed",
+    toastSettlementReturned: "More info requested",
+    settlementReturnNote: "More info requested by Admin",
+    auditSubmittedSettlement: "submitted settlement",
+    auditConfirmedSettlement: "confirmed settlement",
+    auditReturnedSettlement: "requested more info on settlement",
+    settlementBalanceRefund: "Refund to company (surplus)",
+    settlementBalanceShortfall: "Company reimburses (shortfall)",
+    settlementNoItems: "Please add at least 1 expense item",
     noApprovalsPending: "No pending approvals",
     noApprovalsHistory: "No approval history yet",
     createdBy: "Created By",
@@ -1456,6 +1589,7 @@ function getDefaultData() {
         { id: "c_transport", name_vi: "Đi lại", name_en: "Transport", icon: "🚗" },
         { id: "c_food", name_vi: "Ăn uống", name_en: "Food", icon: "🍜" },
         { id: "c_office", name_vi: "Văn phòng", name_en: "Office", icon: "🖇️" },
+        { id: "c_reimbursement", name_vi: "Hoàn ứng", name_en: "Reimbursement", icon: "🔄" },
         { id: "c_other", name_vi: "Khác", name_en: "Other", icon: "📦" },
       ],
       income: [
@@ -1487,6 +1621,17 @@ function ensureStructure() {
   if (!STORE.categories) STORE.categories = def.categories;
   if (!STORE.categories.expense) STORE.categories.expense = def.categories.expense;
   if (!STORE.categories.income) STORE.categories.income = def.categories.income;
+  // Add any new default categories that don't exist yet (e.g. c_reimbursement for expense)
+  def.categories.expense.forEach(defCat => {
+    if (!STORE.categories.expense.some(c => c.id === defCat.id)) {
+      STORE.categories.expense.push({ ...defCat });
+    }
+  });
+  def.categories.income.forEach(defCat => {
+    if (!STORE.categories.income.some(c => c.id === defCat.id)) {
+      STORE.categories.income.push({ ...defCat });
+    }
+  });
   if (!STORE.settings) STORE.settings = def.settings;
   for (const k in def.settings) {
     if (!(k in STORE.settings)) STORE.settings[k] = def.settings[k];
@@ -1692,6 +1837,8 @@ let editingAdvanceId = null;
 let editingCustomerId = null;
 let editingProjectId = null;
 let currentCustomerDetailId = null;
+let currentSettlementAdvanceId = null;
+let settlementItems = []; // working list for the settlement form
 
 document.addEventListener("DOMContentLoaded", () => {
   applyTranslations();
@@ -1758,6 +1905,7 @@ function bootApp() {
   setupSettingsHandlers();
   setupApprovalsTabs();
   setupExportButtons();
+  setupSettlementModals();
 
   applyTranslations();
   renderAll();
@@ -2420,7 +2568,7 @@ function addNotification(notif) {
 }
 
 function updateNotifBadge() {
-  const pendingCount = STORE.advances.filter(a => a.status === "pending").length;
+  const pendingCount = STORE.advances.filter(a => a.status === "pending" || a.status === "settlement_pending").length;
   const badge = document.getElementById("notifBadge");
   const navBadge = document.getElementById("navApprovalBadge");
 
@@ -2467,6 +2615,9 @@ function renderAdvanceFilterTabs() {
     { key: "approved", label: t("statusApproved") },
     { key: "rejected", label: t("statusRejected") },
     { key: "paid", label: t("statusPaid") },
+    { key: "settlement_pending", label: t("statusSettlement_pending") },
+    { key: "settlement_returned", label: t("statusSettlement_returned") },
+    { key: "settled", label: t("statusSettled") },
   ];
   document.getElementById("advanceFilterTabs").innerHTML = tabs.map(tb => `
     <button class="tab-btn ${advanceFilterStatus === tb.key ? "active" : ""}" onclick="setAdvanceFilter('${tb.key}')">${tb.label}</button>
@@ -2486,6 +2637,9 @@ function renderAdvanceCard(a) {
   const showOwner = can("viewAllTx");
   const canEdit = a.userId === currentUser.id && a.status === "pending";
   const canMarkPaid = can("approveAdvance") && a.status === "approved";
+  const canSubmitSettlement = a.userId === currentUser.id && a.status === "paid";
+  const canResubmitSettlement = a.userId === currentUser.id && a.status === "settlement_returned";
+  const canConfirmSettlement = can("approveAdvance") && a.status === "settlement_pending";
 
   return `
     <div class="approval-card">
@@ -2499,8 +2653,13 @@ function renderAdvanceCard(a) {
       ${a.reason ? `<div class="note">${escapeHtml(a.reason)}</div>` : ""}
       <span class="status-pill ${a.status}">${t("status" + capitalize(a.status))}</span>
       ${a.status === "rejected" && a.approvalNote ? `<div class="note" style="margin-top:8px;">${escapeHtml(a.approvalNote)}</div>` : ""}
+      ${a.status === "settlement_returned" && a.settlement && a.settlement.returnNote ? `<div class="note" style="margin-top:8px;">${escapeHtml(a.settlement.returnNote)}</div>` : ""}
       ${canEdit ? `<div class="btn-row"><button class="btn btn-outline btn-sm" onclick="openAdvanceModal('${a.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button></div>` : ""}
       ${canMarkPaid ? `<div class="btn-row"><button class="btn btn-forest btn-sm" onclick="markAdvancePaid('${a.id}')">${t("btnMarkPaid")}</button></div>` : ""}
+      ${canSubmitSettlement || canResubmitSettlement ? `<div class="btn-row"><button class="btn btn-gold btn-sm" onclick="openSettlementModal('${a.id}')">${t("btnSubmitSettlement")}</button></div>` : ""}
+      ${canConfirmSettlement ? `<div class="btn-row"><button class="btn btn-forest btn-sm" onclick="openSettlementDetail('${a.id}')">${t("settlementDetailTitle")}</button></div>` : ""}
+      ${a.status === "settlement_pending" && a.userId === currentUser.id ? `<div class="btn-row"><button class="btn btn-outline btn-sm" onclick="openSettlementDetail('${a.id}', true)">${t("settlementDetailTitle")}</button></div>` : ""}
+      ${a.status === "settled" ? `<div class="btn-row"><button class="btn btn-outline btn-sm" onclick="openSettlementDetail('${a.id}', true)">${t("settlementDetailTitle")}</button></div>` : ""}
     </div>
   `;
 }
@@ -2590,6 +2749,7 @@ function markAdvancePaid(advanceId) {
   const adv = STORE.advances.find(a => a.id === advanceId);
   if (!adv) return;
   adv.status = "paid";
+  adv.paidAt = nowISO();
   adv.history.push({ action: "paid", userId: currentUser.id, userName: currentUser.name, timestamp: nowISO() });
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "paid",
@@ -2597,23 +2757,326 @@ function markAdvancePaid(advanceId) {
     detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
   });
 
-  // Auto-create an expense transaction for the staff member
+  createAdvanceCashTx(adv);
+
+  persistDebounced();
+  showToast(t("toastSaved"), "success");
+  renderAll();
+}
+
+function createAdvanceCashTx(adv) {
+  // Records the cash the staff member received (income side of their personal ledger)
   STORE.transactions.push({
     id: genId("tx"),
-    type: "expense",
-    categoryId: adv.advanceType === "purchase" ? "c_other" : "c_salary",
+    type: "income",
+    categoryId: "c_reimbursement",
     date: todayStr(),
     amount: adv.amount,
     projectId: adv.projectId,
-    note: (currentLang === "vi" ? "Chi từ đề xuất: " : "Paid from proposal: ") + (adv.reason || ""),
+    note: (currentLang === "vi" ? "Nhận tạm ứng: " : "Received advance: ") + (adv.reason || ""),
     userId: adv.userId,
     timestamp: new Date().toTimeString().substring(0, 5),
     createdAt: nowISO(),
     fromAdvanceId: adv.id,
   });
+}
+
+// ===================== SETTLEMENT (GIẢI TRÌNH TẠM ỨNG) =====================
+function setupSettlementModals() {
+  document.getElementById("btnAddSettlementItem").addEventListener("click", addSettlementItemRow);
+  document.getElementById("btnSubmitSettlement").addEventListener("click", submitSettlement);
+  document.getElementById("btnConfirmSettlement").addEventListener("click", confirmSettlement);
+  document.getElementById("btnRequestMoreInfo").addEventListener("click", () => openModal("modalRequestMoreInfo"));
+  document.getElementById("btnConfirmRequestMoreInfo").addEventListener("click", submitRequestMoreInfo);
+}
+
+function openSettlementModal(advanceId) {
+  const adv = STORE.advances.find(a => a.id === advanceId);
+  if (!adv) return;
+  currentSettlementAdvanceId = advanceId;
+
+  // Pre-fill with existing items if resubmitting after a return, else start empty
+  settlementItems = (adv.settlement && adv.settlement.items)
+    ? adv.settlement.items.map(it => ({ ...it }))
+    : [];
+
+  document.getElementById("settlementOrigAmount").textContent = formatCurrency(adv.amount);
+
+  const returnBox = document.getElementById("settlementReturnNoteBox");
+  if (adv.status === "settlement_returned" && adv.settlement && adv.settlement.returnNote) {
+    returnBox.classList.remove("hidden");
+    document.getElementById("settlementReturnNoteText").textContent = adv.settlement.returnNote;
+  } else {
+    returnBox.classList.add("hidden");
+  }
+
+  renderSettlementItems();
+  updateSettlementTotals();
+  openModal("modalSettlement");
+}
+
+function buildCategorySelectOptions(selectedId) {
+  const list = STORE.categories.expense;
+  return list.map(c => `<option value="${c.id}" ${c.id === selectedId ? "selected" : ""}>${c.icon} ${currentLang === "vi" ? c.name_vi : c.name_en}</option>`).join("");
+}
+
+function addSettlementItemRow() {
+  settlementItems.push({
+    id: genId("sit"),
+    categoryId: STORE.categories.expense[0] ? STORE.categories.expense[0].id : "",
+    amount: "",
+    note: "",
+    receipt: null,
+  });
+  renderSettlementItems();
+}
+
+function removeSettlementItemRow(itemId) {
+  settlementItems = settlementItems.filter(it => it.id !== itemId);
+  renderSettlementItems();
+  updateSettlementTotals();
+}
+
+function renderSettlementItems() {
+  const container = document.getElementById("settlementItemsList");
+  if (settlementItems.length === 0) {
+    container.innerHTML = `<div class="empty-state"><p>${t("settlementNoItems")}</p></div>`;
+    return;
+  }
+  container.innerHTML = settlementItems.map(it => `
+    <div class="card" style="background:var(--cream); margin-bottom:10px;" data-item-id="${it.id}">
+      <div class="form-grid">
+        <div class="form-row2">
+          <div class="form-group">
+            <label>${t("lblSettlementItemCategory")}</label>
+            <select onchange="updateSettlementItem('${it.id}','categoryId',this.value)">${buildCategorySelectOptions(it.categoryId)}</select>
+          </div>
+          <div class="form-group">
+            <label>${t("lblSettlementItemAmount")}</label>
+            <input type="number" min="0" step="0.01" value="${it.amount}" oninput="updateSettlementItem('${it.id}','amount',this.value)">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>${t("lblSettlementItemNote")}</label>
+          <input type="text" value="${escapeHtml(it.note || "")}" oninput="updateSettlementItem('${it.id}','note',this.value)">
+        </div>
+        <div class="form-group">
+          <label>${t("lblSettlementItemReceipt")}</label>
+          <input type="file" accept="image/*" onchange="handleSettlementReceiptUpload('${it.id}', this)">
+          ${it.receipt ? `<img src="${it.receipt}" style="max-width:120px; border-radius:8px; margin-top:6px;">` : ""}
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="removeSettlementItemRow('${it.id}')">${t("btnRemoveItem")}</button>
+      </div>
+    </div>
+  `).join("");
+}
+
+function updateSettlementItem(itemId, field, value) {
+  const item = settlementItems.find(it => it.id === itemId);
+  if (!item) return;
+  if (field === "amount") {
+    item[field] = parseFloat(value) || 0;
+  } else {
+    item[field] = value;
+  }
+  updateSettlementTotals();
+}
+
+function handleSettlementReceiptUpload(itemId, inputEl) {
+  const file = inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const item = settlementItems.find(it => it.id === itemId);
+    if (item) {
+      item.receipt = reader.result;
+      renderSettlementItems();
+    }
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateSettlementTotals() {
+  const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
+  if (!adv) return;
+  const totalSpent = settlementItems.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+  const balance = adv.amount - totalSpent;
+
+  document.getElementById("settlementTotalSpent").textContent = formatCurrency(totalSpent);
+  const balanceEl = document.getElementById("settlementBalance");
+  balanceEl.textContent = formatCurrency(balance);
+  balanceEl.style.color = balance >= 0 ? "var(--good)" : "var(--bad)";
+}
+
+function submitSettlement() {
+  const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
+  if (!adv) return;
+
+  if (settlementItems.length === 0) {
+    showToast(t("settlementNoItems"), "error");
+    return;
+  }
+  for (const it of settlementItems) {
+    if (!it.amount || it.amount <= 0) {
+      showToast(t("toastFillRequired"), "error");
+      return;
+    }
+  }
+
+  const totalSpent = settlementItems.reduce((s, it) => s + (parseFloat(it.amount) || 0), 0);
+
+  adv.settlement = {
+    items: settlementItems.map(it => ({ ...it })),
+    totalSpent,
+    balance: adv.amount - totalSpent,
+    submittedBy: currentUser.id,
+    submittedAt: nowISO(),
+    returnNote: null,
+  };
+  adv.status = "settlement_pending";
+  adv.history.push({ action: "submittedSettlement", userId: currentUser.id, userName: currentUser.name, timestamp: nowISO() });
+
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name, action: "submittedSettlement",
+    targetType: adv.advanceType === "purchase" ? t("auditPurchase") : t("auditAdvance"),
+    detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
+  });
 
   persistDebounced();
-  showToast(t("toastSaved"), "success");
+  closeModal("modalSettlement");
+  showToast(t("toastSettlementSubmitted"), "success");
+  renderAll();
+}
+
+function openSettlementDetail(advanceId, readOnly) {
+  const adv = STORE.advances.find(a => a.id === advanceId);
+  if (!adv || !adv.settlement) return;
+  currentSettlementAdvanceId = advanceId;
+
+  document.getElementById("sdOrigAmount").textContent = formatCurrency(adv.amount);
+  document.getElementById("sdTotalSpent").textContent = formatCurrency(adv.settlement.totalSpent);
+  const balanceEl = document.getElementById("sdBalance");
+  balanceEl.textContent = formatCurrency(adv.settlement.balance);
+  balanceEl.style.color = adv.settlement.balance >= 0 ? "var(--good)" : "var(--bad)";
+
+  const list = document.getElementById("settlementDetailItemsList");
+  list.innerHTML = adv.settlement.items.map(it => {
+    const cat = getCategoryById(it.categoryId, "expense");
+    const catName = currentLang === "vi" ? cat.name_vi : cat.name_en;
+    return `
+      <div class="payment-history-item">
+        <div>
+          <div style="font-weight:600;">${cat.icon} ${catName}</div>
+          <div class="pdate">${escapeHtml(it.note || "")}</div>
+          ${it.receipt ? `<img src="${it.receipt}" style="max-width:100px; border-radius:8px; margin-top:6px;">` : ""}
+        </div>
+        <div class="pamt" style="color:var(--bad)">-${formatCurrency(it.amount)}</div>
+      </div>
+    `;
+  }).join("");
+
+  const actionsRow = document.getElementById("btnConfirmSettlement").parentElement;
+  const isReadOnly = !!readOnly || adv.status !== "settlement_pending" || !can("approveAdvance");
+  actionsRow.classList.toggle("hidden", isReadOnly);
+
+  openModal("modalSettlementDetail");
+}
+
+function confirmSettlement() {
+  const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
+  if (!adv || !adv.settlement) return;
+
+  // Record each itemized expense in the staff member's personal ledger
+  adv.settlement.items.forEach(it => {
+    STORE.transactions.push({
+      id: genId("tx"),
+      type: "expense",
+      categoryId: it.categoryId,
+      date: todayStr(),
+      amount: it.amount,
+      projectId: adv.projectId,
+      note: it.note || (currentLang === "vi" ? "Chi từ tạm ứng" : "Settled from advance"),
+      userId: adv.userId,
+      timestamp: new Date().toTimeString().substring(0, 5),
+      createdAt: nowISO(),
+      fromAdvanceId: adv.id,
+      receipt: it.receipt || undefined,
+    });
+  });
+
+  // Record the balance adjustment (refund to company or company reimburses shortfall)
+  const balance = adv.settlement.balance;
+  if (Math.abs(balance) > 0.005) {
+    if (balance > 0) {
+      // Staff returns surplus cash -> expense entry (cash leaves their pocket back to company)
+      STORE.transactions.push({
+        id: genId("tx"),
+        type: "expense",
+        categoryId: "c_reimbursement",
+        date: todayStr(),
+        amount: balance,
+        projectId: adv.projectId,
+        note: t("settlementBalanceRefund"),
+        userId: adv.userId,
+        timestamp: new Date().toTimeString().substring(0, 5),
+        createdAt: nowISO(),
+        fromAdvanceId: adv.id,
+      });
+    } else {
+      // Company reimburses shortfall -> income entry for staff
+      STORE.transactions.push({
+        id: genId("tx"),
+        type: "income",
+        categoryId: "c_reimbursement",
+        date: todayStr(),
+        amount: Math.abs(balance),
+        projectId: adv.projectId,
+        note: t("settlementBalanceShortfall"),
+        userId: adv.userId,
+        timestamp: new Date().toTimeString().substring(0, 5),
+        createdAt: nowISO(),
+        fromAdvanceId: adv.id,
+      });
+    }
+  }
+
+  adv.status = "settled";
+  adv.settlement.confirmedBy = currentUser.id;
+  adv.settlement.confirmedAt = nowISO();
+  adv.history.push({ action: "confirmedSettlement", userId: currentUser.id, userName: currentUser.name, timestamp: nowISO() });
+
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name, action: "confirmedSettlement",
+    targetType: adv.advanceType === "purchase" ? t("auditPurchase") : t("auditAdvance"),
+    detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
+  });
+
+  persistDebounced();
+  closeModal("modalSettlementDetail");
+  showToast(t("toastSettlementConfirmed"), "success");
+  renderAll();
+}
+
+function submitRequestMoreInfo() {
+  const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
+  if (!adv || !adv.settlement) return;
+
+  const note = document.getElementById("requestMoreInfoNote").value.trim();
+  adv.settlement.returnNote = note || t("settlementReturnNote");
+  adv.status = "settlement_returned";
+  adv.history.push({ action: "returnedSettlement", userId: currentUser.id, userName: currentUser.name, timestamp: nowISO() });
+
+  addAuditLog({
+    userId: currentUser.id, userName: currentUser.name, action: "returnedSettlement",
+    targetType: adv.advanceType === "purchase" ? t("auditPurchase") : t("auditAdvance"),
+    detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
+  });
+
+  persistDebounced();
+  document.getElementById("requestMoreInfoNote").value = "";
+  closeModal("modalRequestMoreInfo");
+  closeModal("modalSettlementDetail");
+  showToast(t("toastSettlementReturned"), "success");
   renderAll();
 }
 
