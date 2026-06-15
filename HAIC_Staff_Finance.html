@@ -1023,7 +1023,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
 <div class="modal-overlay" id="modalUser">
   <div class="modal-sheet">
     <div class="modal-head">
-      <h3 data-i18n="userModalTitle">Thêm tài khoản</h3>
+      <h3 id="userModalTitle" data-i18n="userModalTitle">Thêm tài khoản</h3>
       <button class="modal-close" onclick="closeModal('modalUser')">✕</button>
     </div>
     <div class="form-grid">
@@ -1038,6 +1038,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <div class="form-group">
         <label data-i18n="lblUserPassword">Mật khẩu</label>
         <input type="text" id="newUserPassword" placeholder="••••••••">
+        <div class="text-muted" id="newUserPasswordHint" style="font-size:11.5px; margin-top:4px;"></div>
       </div>
       <div class="form-group">
         <label data-i18n="lblUserRole">Vai trò</label>
@@ -1204,6 +1205,8 @@ const I18N = {
     projectsSub: "Danh sách công trình / dự án",
     noProjects: "Chưa có công trình nào",
     userModalTitle: "Thêm tài khoản",
+    userModalEdit: "Sửa tài khoản",
+    lblUserPasswordEditHint: "Để trống nếu không muốn đổi mật khẩu",
     lblUserName: "Tên",
     lblUserEmail: "Email",
     lblUserPassword: "Mật khẩu",
@@ -1287,6 +1290,7 @@ const I18N = {
     lblConfirmPassword: "Xác nhận mật khẩu mới",
     btnChangePassword: "Đổi mật khẩu",
     btnResetPassword: "Đặt lại mật khẩu",
+    btnEditAction: "Sửa",
     promptNewPasswordFor: "Mật khẩu mới cho",
     toastCurrentPasswordWrong: "Mật khẩu hiện tại không đúng",
     toastPasswordTooShort: "Mật khẩu phải có ít nhất 4 ký tự",
@@ -1429,6 +1433,8 @@ const I18N = {
     projectsSub: "Project / construction site list",
     noProjects: "No projects yet",
     userModalTitle: "Add Account",
+    userModalEdit: "Edit Account",
+    lblUserPasswordEditHint: "Leave blank to keep current password",
     lblUserName: "Name",
     lblUserEmail: "Email",
     lblUserPassword: "Password",
@@ -1511,6 +1517,7 @@ const I18N = {
     lblConfirmPassword: "Confirm New Password",
     btnChangePassword: "Change Password",
     btnResetPassword: "Reset Password",
+    btnEditAction: "Edit",
     promptNewPasswordFor: "New password for",
     toastCurrentPasswordWrong: "Current password is incorrect",
     toastPasswordTooShort: "Password must be at least 4 characters",
@@ -1907,6 +1914,7 @@ let editingProjectId = null;
 let currentCustomerDetailId = null;
 let currentSettlementAdvanceId = null;
 let settlementItems = []; // working list for the settlement form
+let editingUserId = null;
 
 document.addEventListener("DOMContentLoaded", () => {
   applyTranslations();
@@ -3953,7 +3961,8 @@ function renderUserMgmt() {
         <div class="lbl">${u.name} ${u.id === currentUser.id ? "<span class='role-badge'>" + t("you") + "</span>" : ""}</div>
         <div class="sub">${u.email} • ${roleLabel(u.role)}${u.branch ? " • " + branchLabel(u.branch) : ""}</div>
       </div>
-      <div style="display:flex; gap:6px;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">
+        ${u.role !== "superadmin" ? `<button class="btn btn-sm btn-outline" onclick="openUserModal('${u.id}')">${t("btnEditAction")}</button>` : ""}
         ${u.id !== currentUser.id ? `<button class="btn btn-sm btn-outline" onclick="openResetPasswordPrompt('${u.id}')">${t("btnResetPassword")}</button>` : ""}
         ${u.role !== "superadmin" ? `
           <button class="btn btn-sm btn-outline" onclick="toggleUserActive('${u.id}')">${u.active === false ? t("activate") : t("deactivate")}</button>
@@ -3991,38 +4000,90 @@ function toggleUserActive(userId) {
 }
 
 function setupUserModal() {
-  document.getElementById("btnAddUser").addEventListener("click", () => openModal("modalUser"));
-  document.getElementById("btnSaveUser").addEventListener("click", saveNewUser);
+  document.getElementById("btnAddUser").addEventListener("click", () => openUserModal(null));
+  document.getElementById("btnSaveUser").addEventListener("click", saveUser);
 }
 
-function saveNewUser() {
+function openUserModal(userId) {
+  editingUserId = userId;
+  const u = userId ? STORE.users.find(u2 => u2.id === userId) : null;
+
+  document.getElementById("userModalTitle").textContent = u ? t("userModalEdit") : t("userModalTitle");
+  document.getElementById("newUserName").value = u ? u.name : "";
+  document.getElementById("newUserEmail").value = u ? u.email : "";
+  document.getElementById("newUserPassword").value = "";
+  document.getElementById("newUserPassword").placeholder = u ? "••••••••" : "••••••••";
+  document.getElementById("newUserPasswordHint").textContent = u ? t("lblUserPasswordEditHint") : "";
+  document.getElementById("newUserRole").value = u ? u.role : "member";
+  document.getElementById("newUserBranch").value = u ? (u.branch || "cambodia") : "cambodia";
+
+  openModal("modalUser");
+}
+
+function saveUser() {
   const name = document.getElementById("newUserName").value.trim();
   const email = document.getElementById("newUserEmail").value.trim().toLowerCase();
   const password = document.getElementById("newUserPassword").value;
   const role = document.getElementById("newUserRole").value;
   const branch = document.getElementById("newUserBranch").value;
 
-  if (!name || !email || !password) {
+  if (!name || !email) {
     showToast(t("toastFillRequired"), "error");
     return;
   }
-  if (STORE.users.some(u => u.email.toLowerCase() === email)) {
-    showToast(currentLang === "vi" ? "Email đã tồn tại" : "Email already exists", "error");
-    return;
-  }
-  STORE.users.push({ id: genId("user"), name, email, password, role, branch, active: true });
-  addAuditLog({
-    userId: currentUser.id, userName: currentUser.name, action: "created",
-    targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)} - ${branchLabel(branch)})`
-  });
 
-  persistDebounced();
-  closeModal("modalUser");
-  document.getElementById("newUserName").value = "";
-  document.getElementById("newUserEmail").value = "";
-  document.getElementById("newUserPassword").value = "";
-  showToast(t("toastUserAdded"), "success");
-  renderUserMgmt();
+  if (editingUserId) {
+    const u = STORE.users.find(u2 => u2.id === editingUserId);
+    if (!u) return;
+    if (STORE.users.some(u2 => u2.id !== editingUserId && u2.email.toLowerCase() === email)) {
+      showToast(currentLang === "vi" ? "Email đã tồn tại" : "Email already exists", "error");
+      return;
+    }
+    u.name = name;
+    u.email = email;
+    u.role = role;
+    u.branch = branch;
+    if (password) u.password = password;
+
+    addAuditLog({
+      userId: currentUser.id, userName: currentUser.name, action: "edited",
+      targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)} - ${branchLabel(branch)})`
+    });
+
+    persistDebounced();
+    closeModal("modalUser");
+    showToast(t("toastSaved"), "success");
+    renderUserMgmt();
+
+    // If editing own account, update session info (role/branch may have changed)
+    if (editingUserId === currentUser.id) {
+      currentUser.role = role;
+      currentUser.branch = branch;
+      renderAll();
+    }
+  } else {
+    if (!password) {
+      showToast(t("toastFillRequired"), "error");
+      return;
+    }
+    if (STORE.users.some(u => u.email.toLowerCase() === email)) {
+      showToast(currentLang === "vi" ? "Email đã tồn tại" : "Email already exists", "error");
+      return;
+    }
+    STORE.users.push({ id: genId("user"), name, email, password, role, branch, active: true });
+    addAuditLog({
+      userId: currentUser.id, userName: currentUser.name, action: "created",
+      targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)} - ${branchLabel(branch)})`
+    });
+
+    persistDebounced();
+    closeModal("modalUser");
+    document.getElementById("newUserName").value = "";
+    document.getElementById("newUserEmail").value = "";
+    document.getElementById("newUserPassword").value = "";
+    showToast(t("toastUserAdded"), "success");
+    renderUserMgmt();
+  }
 }
 
 function renderAuditLog() {
