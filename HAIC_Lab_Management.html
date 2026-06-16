@@ -731,7 +731,7 @@ function attachListeners(){
       // Migrate old tasks: ensure all 7 step keys exist on every test
       const allKeys = ['inprogress','testing','rawdata','calculation','reviewed','writing','submitted'];
       const oldToNew = {'sent':'submitted'}; // old key → new key mapping
-      if(task.tests){
+      if(task.tests && Array.isArray(task.tests)){
         task.tests = task.tests.map(test=>{
           const s = test.steps || {};
           // Map old keys to new keys
@@ -860,14 +860,16 @@ function openModal(id){ document.getElementById(id).classList.add('active'); }
 
 /* ---------- Progress & status helpers ---------- */
 function taskProgress(task){
+  if(!task.tests || task.tests.length===0) return 0;
   const total = task.tests.length * STEP_LABELS.length;
   if(total===0) return 0;
   let done=0;
-  task.tests.forEach(t=>{ STEP_LABELS.forEach(s=>{ if(t.steps[s.k]) done++; }); });
+  task.tests.forEach(t=>{ STEP_LABELS.forEach(s=>{ if(t.steps && t.steps[s.k]) done++; }); });
   return Math.round(done/total*100);
 }
 function taskAllDone(task){
-  return task.tests.every(t=> STEP_LABELS.every(s=>t.steps[s.k]) );
+  if(!task.tests || task.tests.length===0) return false;
+  return task.tests.every(t=> STEP_LABELS.every(s=>t.steps && t.steps[s.k]) );
 }
 
 // Steps that count as "done" for a given staff role
@@ -1171,7 +1173,7 @@ function renderTasks(){
         </div>
       </div>
       <div class="pill-row" style="margin:10px 0;">
-        ${t.tests.map(x=>`<span class="pill">${x.name}</span>`).join('')}
+        ${(t.tests||[]).map(x=>`<span class="pill">${x.name}</span>`).join('')}
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
         <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
