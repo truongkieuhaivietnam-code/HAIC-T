@@ -332,7 +332,7 @@
     <!-- ===================== RAW DATA ===================== -->
     <section class="view" id="view-rawdata">
       <h2 class="view-title">Raw Data &amp; Test Status <span class="vi">— Theo dõi Raw Data</span></h2>
-      <p class="view-sub">Every test must pass through 5 steps before it can be sent to the report team.<br><span class="vi">Mỗi test phải qua đủ 5 bước trước khi gửi report.</span></p>
+      <p class="view-sub">Track test progress per role — Technician: 3 steps / Report Team: 2 steps / Admin: all 7 steps.<br><span class="vi">Theo dõi tiến độ theo vai trò — Kỹ thuật viên: 3 bước / Report Team: 2 bước / Admin: toàn bộ 7 bước.</span></p>
       <div id="rawDataList"></div>
     </section>
 
@@ -351,8 +351,9 @@
         <table>
           <thead>
             <tr>
-              <th>Staff<span class="vi">Nhân viên</span></th>
-              <th>Total Tests<span class="vi">Tổng số test</span></th>
+              <th>Staff / Role<span class="vi">Nhân viên / Vai trò</span></th>
+              <th>Assigned<span class="vi">Được giao</span></th>
+              <th>Tests done<span class="vi">Test hoàn thành</span></th>
               <th>On time<span class="vi">Đúng hạn</span></th>
               <th>Late<span class="vi">Trễ hạn</span></th>
               <th>Avg delay (days)<span class="vi">Trễ TB (ngày)</span></th>
@@ -410,6 +411,7 @@
           <option value="materials">Construction Materials Testing / Kiểm tra vật liệu xây dựng</option>
           <option value="topo">Topographical Survey / Khảo sát địa hình</option>
           <option value="calibration">Equipment Calibration / Hiệu chuẩn thiết bị</option>
+          <option value="other">Other / Khác</option>
         </select>
       </div>
       <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
@@ -435,7 +437,7 @@
 
 <!-- ===================== MODAL: NEW / EDIT TASK ===================== -->
 <div class="modal-bg" id="taskModalBg">
-  <div class="modal">
+  <div class="modal" style="max-width:720px;">
     <button class="modal-close" onclick="closeModal('taskModalBg')">&times;</button>
     <h3 id="taskModalHeading">New Sample <span class="vi">/ Mẫu mới</span></h3>
     <div class="form-grid">
@@ -447,17 +449,25 @@
       <div><label>Sample ID</label><input id="tSampleId" placeholder="BH-03-5.0m"></div>
       <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
       <div>
-        <label>Assigned to<span class="vi">Người phụ trách</span></label>
-        <select id="tAssignee"></select>
+        <label>Start time<span class="vi">Thời gian bắt đầu</span></label>
+        <input type="datetime-local" id="tStartTime">
       </div>
-      <div><label>Deadline</label><input type="date" id="tDeadline"></div>
+      <div>
+        <label>Deadline (date &amp; time)<span class="vi">Deadline (ngày &amp; giờ)</span></label>
+        <input type="datetime-local" id="tDeadline">
+      </div>
+      <div class="full">
+        <label>Assigned to (select multiple / Chọn nhiều người)<span class="vi">Người phụ trách — giữ Ctrl/Cmd để chọn nhiều</span></label>
+        <select id="tAssignee" multiple style="height:110px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
+        <div class="small-muted" style="margin-top:4px;"><span class="en">Hold Ctrl (Windows) or Cmd (Mac) to select multiple people.</span> <span class="vi">Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều người.</span></div>
+      </div>
       <div class="full" id="tTestsSection">
         <label>Tests required (select multiple)<span class="vi">Loại test (chọn nhiều)</span></label>
         <div class="checklist" id="tTestsChecklist"></div>
       </div>
       <div class="full" id="tCustomTestsSection">
         <label>Other tests, comma-separated<span class="vi">Thêm loại test khác, phân cách bằng dấu phẩy</span></label>
-        <input id="tCustomTests" placeholder="e.g. Atterberg Limits, CBR">
+        <input id="tCustomTests" placeholder="e.g. Point Load Test, Vane Shear">
       </div>
     </div>
     <div class="modal-actions">
@@ -523,13 +533,26 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 
+// Full 7-step pipeline — roles control which steps are visible/editable
+// Admin/SuperAdmin: all 7 steps
+// Technician: steps with tech:true
+// Report Team: steps with report:true
 const STEP_LABELS = [
-  {k:'testing',     en:'Testing completed',        vi:'Đã test xong'},
-  {k:'calculation', en:'Calculation done',         vi:'Đã tính toán'},
-  {k:'rawdata',     en:'Raw data uploaded',        vi:'Đã có raw data'},
-  {k:'reviewed',    en:'Reviewed by Admin',        vi:'Admin đã review'},
-  {k:'sent',        en:'Sent to report team',      vi:'Đã gửi report team'}
+  {k:'inprogress',  en:'Testing in progress',   vi:'Đang thực hiện',        tech:true,  report:false},
+  {k:'testing',     en:'Testing completed',      vi:'Kết thúc thí nghiệm',   tech:true,  report:false},
+  {k:'rawdata',     en:'Raw data uploaded',      vi:'Raw data đã upload',     tech:true,  report:false},
+  {k:'calculation', en:'Calculation done',       vi:'Đã tính toán',          tech:false, report:false},
+  {k:'reviewed',    en:'Reviewed by Admin',      vi:'Admin đã review',       tech:false, report:false},
+  {k:'writing',     en:'Writing report',         vi:'Đang làm báo cáo',      tech:false, report:true},
+  {k:'submitted',   en:'Report submitted',       vi:'Đã nộp báo cáo',        tech:false, report:true}
 ];
+
+function stepsForRole(role){
+  if(isAdminLike(role)) return STEP_LABELS;
+  if(role==='technician') return STEP_LABELS.filter(s=>s.tech);
+  if(role==='report') return STEP_LABELS.filter(s=>s.report);
+  return STEP_LABELS;
+}
 
 const TEST_GROUPS = [
   { key:'A', en:'Soil Identification & Classification Tests', vi:'Thí nghiệm nhận dạng và phân loại đất', tests:[
@@ -823,11 +846,32 @@ function taskProgress(task){
 function taskAllDone(task){
   return task.tests.every(t=> STEP_LABELS.every(s=>t.steps[s.k]) );
 }
+
+// Steps that count as "done" for a given staff role
+function roleCompletionSteps(role){
+  if(role==='report') return STEP_LABELS.filter(s=>s.report);
+  if(isAdminLike(role)) return STEP_LABELS.filter(s=>!s.report); // admin: all except report steps
+  return STEP_LABELS.filter(s=>s.tech); // technician
+}
+
+// Check if a staff member has completed their part of a task
+function staffPartDone(task, role){
+  const steps = roleCompletionSteps(role);
+  return task.tests.every(test=> steps.every(s=>test.steps[s.k]));
+}
+
+// Get/compute the timestamp when a staff's part was "done"
+// We store techCompletedAt / adminCompletedAt / reportCompletedAt on the task
+function getStaffCompletedAt(task, role){
+  if(role==='report') return task.reportCompletedAt || null;
+  if(isAdminLike(role)) return task.adminCompletedAt || null;
+  return task.techCompletedAt || null;
+}
 function taskStatus(task){
   const pct = taskProgress(task);
   const today = todayStr();
   if(pct>=100) return 'done';
-  if(task.deadline && task.deadline < today) return 'overdue';
+  if(task.deadline && task.deadline.slice(0,10) < today) return 'overdue';
   if(pct===0) return 'pending';
   return 'progress';
 }
@@ -852,9 +896,25 @@ function trafficDot(task){
   }
   return 'green';
 }
-function findUser(id){ return USERS.find(u=>u.id===id); }
+function fmtDateTime(iso){
+  if(!iso) return '-';
+  if(iso.includes('T')){
+    const [datePart, timePart] = iso.split('T');
+    const [y,m,d] = datePart.split('-');
+    return `${d}/${m}/${y} ${timePart.slice(0,5)}`;
+  }
+  return fmtDate(iso);
+}
+function getAssigneeIds(task){
+  if(Array.isArray(task.assigneeIds) && task.assigneeIds.length>0) return task.assigneeIds;
+  if(task.assigneeId) return [task.assigneeId];
+  return [];
+}
+function getAssigneeNames(task){
+  return getAssigneeIds(task).map(id=>{ const u=findUser(id); return u?u.name:'?'; }).join(', ');
+}
 function assigneeUsers(){
-  const ids = new Set(TASKS.map(t=>t.assigneeId));
+  const ids = new Set(TASKS.flatMap(t=>getAssigneeIds(t)));
   return USERS.filter(u=>u.role==='technician' || ids.has(u.id));
 }
 
@@ -865,14 +925,14 @@ function renderDashboard(){
   document.getElementById('dashDate').textContent = 'Today / Hôm nay: ' + fmtDate(todayStr());
 
   let tasks = TASKS;
-  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
 
   const total = tasks.length;
   const overdue = tasks.filter(t=>taskStatus(t)==='overdue').length;
   const atRisk = tasks.filter(t=>{
     if(taskStatus(t)==='done'||taskStatus(t)==='overdue') return false;
     if(!t.deadline) return false;
-    return daysBetween(todayStr(), t.deadline) <= 2;
+    return daysBetween(todayStr(), (t.deadline||"").slice(0,10)) <= 2;
   }).length;
   const done = tasks.filter(t=>taskStatus(t)==='done').length;
 
@@ -891,7 +951,7 @@ function renderDashboard(){
     rows = `<tr><td colspan="6"><div class="empty-state"><div class="icon">🧪</div><span class="en">No technicians yet.</span><br><span class="vi">Chưa có technician nào.</span></div></td></tr>`;
   } else {
     staffList.forEach(staff=>{
-      const myTasks = TASKS.filter(t=>t.assigneeId===staff.id && taskStatus(t)!=='done');
+      const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id) && taskStatus(t)!=='done');
       if(myTasks.length===0){
         rows += `<tr>
           <td><strong>${staff.name}</strong></td>
@@ -914,7 +974,7 @@ function renderDashboard(){
               <span>${pct}%</span>
             </div>
           </td>
-          <td>${fmtDate(t.deadline)}</td>
+          <td>${fmtDateTime(t.deadline)}</td>
           <td><span class="dot ${dotc}"></span>${statusBadge(taskStatus(t))}</td>
         </tr>`;
       });
@@ -924,7 +984,7 @@ function renderDashboard(){
 
   const alertTasks = TASKS.filter(t=>{
     const st=taskStatus(t);
-    if(SESSION.role==='technician' && t.assigneeId!==SESSION.uid) return false;
+    if(SESSION.role==='technician' && !getAssigneeIds(t).includes(SESSION.uid)) return false;
     return st==='overdue' || (st==='progress' && t.deadline && daysBetween(todayStr(),t.deadline)<=2);
   });
   if(alertTasks.length===0){
@@ -933,13 +993,13 @@ function renderDashboard(){
     let html='';
     alertTasks.forEach(t=>{
       const st=taskStatus(t);
-      const assignee = findUser(t.assigneeId);
-      const diff = daysBetween(todayStr(), t.deadline);
+      
+      const diff = daysBetween(todayStr(), (t.deadline||"").slice(0,10));
       let msg;
       if(st==='overdue') msg = `<span class="badge red">Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày</span>`;
       else msg = `<span class="badge yellow">${diff}d left / Còn ${diff} ngày</span>`;
       html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;">
-        <div><strong>${t.project} — ${t.sampleId}</strong> <span class="small-muted">(${assignee?assignee.name:'?'}) — deadline ${fmtDate(t.deadline)}</span></div>
+        <div><strong>${t.project} — ${t.sampleId}</strong> <span class="small-muted">(${getAssigneeNames(t)}) — deadline ${fmtDateTime(t.deadline)}</span></div>
         <div>${msg}</div>
       </div>`;
     });
@@ -970,33 +1030,35 @@ function renderDashPeriodStats(){
   const startDate = getPeriodRange(period);
   const todayD = todayStr();
 
-  let tasksInRange = TASKS.filter(t=>{
-    if(SESSION.role==='technician' && t.assigneeId!==SESSION.uid) return false;
-    if(!t.completedAt) return false;
-    const completedDate = t.completedAt.slice(0,10);
-    if(startDate && completedDate < startDate) return false;
-    if(completedDate > todayD) return false;
-    return true;
-  });
-
-  const totalSamples = tasksInRange.length;
-  const totalTests = tasksInRange.reduce((s,t)=>s+t.tests.length,0);
-
-  // group by staff
+  // For each task, find which assigned staff have completed their part in the period
   const byStaff = {};
-  tasksInRange.forEach(t=>{
-    const uid = t.assigneeId;
-    if(!byStaff[uid]) byStaff[uid] = {samples:0, tests:0};
-    byStaff[uid].samples++;
-    byStaff[uid].tests += t.tests.length;
+  TASKS.forEach(t=>{
+    getAssigneeIds(t).forEach(uid=>{
+      if(SESSION.role==='technician' && uid!==SESSION.uid) return;
+      const staff = findUser(uid);
+      if(!staff) return;
+      const role = staff.role;
+      if(!staffPartDone(t, role)) return;
+      const completedAt = getStaffCompletedAt(t, role);
+      if(!completedAt) return;
+      const completedDate = completedAt.slice(0,10);
+      if(startDate && completedDate < startDate) return;
+      if(completedDate > todayD) return;
+      if(!byStaff[uid]) byStaff[uid] = {name:staff.name, role, samples:0, tests:0};
+      byStaff[uid].samples++;
+      byStaff[uid].tests += t.tests.length;
+    });
   });
+
+  const totalSamples = Object.values(byStaff).reduce((s,d)=>s+d.samples,0);
+  const totalTests = Object.values(byStaff).reduce((s,d)=>s+d.tests,0);
 
   let rows='';
   Object.keys(byStaff).forEach(uid=>{
-    const u = findUser(uid);
     const d = byStaff[uid];
+    const roleLabel2 = {superadmin:'Super Admin',admin:'Admin',technician:'Technician',report:'Report Team'}[d.role]||d.role;
     rows += `<tr>
-      <td><strong>${u?u.name:'?'}</strong></td>
+      <td><strong>${d.name}</strong><div class="small-muted">${roleLabel2}</div></td>
       <td>${d.samples}</td>
       <td>${d.tests}</td>
     </tr>`;
@@ -1042,10 +1104,10 @@ function renderTasks(){
   document.getElementById('btnNewTask').style.display = isAdminLike(SESSION.role) ? '' : 'none';
 
   let tasks = [...TASKS];
-  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
   const fStaff = filterSel.value;
   const fStatus = document.getElementById('filterStatus').value;
-  if(fStaff) tasks = tasks.filter(t=>t.assigneeId===fStaff);
+  if(fStaff) tasks = tasks.filter(t=>getAssigneeIds(t).includes(fStaff));
   if(fStatus) tasks = tasks.filter(t=>taskStatus(t)===fStatus);
   if(TASKS_PROJECT_FILTER) tasks = tasks.filter(t=>t.projectId===TASKS_PROJECT_FILTER);
 
@@ -1071,17 +1133,18 @@ function renderTasks(){
 
   let html='';
   tasks.forEach(t=>{
-    const assignee = findUser(t.assigneeId);
+    
     const pct = taskProgress(t);
     html += `<div class="section-card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
         <div>
           <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
-          <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${assignee?assignee.name:'?'}</strong></div>
+          <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
+          </div>
         </div>
         <div style="text-align:right;">
           ${statusBadge(taskStatus(t))}
-          <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDate(t.deadline)}</div>
+          <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDateTime(t.deadline)}</div>
         </div>
       </div>
       <div class="pill-row" style="margin:10px 0;">
@@ -1115,7 +1178,8 @@ function openTaskModal(taskId){
   document.getElementById('tClient').value = t ? (t.client||'') : '';
   document.getElementById('tSampleId').value = t ? t.sampleId : '';
   document.getElementById('tStandard').value = t ? (t.standard||'') : '';
-  document.getElementById('tDeadline').value = t ? t.deadline : '';
+  document.getElementById('tStartTime').value = t ? (t.startTime||'') : '';
+  document.getElementById('tDeadline').value = t ? (t.deadline||'') : '';
   document.getElementById('tCustomTests').value = '';
 
   const psel = document.getElementById('tProject');
@@ -1142,23 +1206,29 @@ function openTaskModal(taskId){
   if(sel.options.length===0){
     sel.innerHTML='<option value="">-- No staff available / Chưa có nhân viên --</option>';
   }
-  if(t) sel.value = t.assigneeId;
+  // pre-select current assignees
+  const currentAssignees = t ? (Array.isArray(t.assigneeIds) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : [])) : [];
+  Array.from(sel.options).forEach(o=>{ o.selected = currentAssignees.includes(o.value); });
 
   const cl = document.getElementById('tTestsChecklist');
   const testSection = document.getElementById('tTestsSection');
+  testSection.style.display='';
+  document.getElementById('tCustomTestsSection').style.display='';
+
+  // Build checklist; in edit mode pre-tick existing tests and warn about deletion
+  const existingTests = t ? t.tests.map(x=>x.name) : [];
+  cl.innerHTML = TEST_GROUPS.map(g=>`
+    <div class="test-group">
+      <div class="test-group-title">${g.key}. ${g.en} <span class="vi">/ ${g.vi}</span></div>
+      ${g.tests.map(name=>`<label><input type="checkbox" value="${name}" ${existingTests.includes(name)?'checked':''}> ${name}</label>`).join('')}
+    </div>
+  `).join('');
+
   if(EDIT_TASK_ID){
-    // Editing: tests list is locked (changing tests would break existing progress tracking)
-    testSection.style.display='none';
-    document.getElementById('tCustomTestsSection').style.display='none';
-  } else {
-    testSection.style.display='';
-    document.getElementById('tCustomTestsSection').style.display='';
-    cl.innerHTML = TEST_GROUPS.map(g=>`
-      <div class="test-group">
-        <div class="test-group-title">${g.key}. ${g.en} <span class="vi">/ ${g.vi}</span></div>
-        ${g.tests.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('')}
-      </div>
-    `).join('');
+    // Show any existing custom tests (not in groups) pre-ticked via custom input
+    const groupTestNames = TEST_GROUPS.flatMap(g=>g.tests);
+    const customExisting = existingTests.filter(n=>!groupTestNames.includes(n));
+    if(customExisting.length>0) document.getElementById('tCustomTests').value = customExisting.join(', ');
   }
 
   document.getElementById('taskModalHeading').innerHTML = EDIT_TASK_ID
@@ -1173,42 +1243,72 @@ async function saveTask(){
   const projectId=document.getElementById('tProject').value;
   const sampleId=document.getElementById('tSampleId').value.trim();
   const standard=document.getElementById('tStandard').value.trim();
-  const assigneeId=document.getElementById('tAssignee').value;
+  const startTime=document.getElementById('tStartTime').value;
   const deadline=document.getElementById('tDeadline').value;
 
-  if(!projectId||!sampleId||!assigneeId||!deadline){
-    alert('Please fill in Project, Sample ID, Assignee and Deadline.\nVui lòng chọn Project, điền Sample ID, Người phụ trách và Deadline.');
+  // multi-select assignees
+  const sel=document.getElementById('tAssignee');
+  const assigneeIds = Array.from(sel.selectedOptions).map(o=>o.value).filter(Boolean);
+
+  if(!projectId||!sampleId||assigneeIds.length===0||!deadline){
+    alert('Please fill in Project, Sample ID, at least one Assignee and Deadline.\nVui lòng chọn Project, Sample ID, ít nhất 1 người phụ trách và Deadline.');
     return;
   }
   const projectObj = PROJECTS.find(p=>p.id===projectId);
   const project = projectObj ? `${projectObj.code ? projectObj.code+' — ':''}${projectObj.name}` : '(unknown project)';
 
+  // Build test list
+  const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
+  const custom=document.getElementById('tCustomTests').value.trim();
+  const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allTestNames = [...new Set([...checked, ...customList])];
+
   if(EDIT_TASK_ID){
-    // Editing existing task: only update metadata, keep tests/progress untouched
+    const t = TASKS.find(x=>x.id===EDIT_TASK_ID);
+    // Merge: keep existing steps for retained tests, add new tests fresh, drop removed ones
+    if(allTestNames.length===0){
+      alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+      return;
+    }
+    const removedWithProgress = t.tests.filter(existing=>{
+      if(allTestNames.includes(existing.name)) return false;
+      return Object.values(existing.steps).some(v=>v);
+    });
+    if(removedWithProgress.length>0){
+      const names = removedWithProgress.map(x=>x.name).join(', ');
+      if(!confirm(`Warning: removing "${names}" will delete their progress. Continue?\nCảnh báo: xoá "${names}" sẽ mất tiến độ đã tích. Tiếp tục?`)) return;
+    }
+    const newTests = allTestNames.map(name=>{
+      const existing = t.tests.find(x=>x.name===name);
+      return existing ? existing : {name, steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}};
+    });
+    let completedAt = t.completedAt;
+    const allDone = newTests.every(t=>STEP_LABELS.every(s=>t.steps[s.k]));
+    if(!allDone) completedAt = null;
+
     await db.collection('tasks').doc(EDIT_TASK_ID).update({
-      client, project, projectId, sampleId, standard, assigneeId, deadline
+      client, project, projectId, sampleId, standard,
+      assigneeIds, assigneeId: assigneeIds[0],
+      startTime, deadline, tests: newTests, completedAt
     });
     EDIT_TASK_ID = null;
     closeModal('taskModalBg');
     return;
   }
 
-  const custom=document.getElementById('tCustomTests').value.trim();
-  const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
-  const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
-  const allTests = [...checked, ...customList];
-  if(allTests.length===0){
+  if(allTestNames.length===0){
     alert('Select at least one test.\nChọn ít nhất 1 loại test.');
     return;
   }
-
   const task = {
-    client, project, projectId, sampleId, standard, assigneeId, deadline,
+    client, project, projectId, sampleId, standard,
+    assigneeIds, assigneeId: assigneeIds[0],
+    startTime, deadline,
     createdAt: nowISO(),
     completedAt: null,
-    tests: allTests.map(name=>({
+    tests: allTestNames.map(name=>({
       name,
-      steps:{testing:false,calculation:false,rawdata:false,reviewed:false,sent:false}
+      steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}
     }))
   };
   await db.collection('tasks').add(task);
@@ -1232,13 +1332,15 @@ const PROJECT_TYPE_LABEL = {
   soil:        {en:'Soil Investigation',              vi:'Khảo sát địa kỹ thuật',     cls:'purple'},
   materials:   {en:'Construction Materials Testing',  vi:'Kiểm tra vật liệu xây dựng', cls:'yellow'},
   topo:        {en:'Topographical Survey',            vi:'Khảo sát địa hình',          cls:'green'},
-  calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'}
+  calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'},
+  other:       {en:'Other',                           vi:'Khác',                        cls:'grey'}
 };
 const PROJECT_CODE_PREFIX = {
   soil:        'SI',
   materials:   'CMT',
   topo:        'TOPO',
-  calibration: 'CAL'
+  calibration: 'CAL',
+  other:       'OTH'
 };
 
 function suggestProjectCode(){
@@ -1430,24 +1532,41 @@ async function deleteProject(id){
 function openDetail(taskId){
   const t = TASKS.find(x=>x.id===taskId);
   if(!t) return;
-  const assignee = findUser(t.assigneeId);
+
   document.getElementById('detailTitle').innerHTML = `${t.project} — ${t.sampleId}`;
 
-  const canEdit = isAdminLike(SESSION.role) || SESSION.uid===t.assigneeId;
+  const isAssignee = getAssigneeIds(t).includes(SESSION.uid);
+  const canEdit = isAdminLike(SESSION.role) || isAssignee || SESSION.role==='report';
 
-  let html = `<div class="small-muted" style="margin-bottom:14px;">
-    Client: ${t.client||'-'} | Standard: ${t.standard||'-'} | Assigned to / Phụ trách: <strong>${assignee?assignee.name:'?'}</strong> | Deadline: ${fmtDate(t.deadline)}
-  </div>
-  <div class="test-status-grid">`;
+  // Steps visible to this role
+  const visibleSteps = stepsForRole(SESSION.role);
+
+  // Role label for note
+  const roleNote = {
+    technician: '3 steps: Testing in progress → Testing completed → Raw data uploaded',
+    report: '2 steps: Writing report → Report submitted',
+  }[SESSION.role] || 'Full 7-step view';
+
+  let html = `<div class="small-muted" style="margin-bottom:6px;">
+    Client: ${t.client||'-'} | Standard: ${t.standard||'-'} | Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` | Start: ${fmtDateTime(t.startTime)}`:''} | Deadline: ${fmtDateTime(t.deadline)}
+  </div>`;
+
+  if(!isAdminLike(SESSION.role)){
+    html += `<div class="small-muted" style="margin-bottom:14px;color:var(--accent2);"><em>${roleNote}</em></div>`;
+  }
+
+  html += `<div class="test-status-grid">`;
 
   t.tests.forEach((test,idx)=>{
     const allDone = STEP_LABELS.every(s=>test.steps[s.k]);
+    const visibleDone = visibleSteps.every(s=>test.steps[s.k]);
     html += `<div class="test-status-item">
-      <div class="tname"><span>${test.name}</span> ${allDone?'<span class="badge green">Done / Xong</span>':''}</div>
+      <div class="tname"><span>${test.name}</span> ${allDone?'<span class="badge green">Done / Xong</span>':visibleDone?'<span class="badge yellow">My part done / Xong phần mình</span>':''}</div>
       <div class="steps">`;
-    STEP_LABELS.forEach(s=>{
+    visibleSteps.forEach(s=>{
+      const canCheck = canEdit && (SESSION.role!=='report' || !s.tech) && (!s.report || SESSION.role==='report' || isAdminLike(SESSION.role));
       html += `<label>
-        <input type="checkbox" ${test.steps[s.k]?'checked':''} ${canEdit?'':'disabled'}
+        <input type="checkbox" ${test.steps[s.k]?'checked':''} ${canCheck?'':'disabled'}
           onchange="toggleStep('${t.id}',${idx},'${s.k}',this.checked)">
         <span><span class="en">${s.en}</span><span class="vi">${s.vi}</span></span>
       </label>`;
@@ -1457,7 +1576,7 @@ function openDetail(taskId){
   html += `</div>`;
 
   if(!canEdit){
-    html += `<div class="small-muted" style="margin-top:12px;"><span class="en">Only an Admin or the assigned technician can update this checklist.</span><br><span class="vi">Chỉ Admin hoặc người phụ trách có thể cập nhật checklist.</span></div>`;
+    html += `<div class="small-muted" style="margin-top:12px;"><span class="en">Only an Admin or assigned staff can update this checklist.</span><br><span class="vi">Chỉ Admin hoặc người được giao mới có thể cập nhật checklist.</span></div>`;
   }
 
   document.getElementById('detailBody').innerHTML = html;
@@ -1468,32 +1587,61 @@ async function toggleStep(taskId, testIdx, stepKey, value){
   const t = TASKS.find(x=>x.id===taskId);
   if(!t) return;
   const test = t.tests[testIdx];
-  const order = STEP_LABELS.map(s=>s.k);
-  const i = order.indexOf(stepKey);
+
+  // Enforce order only within the full STEP_LABELS sequence
+  const fullOrder = STEP_LABELS.map(s=>s.k);
+  const i = fullOrder.indexOf(stepKey);
 
   if(value){
-    for(let j=0;j<i;j++){
-      if(!test.steps[order[j]]){
-        const lbl = STEP_LABELS[j];
+    // Only enforce prerequisite check within the steps visible to this role
+    const myStepKeys = stepsForRole(SESSION.role).map(s=>s.k);
+    const prereqsInMySteps = fullOrder.slice(0,i).filter(k=>myStepKeys.includes(k));
+    for(const k of prereqsInMySteps){
+      if(!test.steps[k]){
+        const lbl = STEP_LABELS.find(s=>s.k===k);
         alert(`Please complete "${lbl.en}" first.\nPhải hoàn thành "${lbl.vi}" trước.`);
         openDetail(taskId);
         return;
       }
     }
   } else {
-    for(let j=i+1;j<order.length;j++) test.steps[order[j]]=false;
+    // Unticking: also untick later steps in full order
+    for(let j=i+1;j<fullOrder.length;j++) test.steps[fullOrder[j]]=false;
   }
 
   test.steps[stepKey]=value;
 
-  let completedAt = t.completedAt;
-  if(taskAllDone(t) && !completedAt){
-    completedAt = nowISO();
+  const now = nowISO();
+  const updates = { tests: t.tests };
+
+  // Track overall completedAt
+  if(taskAllDone(t) && !t.completedAt){
+    updates.completedAt = now;
   } else if(!taskAllDone(t)){
-    completedAt = null;
+    updates.completedAt = null;
   }
 
-  await db.collection('tasks').doc(taskId).update({ tests: t.tests, completedAt });
+  // Track per-role completedAt for performance evaluation
+  // Technician part: inprogress + testing + rawdata
+  if(staffPartDone(t,'technician') && !t.techCompletedAt){
+    updates.techCompletedAt = now;
+  } else if(!staffPartDone(t,'technician')){
+    updates.techCompletedAt = null;
+  }
+  // Admin part: inprogress + testing + rawdata + calculation + reviewed
+  if(staffPartDone(t,'admin') && !t.adminCompletedAt){
+    updates.adminCompletedAt = now;
+  } else if(!staffPartDone(t,'admin')){
+    updates.adminCompletedAt = null;
+  }
+  // Report part: writing + submitted
+  if(staffPartDone(t,'report') && !t.reportCompletedAt){
+    updates.reportCompletedAt = now;
+  } else if(!staffPartDone(t,'report')){
+    updates.reportCompletedAt = null;
+  }
+
+  await db.collection('tasks').doc(taskId).update(updates);
   openDetail(taskId);
 }
 
@@ -1563,7 +1711,7 @@ async function submitDailyReport(){
    ============================================================ */
 function renderRawData(){
   let tasks = [...TASKS];
-  if(SESSION.role==='technician') tasks = tasks.filter(t=>t.assigneeId===SESSION.uid);
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
   tasks = tasks.filter(t=>!taskAllDone(t));
 
   if(tasks.length===0){
@@ -1572,17 +1720,17 @@ function renderRawData(){
   }
 
   let html='';
+  const visibleSteps = stepsForRole(SESSION.role);
   tasks.forEach(t=>{
-    const assignee = findUser(t.assigneeId);
     html += `<div class="section-card">
       <h3 style="margin-bottom:2px;">${t.project} — ${t.sampleId}</h3>
-      <div class="small-muted" style="margin-bottom:10px;">Assigned to / Phụ trách: ${assignee?assignee.name:'?'} | Deadline: ${fmtDate(t.deadline)}</div>
+      <div class="small-muted" style="margin-bottom:10px;">Assigned to / Phụ trách: ${getAssigneeNames(t)} | Deadline: ${fmtDateTime(t.deadline)}</div>
       <div class="test-status-grid">`;
     t.tests.forEach(test=>{
-      const allDone = STEP_LABELS.every(s=>test.steps[s.k]);
-      if(allDone) return;
+      const myPartDone = visibleSteps.every(s=>test.steps[s.k]);
+      if(myPartDone) return;
       html += `<div class="test-status-item"><div class="tname"><span>${test.name}</span></div><div class="steps">`;
-      STEP_LABELS.forEach(s=>{
+      visibleSteps.forEach(s=>{
         html += `<span class="badge ${test.steps[s.k]?'green':'grey'}">${test.steps[s.k]?'✓':'○'} ${s.en} / ${s.vi}</span>`;
       });
       html += `</div></div>`;
@@ -1607,12 +1755,12 @@ function renderReportReady(){
   }
   let html='';
   tasks.forEach(t=>{
-    const assignee = findUser(t.assigneeId);
+    
     html += `<div class="section-card">
       <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
         <div>
           <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
-          <div class="small-muted">Client: ${t.client||'-'} | ${t.tests.length} test(s) completed | By / Thực hiện: ${assignee?assignee.name:'?'}</div>
+          <div class="small-muted">Client: ${t.client||'-'} | ${t.tests.length} test(s) completed | By / Thực hiện: ${getAssigneeNames(t)}</div>
         </div>
         <div><span class="badge green">Raw data available · Reviewed ✓</span></div>
       </div>
@@ -1628,27 +1776,50 @@ function renderReportReady(){
    PERFORMANCE TRACKING
    ============================================================ */
 function renderPerformance(){
-  const techs = assigneeUsers();
-  if(techs.length===0){
-    document.getElementById('perfTableBody').innerHTML = `<tr><td colspan="6"><div class="empty-state"><span class="en">No technicians.</span><br><span class="vi">Chưa có technician.</span></div></td></tr>`;
+  const staffWithTasks = assigneeUsers();
+  if(staffWithTasks.length===0){
+    document.getElementById('perfTableBody').innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="en">No staff with assigned tasks.</span><br><span class="vi">Chưa có nhân viên nào được giao việc.</span></div></td></tr>`;
     return;
   }
   let rows='';
-  techs.forEach(staff=>{
-    const myTasks = TASKS.filter(t=>t.assigneeId===staff.id && taskAllDone(t) && t.completedAt);
-    const totalTests = myTasks.reduce((sum,t)=>sum+t.tests.length,0);
-    let onTime=0, late=0, totalDelay=0;
+  staffWithTasks.forEach(staff=>{
+    const role = staff.role; // technician, admin, superadmin, report
+    const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id));
+
+    // Count tasks where this person's part is done
+    const doneTasks = myTasks.filter(t=>staffPartDone(t, role));
+    const totalTests = doneTasks.reduce((sum,t)=>sum+t.tests.length, 0);
+
+    // Evaluate on-time vs late based on role-specific completedAt
+    let onTime=0, late=0, totalDelay=0, pending=0;
     myTasks.forEach(t=>{
-      const completedDate = t.completedAt.slice(0,10);
-      const delay = daysBetween(t.deadline, completedDate);
+      if(!staffPartDone(t, role)){
+        pending++;
+        return;
+      }
+      const completedAt = getStaffCompletedAt(t, role);
+      if(!completedAt){ pending++; return; }
+      const completedDate = completedAt.slice(0,10);
+      const delay = daysBetween((t.deadline||'').slice(0,10), completedDate);
       if(delay<=0) onTime++; else late++;
       totalDelay += Math.max(0,delay);
     });
-    const avgDelay = myTasks.length? (totalDelay/myTasks.length).toFixed(1) : '0.0';
-    const rate = myTasks.length? Math.round(onTime/myTasks.length*100)+'%' : '-';
+
+    const evaluated = onTime + late;
+    const avgDelay = evaluated ? (totalDelay/evaluated).toFixed(1) : '-';
+    const rate = evaluated ? Math.round(onTime/evaluated*100)+'%' : '-';
+
+    const roleLabel2 = {superadmin:'Super Admin',admin:'Admin',technician:'Technician',report:'Report Team'}[role]||role;
+    const evalNote = {
+      technician:'3 steps / 3 bước',
+      report:'2 steps / 2 bước',
+      admin:'5 steps / 5 bước',
+      superadmin:'5 steps / 5 bước'
+    }[role]||'';
 
     rows += `<tr>
-      <td><strong>${staff.name}</strong></td>
+      <td><strong>${staff.name}</strong><div class="small-muted">${roleLabel2} — ${evalNote}</div></td>
+      <td>${myTasks.length}</td>
       <td>${totalTests}</td>
       <td>${onTime}</td>
       <td>${late}</td>
@@ -1761,7 +1932,7 @@ async function deleteStaff(userId){
     alert('Only Super Admin can delete an Admin account.\nChỉ Super Admin được xoá tài khoản Admin.');
     return;
   }
-  if(TASKS.some(t=>t.assigneeId===userId)){
+  if(TASKS.some(t=>getAssigneeIds(t).includes(userId))){
     if(!confirm('This staff has assigned samples. Delete the account anyway?\nNhân viên này đang có mẫu được gán. Vẫn xoá tài khoản?')) return;
   } else {
     if(!confirm(`Delete account for ${u.name}?\nXoá tài khoản của ${u.name}?`)) return;
