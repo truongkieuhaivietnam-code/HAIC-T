@@ -922,6 +922,8 @@ function trafficDot(task){
   }
   return 'green';
 }
+function findUser(id){ return USERS.find(u=>u.id===id); }
+
 function fmtDateTime(iso){
   if(!iso) return '-';
   if(iso.includes('T')){
