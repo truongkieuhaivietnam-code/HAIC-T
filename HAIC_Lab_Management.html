@@ -881,8 +881,9 @@ function roleCompletionSteps(role){
 
 // Check if a staff member has completed their part of a task
 function staffPartDone(task, role){
+  if(!task.tests || task.tests.length===0) return false;
   const steps = roleCompletionSteps(role);
-  return task.tests.every(test=> steps.every(s=>test.steps[s.k]));
+  return task.tests.every(test=> steps.every(s=>test.steps && test.steps[s.k]));
 }
 
 // Get/compute the timestamp when a staff's part was "done"
@@ -931,6 +932,7 @@ function fmtDateTime(iso){
   return fmtDate(iso);
 }
 function getAssigneeIds(task){
+  if(!task) return [];
   if(Array.isArray(task.assigneeIds) && task.assigneeIds.length>0) return task.assigneeIds;
   if(task.assigneeId) return [task.assigneeId];
   return [];
@@ -1158,33 +1160,36 @@ function renderTasks(){
 
   let html='';
   tasks.forEach(t=>{
-    
-    const pct = taskProgress(t);
-    html += `<div class="section-card">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
-        <div>
-          <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
-          <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
+    try {
+      const pct = taskProgress(t);
+      html += `<div class="section-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h3 style="margin-bottom:4px;">${t.project||'(no project)'} — ${t.sampleId||''}</h3>
+            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            ${statusBadge(taskStatus(t))}
+            <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDateTime(t.deadline)}</div>
           </div>
         </div>
-        <div style="text-align:right;">
-          ${statusBadge(taskStatus(t))}
-          <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDateTime(t.deadline)}</div>
+        <div class="pill-row" style="margin:10px 0;">
+          ${(t.tests||[]).map(x=>`<span class="pill">${x.name}</span>`).join('')}
         </div>
-      </div>
-      <div class="pill-row" style="margin:10px 0;">
-        ${(t.tests||[]).map(x=>`<span class="pill">${x.name}</span>`).join('')}
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
-        <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
-        <span class="small-muted">${pct}% complete / hoàn thành</span>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
-        ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Edit <span class="vi">Sửa</span></button>`:''}
-        ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
-      </div>
-    </div>`;
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
+          <span class="small-muted">${pct}% complete / hoàn thành</span>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
+          ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Edit <span class="vi">Sửa</span></button>`:''}
+          ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
+        </div>
+      </div>`;
+    } catch(e){
+      console.error('Error rendering task', t.id, e);
+    }
   });
   document.getElementById('taskList').innerHTML = bannerHtml + html;
 }
