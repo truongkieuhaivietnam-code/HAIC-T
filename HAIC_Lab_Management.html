@@ -726,7 +726,30 @@ function attachListeners(){
     rerenderCurrentView();
   });
   unsubTasks = db.collection('tasks').onSnapshot(snap=>{
-    TASKS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    TASKS = snap.docs.map(d=>{
+      const task = {id:d.id, ...d.data()};
+      // Migrate old tasks: ensure all 7 step keys exist on every test
+      const allKeys = ['inprogress','testing','rawdata','calculation','reviewed','writing','submitted'];
+      const oldToNew = {'sent':'submitted'}; // old key → new key mapping
+      if(task.tests){
+        task.tests = task.tests.map(test=>{
+          const s = test.steps || {};
+          // Map old keys to new keys
+          Object.keys(oldToNew).forEach(oldK=>{
+            const newK = oldToNew[oldK];
+            if(s[oldK]!==undefined && s[newK]===undefined) s[newK] = s[oldK];
+          });
+          // Fill missing keys with false
+          allKeys.forEach(k=>{ if(s[k]===undefined) s[k]=false; });
+          return {...test, steps:s};
+        });
+      }
+      // Migrate old single assigneeId → assigneeIds array
+      if(!task.assigneeIds && task.assigneeId){
+        task.assigneeIds = [task.assigneeId];
+      }
+      return task;
+    });
     rerenderCurrentView();
   });
   unsubDaily = db.collection('dailyReports').onSnapshot(snap=>{
