@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Chi Tiêu Nhóm</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --ink:#1c2b29; --forest:#163832; --forest-light:#2a5048;
+  --gold:#d9a440; --gold-soft:#f2dca8; --cream:#faf6ee; --paper:#fffdf8;
+  --line:#e4ddcd; --good:#3f7d5c; --warn:#c97c2e; --bad:#b54b3f; --muted:#8a8174;
+  --radius:14px; --shadow:0 2px 12px rgba(28,43,41,0.07);
+  font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+body{margin:0;background:var(--cream);color:var(--ink);min-height:100vh;-webkit-font-smoothing:antialiased;}
+h1,h2,h3,h4{font-family:'Georgia',serif;margin:0;letter-spacing:-0.01em;}
+button{font-family:inherit;cursor:pointer;border:none;}
+input,select{font-family:inherit;font-size:15px;}
+
+/* LOGIN */
+#loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(160deg,var(--forest) 0%,#0e2521 100%);padding:24px;}
+.login-card{background:var(--paper);border-radius:20px;padding:40px 32px;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,0.25);text-align:center;position:relative;overflow:hidden;}
+.login-card::before{content:"";position:absolute;top:-60px;right:-60px;width:140px;height:140px;background:var(--gold-soft);border-radius:50%;opacity:0.5;}
+.login-mark{font-size:28px;width:62px;height:62px;border:2px solid var(--forest);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;position:relative;z-index:1;}
+.login-card h1{font-size:22px;color:var(--forest);position:relative;z-index:1;}
+.login-card p.tag{color:var(--muted);font-size:13px;margin:6px 0 28px;position:relative;z-index:1;}
+.field{margin-bottom:14px;text-align:left;position:relative;z-index:1;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--forest);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em;}
+.field input{width:100%;padding:12px 14px;border:1.5px solid var(--line);border-radius:10px;background:var(--cream);transition:.15s;font-size:15px;}
+.field input:focus{outline:none;border-color:var(--gold);}
+.btn-login{width:100%;padding:13px;background:var(--forest);color:#fff;border-radius:10px;font-weight:600;font-size:15px;margin-top:8px;transition:.15s;position:relative;z-index:1;}
+.btn-login:active{transform:scale(.98);background:var(--forest-light);}
+.login-error{color:var(--bad);font-size:13px;margin-top:10px;min-height:18px;position:relative;z-index:1;}
+.login-hint{font-size:11px;color:var(--muted);margin-top:16px;position:relative;z-index:1;line-height:1.7;}
+
+/* APP */
+#app{display:none;min-height:100vh;padding-bottom:74px;}
+.topbar{background:var(--forest);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;box-shadow:0 2px 10px rgba(0,0,0,0.15);}
+.topbar .brand{display:flex;align-items:center;gap:10px;}
+.topbar .mark{width:34px;height:34px;border:1.5px solid var(--gold);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;}
+.topbar .brand-text h1{font-size:14px;color:#fff;line-height:1.2;}
+.topbar .brand-text span{font-size:11px;color:var(--gold-soft);}
+.icon-btn{background:rgba(255,255,255,0.08);color:#fff;width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;margin-left:6px;vertical-align:middle;}
+.sync-dot.live{background:#a8e0bf;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+
+main{padding:16px;max-width:600px;margin:0 auto;}
+.page{display:none;}
+.page.active{display:block;}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--paper);border-top:1px solid var(--line);display:flex;z-index:60;padding-bottom:env(safe-area-inset-bottom);}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:9px 4px;color:var(--muted);font-size:10px;font-weight:600;background:none;}
+.nav-item .ic{font-size:20px;}
+.nav-item.active{color:var(--forest);}
+
+/* CARDS */
+.card{background:var(--paper);border-radius:var(--radius);padding:16px;box-shadow:var(--shadow);margin-bottom:14px;}
+.card h3{font-size:14px;color:var(--forest);margin-bottom:12px;}
+
+/* HERO */
+.hero-card{background:linear-gradient(135deg,var(--forest) 0%,var(--forest-light) 100%);color:#fff;border-radius:var(--radius);padding:22px;margin-bottom:14px;position:relative;overflow:hidden;}
+.hero-card::after{content:"";position:absolute;bottom:-40px;right:-40px;width:140px;height:140px;background:rgba(217,164,64,0.18);border-radius:50%;}
+.hero-card .month{font-size:11px;color:var(--gold-soft);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.hero-card .balance{font-family:'Georgia',serif;font-size:28px;font-weight:700;margin:6px 0 14px;position:relative;z-index:1;}
+.hero-row{display:flex;gap:14px;position:relative;z-index:1;flex-wrap:wrap;}
+.hero-stat{flex:1;min-width:80px;}
+.hero-stat .lbl{font-size:10px;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:.06em;}
+.hero-stat .val{font-size:15px;font-weight:700;margin-top:2px;}
+.hero-stat.expense .val{color:#f5b8a8;}
+.hero-stat.income .val{color:#a8e0bf;}
+.hero-stat.saving .val{color:var(--gold-soft);}
+
+/* FORMS */
+.form-group{margin-bottom:12px;}
+.form-group label{display:block;font-size:12px;font-weight:600;color:var(--forest);margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em;}
+.form-group input,.form-group select{width:100%;padding:11px 13px;border:1.5px solid var(--line);border-radius:10px;background:var(--cream);font-size:14px;}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--gold);}
+.form-row2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.form-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.btn{padding:11px 18px;border-radius:10px;font-weight:600;font-size:14px;transition:.15s;}
+.btn:active{transform:scale(.98);}
+.btn-block{width:100%;}
+.btn-gold{background:var(--gold);color:var(--forest);}
+.btn-forest{background:var(--forest);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
+.btn-danger{background:#fbe1dd;color:var(--bad);}
+.btn-sm{padding:7px 13px;font-size:12.5px;border-radius:8px;}
+.btn-row{display:flex;gap:10px;margin-top:6px;}
+
+/* MEMBER CHIPS */
+.member-chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:6px;}
+.mchip{padding:6px 14px;border-radius:999px;border:1.5px solid var(--line);background:var(--cream);font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;user-select:none;transition:.12s;}
+.mchip.on{background:var(--forest);color:#fff;border-color:var(--forest);}
+
+/* TX ITEMS */
+.tx-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.tx-item:last-child{border-bottom:none;}
+.tx-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.tx-icon.chi{background:#fbe1dd;}
+.tx-icon.thu{background:#d8efe1;}
+.tx-icon.bua{background:var(--gold-soft);}
+.tx-detail{flex:1;min-width:0;}
+.tx-detail .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px;}
+.tx-detail .nm{font-weight:600;font-size:14px;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;}
+.tx-detail .amt{font-weight:700;font-size:14px;white-space:nowrap;flex-shrink:0;}
+.amt-chi{color:var(--bad);}
+.amt-thu{color:var(--good);}
+.tx-detail .meta{font-size:11.5px;color:var(--muted);margin-top:2px;}
+.del-btn{background:none;border:none;color:var(--muted);font-size:16px;padding:4px;opacity:.5;flex-shrink:0;}
+.del-btn:hover{opacity:1;color:var(--bad);}
+
+/* MEAL CARDS */
+.meal-card{border:1px solid var(--line);border-radius:12px;padding:13px;margin-bottom:10px;background:var(--paper);}
+.meal-card .mh{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;}
+.meal-card .mh strong{font-size:14px;color:var(--forest);}
+.meal-card .mpay{font-size:12px;color:var(--muted);margin-top:2px;}
+.diner-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.diner-chip{font-size:11px;padding:3px 10px;border-radius:999px;background:var(--gold-soft);color:var(--forest);font-weight:600;}
+
+/* SETTLE */
+.settle-card{background:linear-gradient(135deg,#fff7e6,#fdf0d8);border:1px solid var(--gold-soft);border-radius:12px;padding:13px;margin-bottom:8px;}
+.settle-row{display:flex;align-items:center;gap:10px;}
+.settle-arrow{font-size:18px;color:var(--warn);}
+.settle-amt{font-family:'Georgia',serif;font-size:17px;font-weight:700;color:var(--warn);margin-left:auto;}
+
+/* BALANCE */
+.debt-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.debt-row:last-child{border-bottom:none;}
+.avatar{width:38px;height:38px;border-radius:50%;background:var(--forest);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px;flex-shrink:0;}
+.debt-info{flex:1;}
+.debt-info .nm{font-size:14px;font-weight:600;}
+.debt-info .sub{font-size:11.5px;color:var(--muted);margin-top:1px;}
+.debt-amt{font-family:'Georgia',serif;font-size:16px;font-weight:700;}
+.debt-amt.pos{color:var(--good);}
+.debt-amt.neg{color:var(--bad);}
+
+/* SETTINGS */
+.settings-section{margin-bottom:18px;}
+.settings-section h4{font-size:12px;color:var(--forest);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;font-weight:700;font-family:inherit;}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line);}
+.settings-row:last-child{border-bottom:none;}
+.settings-row .lbl{font-size:14px;font-weight:500;}
+.settings-row .sub{font-size:11.5px;color:var(--muted);margin-top:1px;}
+.member-row{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);}
+.member-row:last-child{border-bottom:none;}
+.member-info{flex:1;}
+.member-info .nm{font-weight:600;font-size:13.5px;}
+.member-info .role{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;}
+
+/* PAGE HEAD */
+.page-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px;}
+.page-head h2{font-size:20px;color:var(--forest);}
+.page-head .sub{font-size:12px;color:var(--muted);margin-top:2px;}
+
+/* TOAST */
+.toast{position:fixed;top:16px;left:50%;transform:translateX(-50%) translateY(-80px);background:var(--forest);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:300;transition:.3s;box-shadow:0 6px 20px rgba(0,0,0,0.2);max-width:90%;text-align:center;pointer-events:none;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--bad);}
+.toast.success{background:var(--good);}
+
+/* LOADING */
+#loadingOverlay{position:fixed;inset:0;background:var(--forest);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:500;color:#fff;gap:16px;}
+#loadingOverlay .spin{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.empty-state{text-align:center;padding:32px 16px;color:var(--muted);}
+.empty-state .ico{font-size:36px;margin-bottom:8px;}
+.empty-state p{font-size:13px;margin:0;}
+.hidden{display:none!important;}
+.divider{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px;}
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="loadingOverlay">
+  <div style="font-size:32px">🍚</div>
+  <div class="spin"></div>
+  <div style="font-size:13px;color:var(--gold-soft);">Đang kết nối...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="loginScreen" style="display:none">
+  <div class="login-card">
+    <div class="login-mark">🍚</div>
+    <h1>Chi Tiêu Nhóm</h1>
+    <p class="tag">Chia tiền ăn chung cho mấy anh em</p>
+    <div class="field">
+      <label>Tên đăng nhập</label>
+      <input type="text" id="loginUser" placeholder="Nhập tên của bạn" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Mật khẩu</label>
+      <input type="password" id="loginPass" placeholder="••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" onclick="doLogin()">Đăng nhập</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="login-hint">Lần đầu dùng: nhờ Admin tạo tài khoản<br>Admin mặc định: <b>admin</b> / <b>1234</b></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none">
+  <div class="topbar">
+    <div class="brand">
+      <div class="mark">🍚</div>
+      <div class="brand-text">
+        <h1>Chi Tiêu Nhóm <span class="sync-dot live" id="syncDot" title="Realtime sync"></span></h1>
+        <span id="topbarUser">--</span>
+      </div>
+    </div>
+    <button class="icon-btn" onclick="goPage('settings')">⚙️</button>
+  </div>
+
+  <main>
+    <!-- DASHBOARD -->
+    <div id="page-dash" class="page active">
+      <div class="hero-card">
+        <div class="month" id="dashDate">--</div>
+        <div class="balance" id="dashBalance">0 ₫</div>
+        <div class="hero-row">
+          <div class="hero-stat expense"><div class="lbl">Tổng chi</div><div class="val" id="dashChi">0</div></div>
+          <div class="hero-stat income"><div class="lbl">Tổng thu</div><div class="val" id="dashThu">0</div></div>
+          <div class="hero-stat saving"><div class="lbl">Bữa ăn</div><div class="val" id="dashBua">0 bữa</div></div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>💸 Ai cần trả ai</h3>
+        <div id="settleList"><div class="empty-state"><div class="ico">✅</div><p>Tất cả đã hòa!</p></div></div>
+      </div>
+      <div class="card">
+        <h3>👤 Số dư từng người</h3>
+        <div id="balanceList"></div>
+      </div>
+      <div class="card">
+        <h3>📋 Giao dịch gần đây</h3>
+        <div id="recentList"><div class="empty-state"><div class="ico">📭</div><p>Chưa có giao dịch</p></div></div>
+      </div>
+    </div>
+
+    <!-- THU CHI -->
+    <div id="page-expense" class="page">
+      <div class="page-head"><div><h2>Thu Chi</h2><div class="sub">Nhập khoản thu / chi chung</div></div></div>
+      <div class="card">
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Loại</label>
+            <select id="eType"><option value="chi">💸 Chi tiêu</option><option value="thu">💰 Thu tiền</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Người trả</label><select id="ePayer"></select></div>
+        </div>
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Danh mục</label>
+            <select id="eCat">
+              <option>🛒 Đi chợ</option><option>🍜 Ăn uống</option><option>🏠 Sinh hoạt</option>
+              <option>⚡ Điện nước</option><option>🛍️ Mua sắm</option><option>🚗 Di chuyển</option><option>📦 Khác</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Số tiền (₫/R)</label>
+            <input type="number" id="eAmt" placeholder="50000" min="0" step="1000">
+          </div>
+        </div>
+        <div class="form-group"><label>Ghi chú</label><input type="text" id="eNote" placeholder="Mua rau, thịt cá..."></div>
+        <button class="btn btn-forest btn-block" onclick="addExpense()">+ Thêm khoản</button>
+      </div>
+      <div class="divider">Lịch sử</div>
+      <div class="card"><div id="expenseList"><div class="empty-state"><div class="ico">📭</div><p>Chưa có khoản nào</p></div></div></div>
+    </div>
+
+    <!-- BỮA ĂN -->
+    <div id="page-meal" class="page">
+      <div class="page-head"><div><h2>Bữa ăn</h2><div class="sub">Chia tiền theo từng bữa</div></div></div>
+      <div class="card">
+        <div class="form-row3" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Bữa</label>
+            <select id="mMeal"><option value="Sáng">🌅 Sáng</option><option value="Trưa">☀️ Trưa</option><option value="Tối">🌙 Tối</option><option value="Phụ">🍵 Phụ</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Người trả</label><select id="mPayer"></select></div>
+          <div class="form-group" style="margin:0"><label>Tiền chợ</label><input type="number" id="mCost" placeholder="0" min="0" step="1000"></div>
+        </div>
+        <div class="form-group">
+          <label>Ai ăn bữa này?</label>
+          <div class="member-chips" id="mChips"></div>
+        </div>
+        <div id="perHeadPreview" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:18px;"></div>
+        <button class="btn btn-forest btn-block" onclick="addMeal()">+ Thêm bữa</button>
+      </div>
+      <div class="divider">Bữa đã nhập</div>
+      <div id="mealList"><div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="page-settings" class="page">
+      <div class="page-head">
+        <div><h2>Cài đặt</h2><div class="sub" id="settingsInfo"></div></div>
+        <button class="btn btn-sm btn-danger" onclick="doLogout()">Đăng xuất</button>
+      </div>
+
+      <div class="settings-section">
+        <h4>Tài khoản của tôi</h4>
+        <div class="card">
+          <div class="form-group"><label>Mật khẩu hiện tại</label><input type="password" id="curPass" placeholder="••••"></div>
+          <div class="form-group"><label>Mật khẩu mới</label><input type="password" id="newPass" placeholder="••••"></div>
+          <div class="form-group"><label>Xác nhận mật khẩu mới</label><input type="password" id="confirmPass" placeholder="••••"></div>
+          <button class="btn btn-forest btn-block" onclick="changePassword()">Đổi mật khẩu</button>
+        </div>
+      </div>
+
+      <div class="settings-section" id="adminSection">
+        <h4>Quản lý thành viên</h4>
+        <div class="card" style="margin-bottom:10px">
+          <div class="form-row2" style="margin-bottom:12px">
+            <div class="form-group" style="margin:0"><label>Tên thành viên</label><input type="text" id="newMemberName" placeholder="Tên..."></div>
+            <div class="form-group" style="margin:0"><label>Mật khẩu</label><input type="password" id="newMemberPass" placeholder="••••"></div>
+          </div>
+          <div class="form-group"><label>Vai trò</label>
+            <select id="newMemberRole"><option value="member">Thành viên</option><option value="admin">Admin</option></select>
+          </div>
+          <button class="btn btn-gold btn-block" onclick="addMember()">+ Thêm thành viên</button>
+        </div>
+        <div class="card"><div id="membersList"></div></div>
+      </div>
+
+      <div class="settings-section" id="adminDataSection">
+        <h4>Dữ liệu</h4>
+        <div class="card">
+          <div class="settings-row">
+            <div><div class="lbl">Xóa tất cả giao dịch</div><div class="sub">Xóa toàn bộ chi tiêu & bữa ăn</div></div>
+            <button class="btn btn-sm btn-danger" onclick="clearAllData()">Xóa</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="goPage('dash')"><span class="ic">📊</span><span>Tổng kết</span></button>
+    <button class="nav-item" onclick="goPage('expense')"><span class="ic">💸</span><span>Thu chi</span></button>
+    <button class="nav-item" onclick="goPage('meal')"><span class="ic">🍽️</span><span>Bữa ăn</span></button>
+    <button class="nav-item" onclick="goPage('settings')"><span class="ic">⚙️</span><span>Cài đặt</span></button>
+  </nav>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ==================== FIREBASE ====================
+const firebaseConfig = {
+  apiKey: "AIzaSyD--zQVQTp49yLY86GA4v2k4yBCI8JY0Ng",
+  authDomain: "thu-chi-van-phong.firebaseapp.com",
+  projectId: "thu-chi-van-phong",
+  storageBucket: "thu-chi-van-phong.firebasestorage.app",
+  messagingSenderId: "764426711362",
+  appId: "1:764426711362:web:bd0b60319803abc511d8db"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// Collections
+const COL_USERS     = 'chitieu_users';
+const COL_EXPENSES  = 'chitieu_expenses';
+const COL_MEALS     = 'chitieu_meals';
+
+let currentUser = null;
+let allUsers = [];
+let allExpenses = [];
+let allMeals = [];
+let unsubscribers = [];
+
+// ==================== INIT ====================
+async function init() {
+  // Ensure default admin exists
+  const adminSnap = await db.collection(COL_USERS).doc('admin').get();
+  if (!adminSnap.exists) {
+    await db.collection(COL_USERS).doc('admin').set({ name:'admin', password:'1234', role:'admin', createdAt: Date.now() });
+  }
+  document.getElementById('loadingOverlay').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+}
+
+// ==================== AUTH ====================
+async function doLogin() {
+  const nameInput = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if (!nameInput || !pass) { document.getElementById('loginError').textContent = 'Vui lòng điền đầy đủ!'; return; }
+
+  try {
+    const snap = await db.collection(COL_USERS).where('name','==',nameInput).limit(1).get();
+    if (snap.empty) { document.getElementById('loginError').textContent = 'Tên không tồn tại!'; return; }
+    const doc = snap.docs[0];
+    const u = { id: doc.id, ...doc.data() };
+    if (u.password !== pass) { document.getElementById('loginError').textContent = 'Mật khẩu không đúng!'; return; }
+
+    currentUser = u;
+    document.getElementById('loginError').textContent = '';
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('topbarUser').textContent = u.name + (u.role === 'admin' ? ' 👑' : '');
+    document.getElementById('settingsInfo').textContent = 'Đăng nhập: ' + u.name;
+    startListeners();
+  } catch(e) {
+    document.getElementById('loginError').textContent = 'Lỗi kết nối Firebase!';
+    console.error(e);
+  }
+}
+
+function doLogout() {
+  unsubscribers.forEach(fn => fn());
+  unsubscribers = [];
+  currentUser = null;
+  allExpenses = [];
+  allMeals = [];
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+
+// ==================== REALTIME LISTENERS ====================
+function startListeners() {
+  // Users
+  const u1 = db.collection(COL_USERS).onSnapshot(snap => {
+    allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    initSelects();
+    renderMembersList();
+    renderAll();
+  });
+
+  // Expenses — ordered by timestamp desc
+  const u2 = db.collection(COL_EXPENSES).orderBy('ts','desc').onSnapshot(snap => {
+    allExpenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  });
+
+  // Meals
+  const u3 = db.collection(COL_MEALS).orderBy('ts','desc').onSnapshot(snap => {
+    allMeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderAll();
+  });
+
+  unsubscribers = [u1, u2, u3];
+}
+
+// ==================== MEMBERS ====================
+async function addMember() {
+  if (currentUser.role !== 'admin') return;
+  const name = document.getElementById('newMemberName').value.trim();
+  const pass = document.getElementById('newMemberPass').value;
+  const role = document.getElementById('newMemberRole').value;
+  if (!name) { showToast('Nhập tên thành viên!', 'error'); return; }
+  if (pass.length < 4) { showToast('Mật khẩu tối thiểu 4 ký tự!', 'error'); return; }
+  if (allUsers.find(u => u.name.toLowerCase() === name.toLowerCase())) { showToast('Tên đã tồn tại!', 'error'); return; }
+  try {
+    await db.collection(COL_USERS).add({ name, password: pass, role, createdAt: Date.now() });
+    document.getElementById('newMemberName').value = '';
+    document.getElementById('newMemberPass').value = '';
+    showToast('Đã thêm ' + name, 'success');
+  } catch(e) { showToast('Lỗi khi thêm!', 'error'); }
+}
+
+async function deleteMember(id) {
+  if (currentUser.role !== 'admin') return;
+  if (id === currentUser.id) { showToast('Không thể xóa chính mình!', 'error'); return; }
+  const u = allUsers.find(u => u.id === id);
+  if (!confirm('Xóa thành viên ' + u.name + '?')) return;
+  try {
+    await db.collection(COL_USERS).doc(id).delete();
+    showToast('Đã xóa ' + u.name, 'success');
+  } catch(e) { showToast('Lỗi khi xóa!', 'error'); }
+}
+
+function renderMembersList() {
+  const el = document.getElementById('membersList');
+  if (!el) return;
+  if (allUsers.length === 0) { el.innerHTML = '<div class="empty-state"><p>Chưa có thành viên</p></div>'; return; }
+  el.innerHTML = allUsers.map(u => `
+    <div class="member-row">
+      <div class="avatar">${u.name.slice(0,2)}</div>
+      <div class="member-info">
+        <div class="nm">${u.name}</div>
+        <div class="role">${u.role === 'admin' ? '👑 Admin' : 'Thành viên'}</div>
+      </div>
+      ${u.id !== currentUser.id
+        ? `<button class="btn btn-sm btn-danger" onclick="deleteMember('${u.id}')">Xóa</button>`
+        : '<span style="font-size:11px;color:var(--muted)">Bạn</span>'}
+    </div>`).join('');
+}
+
+// ==================== PASSWORD ====================
+async function changePassword() {
+  const cur = document.getElementById('curPass').value;
+  const nw  = document.getElementById('newPass').value;
+  const cf  = document.getElementById('confirmPass').value;
+  if (!cur||!nw||!cf) { showToast('Điền đầy đủ 3 ô!', 'error'); return; }
+  const u = allUsers.find(u => u.id === currentUser.id);
+  if (!u || u.password !== cur) { showToast('Mật khẩu hiện tại không đúng!', 'error'); return; }
+  if (nw.length < 4) { showToast('Mật khẩu mới tối thiểu 4 ký tự!', 'error'); return; }
+  if (nw !== cf) { showToast('Xác nhận mật khẩu không khớp!', 'error'); return; }
+  try {
+    await db.collection(COL_USERS).doc(currentUser.id).update({ password: nw });
+    currentUser.password = nw;
+    document.getElementById('curPass').value = '';
+    document.getElementById('newPass').value = '';
+    document.getElementById('confirmPass').value = '';
+    showToast('Đổi mật khẩu thành công!', 'success');
+  } catch(e) { showToast('Lỗi khi đổi mật khẩu!', 'error'); }
+}
+
+// ==================== EXPENSES ====================
+async function addExpense() {
+  const type  = document.getElementById('eType').value;
+  const payer = document.getElementById('ePayer').value;
+  const cat   = document.getElementById('eCat').value;
+  const amt   = parseInt(document.getElementById('eAmt').value) || 0;
+  const note  = document.getElementById('eNote').value.trim() || cat;
+  if (amt <= 0) { showToast('Nhập số tiền!', 'error'); return; }
+  const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  try {
+    await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, note, time, ts: Date.now(), addedBy: currentUser.name });
+    document.getElementById('eAmt').value = '';
+    document.getElementById('eNote').value = '';
+    showToast('Đã lưu!', 'success');
+  } catch(e) { showToast('Lỗi khi lưu!', 'error'); }
+}
+
+async function deleteExpense(id) {
+  try { await db.collection(COL_EXPENSES).doc(id).delete(); showToast('Đã xóa', 'success'); }
+  catch(e) { showToast('Lỗi!', 'error'); }
+}
+
+// ==================== MEALS ====================
+function getCheckedChips() {
+  return [...document.querySelectorAll('#mChips .mchip.on')].map(e => e.dataset.m);
+}
+
+async function addMeal() {
+  const meal  = document.getElementById('mMeal').value;
+  const payer = document.getElementById('mPayer').value;
+  const cost  = parseInt(document.getElementById('mCost').value) || 0;
+  const diners = getCheckedChips();
+  if (cost <= 0) { showToast('Nhập tiền chợ!', 'error'); return; }
+  if (diners.length === 0) { showToast('Chọn người ăn!', 'error'); return; }
+  const perHead = Math.round(cost / diners.length);
+  const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+  try {
+    await db.collection(COL_MEALS).add({ meal, payer, cost, diners, perHead, time, ts: Date.now(), addedBy: currentUser.name });
+    document.getElementById('mCost').value = '';
+    document.getElementById('perHeadPreview').textContent = '';
+    initMealChips();
+    showToast('Đã thêm bữa ' + meal, 'success');
+  } catch(e) { showToast('Lỗi khi lưu!', 'error'); }
+}
+
+async function deleteMeal(id) {
+  try { await db.collection(COL_MEALS).doc(id).delete(); showToast('Đã xóa', 'success'); }
+  catch(e) { showToast('Lỗi!', 'error'); }
+}
+
+async function clearAllData() {
+  if (currentUser.role !== 'admin') return;
+  if (!confirm('Xóa toàn bộ chi tiêu và bữa ăn? Không khôi phục được!')) return;
+  try {
+    const batch = db.batch();
+    const [eSnap, mSnap] = await Promise.all([
+      db.collection(COL_EXPENSES).get(),
+      db.collection(COL_MEALS).get()
+    ]);
+    eSnap.docs.forEach(d => batch.delete(d.ref));
+    mSnap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+    showToast('Đã xóa tất cả dữ liệu!', 'success');
+  } catch(e) { showToast('Lỗi!', 'error'); }
+}
+
+// ==================== CALC ====================
+function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Math.abs(n))) + '₫'; }
+
+function calcBalances() {
+  const bal = {};
+  allUsers.forEach(u => bal[u.name] = 0);
+
+  allExpenses.forEach(e => {
+    if (!bal.hasOwnProperty(e.payer)) bal[e.payer] = 0;
+    bal[e.payer] += (e.type === 'chi') ? e.amt : -e.amt;
+  });
+
+  allMeals.forEach(m => {
+    if (!bal.hasOwnProperty(m.payer)) bal[m.payer] = 0;
+    bal[m.payer] += m.cost;
+    m.diners.forEach(d => {
+      if (!bal.hasOwnProperty(d)) bal[d] = 0;
+      bal[d] -= m.perHead;
+    });
+  });
+
+  return bal;
+}
+
+function simplifyDebts(bal) {
+  const cred = [], debt = [];
+  Object.entries(bal).forEach(([p,b]) => {
+    if (b > 1)  cred.push({ p, b: +b });
+    else if (b < -1) debt.push({ p, b: -b });
+  });
+  cred.sort((a,b) => b.b - a.b);
+  debt.sort((a,b) => b.b - a.b);
+  const txns = [];
+  let i=0, j=0;
+  while (i < cred.length && j < debt.length) {
+    const pay = Math.min(cred[i].b, debt[j].b);
+    if (pay > 1) txns.push({ from: debt[j].p, to: cred[i].p, amount: Math.round(pay) });
+    cred[i].b -= pay; debt[j].b -= pay;
+    if (cred[i].b < 1) i++;
+    if (debt[j].b < 1) j++;
+  }
+  return txns;
+}
+
+// ==================== RENDER ====================
+function renderAll() {
+  renderDash();
+  renderExpenses();
+  renderMeals();
+}
+
+function renderDash() {
+  const totChi = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+e.amt,0)
+    + allMeals.reduce((s,m)=>s+m.cost,0);
+  const totThu = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+e.amt,0);
+  const con = totThu - totChi;
+  const bal = calcBalances();
+  const txns = simplifyDebts(bal);
+
+  const now = new Date();
+  document.getElementById('dashDate').textContent = now.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
+  document.getElementById('dashBalance').textContent = (con >= 0 ? '+' : '-') + fmt(con);
+  document.getElementById('dashChi').textContent = fmt(totChi);
+  document.getElementById('dashThu').textContent = fmt(totThu);
+  document.getElementById('dashBua').textContent = allMeals.length + ' bữa';
+
+  // Settle
+  const sl = document.getElementById('settleList');
+  sl.innerHTML = txns.length === 0
+    ? '<div class="empty-state"><div class="ico">✅</div><p>Tất cả đã hòa!</p></div>'
+    : txns.map(t => `
+      <div class="settle-card">
+        <div class="settle-row">
+          <div class="avatar" style="width:32px;height:32px;font-size:12px">${t.from.slice(0,2)}</div>
+          <span style="font-size:13px;font-weight:600">${t.from}</span>
+          <span class="settle-arrow">→</span>
+          <div class="avatar" style="width:32px;height:32px;font-size:12px;background:var(--good)">${t.to.slice(0,2)}</div>
+          <span style="font-size:13px;font-weight:600">${t.to}</span>
+          <span class="settle-amt">${fmt(t.amount)}</span>
+        </div>
+      </div>`).join('');
+
+  // Balance
+  const bl = document.getElementById('balanceList');
+  bl.innerHTML = allUsers.map(u => {
+    const b = Math.round(bal[u.name] || 0);
+    return `<div class="debt-row">
+      <div class="avatar">${u.name.slice(0,2)}</div>
+      <div class="debt-info">
+        <div class="nm">${u.name}${u.role==='admin'?' 👑':''}</div>
+        <div class="sub">${b>0?'Được nhận lại':b<0?'Đang nợ nhóm':'Hòa'}</div>
+      </div>
+      <div class="debt-amt ${b>0?'pos':b<0?'neg':''}">${b===0?'—':(b>0?'+':'-')+fmt(b)}</div>
+    </div>`;
+  }).join('');
+
+  // Recent
+  const recent = [
+    ...allExpenses.slice(0,10).map(e=>({...e,kind:'expense'})),
+    ...allMeals.slice(0,10).map(m=>({...m,kind:'meal',amt:m.cost}))
+  ].sort((a,b)=>b.ts-a.ts).slice(0,6);
+
+  const rl = document.getElementById('recentList');
+  rl.innerHTML = recent.length === 0
+    ? '<div class="empty-state"><div class="ico">📭</div><p>Chưa có giao dịch</p></div>'
+    : recent.map(e => e.kind === 'meal'
+      ? `<div class="tx-item">
+          <div class="tx-icon bua">🍽️</div>
+          <div class="tx-detail">
+            <div class="top"><span class="nm">Bữa ${e.meal}</span><span class="amt amt-chi">-${fmt(e.amt)}</span></div>
+            <div class="meta">${e.payer} trả · ${e.diners.join(', ')} · ${e.time||''}</div>
+          </div>
+        </div>`
+      : `<div class="tx-item">
+          <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
+          <div class="tx-detail">
+            <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
+            <div class="meta">${e.cat} · ${e.payer} · ${e.time||''}</div>
+          </div>
+        </div>`
+    ).join('');
+}
+
+function renderExpenses() {
+  const el = document.getElementById('expenseList');
+  if (allExpenses.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">📭</div><p>Chưa có khoản nào</p></div>'; return; }
+  el.innerHTML = allExpenses.map(e => `
+    <div class="tx-item">
+      <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
+      <div class="tx-detail">
+        <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
+        <div class="meta">${e.cat} · ${e.payer} · ${e.time||''} · ${e.addedBy||''}</div>
+      </div>
+      <button class="del-btn" onclick="deleteExpense('${e.id}')">✕</button>
+    </div>`).join('');
+}
+
+function renderMeals() {
+  const el = document.getElementById('mealList');
+  if (allMeals.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div>'; return; }
+  el.innerHTML = allMeals.map(m => `
+    <div class="meal-card">
+      <div class="mh">
+        <div>
+          <strong>🍽️ Bữa ${m.meal}</strong>
+          <div class="mpay">${m.payer} trả · ${fmt(m.cost)} · ${m.time||''}</div>
+        </div>
+        <button class="del-btn" onclick="deleteMeal('${m.id}')">✕</button>
+      </div>
+      <div class="diner-chips">
+        ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmt(m.perHead)}</span>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
+// ==================== SELECTS & CHIPS ====================
+function initSelects() {
+  ['ePayer','mPayer'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = allUsers.map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+    if (cur && allUsers.find(u=>u.name===cur)) el.value = cur;
+    else if (currentUser) el.value = currentUser.name;
+  });
+  initMealChips();
+}
+
+function initMealChips() {
+  const el = document.getElementById('mChips');
+  el.innerHTML = allUsers.map(u=>`<div class="mchip on" data-m="${u.name}" onclick="toggleChip(this)">${u.name}</div>`).join('');
+  updatePerHead();
+}
+
+function toggleChip(el) { el.classList.toggle('on'); updatePerHead(); }
+
+function updatePerHead() {
+  const cost = parseInt(document.getElementById('mCost').value) || 0;
+  const diners = getCheckedChips();
+  const el = document.getElementById('perHeadPreview');
+  el.textContent = (cost > 0 && diners.length > 0)
+    ? `Mỗi người: ${fmt(Math.round(cost/diners.length))} (${diners.length} người)`
+    : '';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mCost').addEventListener('input', updatePerHead);
+});
+
+// ==================== NAV ====================
+function goPage(p) {
+  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  const idx = {dash:0,expense:1,meal:2,settings:3}[p];
+  if (idx !== undefined) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+  if (p === 'settings') {
+    const isAdmin = currentUser && currentUser.role === 'admin';
+    document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
+    document.getElementById('adminDataSection').classList.toggle('hidden', !isAdmin);
+  }
+}
+
+// ==================== TOAST ====================
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 2500);
+}
+
+// ==================== START ====================
+init();
+</script>
+</body>
+</html>
