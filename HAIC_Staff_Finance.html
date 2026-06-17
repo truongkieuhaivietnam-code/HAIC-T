@@ -676,6 +676,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <div class="form-group">
         <label data-i18n="lblCategory">Danh mục</label>
         <select id="txCategory"></select>
+        <input type="text" id="txCustomCategory" class="hidden" placeholder="" style="margin-top:8px;">
       </div>
       <div class="form-group">
         <label data-i18n="lblAmount">Số tiền ($)</label>
@@ -2425,8 +2426,9 @@ function renderRecentTransactions(opts) {
 }
 
 function renderTxItem(tx) {
-  const cat = getCategoryById(tx.categoryId, tx.type);
-  const catName = currentLang === "vi" ? cat.name_vi : cat.name_en;
+  const cat = getCategoryById(tx.categoryId === "__custom__" ? "c_other" : tx.categoryId, tx.type);
+  const catName = tx.customCategory || (currentLang === "vi" ? cat.name_vi : cat.name_en);
+  const catIcon = tx.categoryId === "__custom__" ? "✏️" : cat.icon;
   const isIncome = tx.type === "income";
   const amountStr = (isIncome ? "+" : "-") + formatCurrency(tx.amount);
   const project = tx.projectId ? getProjectById(tx.projectId) : null;
@@ -2435,10 +2437,10 @@ function renderTxItem(tx) {
 
   return `
     <div class="tx-item" onclick="openTxDetail('${tx.id}')">
-      <div class="tx-icon ${isIncome ? "income" : ""}">${cat.icon}</div>
+      <div class="tx-icon ${isIncome ? "income" : ""}">${catIcon}</div>
       <div class="tx-detail">
         <div class="top">
-          <div class="cat">${catName}</div>
+          <div class="cat">${escapeHtml(catName)}</div>
           <div class="amt ${tx.type}">${amountStr}</div>
         </div>
         <div class="meta">
@@ -2551,6 +2553,7 @@ function setupFab() {
 
 function setupTxModal() {
   document.getElementById("txType").addEventListener("change", populateCategoryOptions);
+  document.getElementById("txCategory").addEventListener("change", toggleCustomCategoryInput);
   document.getElementById("btnSaveTx").addEventListener("click", saveTransaction);
   document.getElementById("btnDeleteTx").addEventListener("click", deleteTransaction);
 }
@@ -2558,7 +2561,22 @@ function setupTxModal() {
 function populateCategoryOptions() {
   const type = document.getElementById("txType").value;
   const list = type === "income" ? STORE.categories.income : STORE.categories.expense;
-  document.getElementById("txCategory").innerHTML = list.map(c => `<option value="${c.id}">${c.icon} ${currentLang === "vi" ? c.name_vi : c.name_en}</option>`).join("");
+  const customLabel = currentLang === "vi" ? "✏️ Tự nhập..." : "✏️ Custom...";
+  document.getElementById("txCategory").innerHTML =
+    list.map(c => `<option value="${c.id}">${c.icon} ${currentLang === "vi" ? c.name_vi : c.name_en}</option>`).join("") +
+    `<option value="__custom__">${customLabel}</option>`;
+  toggleCustomCategoryInput();
+}
+
+function toggleCustomCategoryInput() {
+  const sel = document.getElementById("txCategory");
+  const inp = document.getElementById("txCustomCategory");
+  const isCustom = sel.value === "__custom__";
+  inp.classList.toggle("hidden", !isCustom);
+  if (isCustom) {
+    inp.focus();
+    inp.placeholder = currentLang === "vi" ? "Nhập tên danh mục..." : "Enter category name...";
+  }
 }
 
 function openTxModal(tx) {
@@ -2567,7 +2585,17 @@ function openTxModal(tx) {
   document.getElementById("txModalTitle").textContent = tx ? t("txModalEdit") : t("txModalAdd");
   document.getElementById("txType").value = tx ? tx.type : "expense";
   populateCategoryOptions();
-  document.getElementById("txCategory").value = tx ? tx.categoryId : (STORE.categories.expense[0] && STORE.categories.expense[0].id);
+
+  const customInp = document.getElementById("txCustomCategory");
+  if (tx && tx.customCategory) {
+    document.getElementById("txCategory").value = "__custom__";
+    customInp.value = tx.customCategory;
+    customInp.classList.remove("hidden");
+  } else {
+    document.getElementById("txCategory").value = tx ? tx.categoryId : (STORE.categories.expense[0] && STORE.categories.expense[0].id);
+    customInp.value = "";
+    customInp.classList.add("hidden");
+  }
   document.getElementById("txDate").value = tx ? tx.date : todayStr();
   document.getElementById("txAmount").value = tx ? tx.amount : "";
   populateProjectOptions(document.getElementById("txProject"));
@@ -2605,6 +2633,7 @@ function deleteTransaction() {
 function saveTransaction() {
   const type = document.getElementById("txType").value;
   const categoryId = document.getElementById("txCategory").value;
+  const customCategory = categoryId === "__custom__" ? document.getElementById("txCustomCategory").value.trim() : null;
   const date = document.getElementById("txDate").value;
   const amount = parseFloat(document.getElementById("txAmount").value);
   const projectId = document.getElementById("txProject").value || null;
@@ -2614,34 +2643,41 @@ function saveTransaction() {
     showToast(t("toastFillRequired"), "error");
     return;
   }
+  if (categoryId === "__custom__" && !customCategory) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
 
   if (editingTxId) {
     const tx = STORE.transactions.find(t2 => t2.id === editingTxId);
     if (!tx) return;
     tx.type = type;
     tx.categoryId = categoryId;
+    tx.customCategory = customCategory || null;
     tx.date = date;
     tx.amount = amount;
     tx.projectId = projectId;
     tx.note = note;
     tx.updatedAt = nowISO();
+    const displayName = customCategory || getCategoryById(categoryId, type).name_vi;
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name,
       action: "edited", targetType: type === "income" ? t("auditIncome") : t("auditExpense"),
-      detail: `${getCategoryById(categoryId, type).name_vi} - ${formatCurrency(amount)}`
+      detail: `${displayName} - ${formatCurrency(amount)}`
     });
   } else {
     STORE.transactions.push({
       id: genId("tx"),
-      type, categoryId, date, amount, projectId, note,
+      type, categoryId, customCategory: customCategory || null, date, amount, projectId, note,
       userId: currentUser.id,
       timestamp: new Date().toTimeString().substring(0, 5),
       createdAt: nowISO(),
     });
+    const displayName = customCategory || getCategoryById(categoryId, type).name_vi;
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name,
       action: "created", targetType: type === "income" ? t("auditIncome") : t("auditExpense"),
-      detail: `${getCategoryById(categoryId, type).name_vi} - ${formatCurrency(amount)}`
+      detail: `${displayName} - ${formatCurrency(amount)}`
     });
   }
 
