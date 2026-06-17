@@ -264,7 +264,10 @@ main{padding:16px;max-width:600px;margin:0 auto;}
             <input type="number" id="eAmt" placeholder="50000" min="0" step="1000">
           </div>
         </div>
-        <div class="form-group"><label>Ghi chú</label><input type="text" id="eNote" placeholder="Mua rau, thịt cá..."></div>
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Ngày</label><input type="date" id="eDate"></div>
+          <div class="form-group" style="margin:0"><label>Ghi chú</label><input type="text" id="eNote" placeholder="Mua rau, thịt cá..."></div>
+        </div>
         <button class="btn btn-forest btn-block" onclick="addExpense()">+ Thêm khoản</button>
       </div>
       <div class="divider">Lịch sử</div>
@@ -282,6 +285,7 @@ main{padding:16px;max-width:600px;margin:0 auto;}
           <div class="form-group" style="margin:0"><label>Người trả</label><select id="mPayer"></select></div>
           <div class="form-group" style="margin:0"><label>Tiền chợ</label><input type="number" id="mCost" placeholder="0" min="0" step="1000"></div>
         </div>
+        <div class="form-group"><label>Ngày</label><input type="date" id="mDate"></div>
         <div class="form-group">
           <label>Ai ăn bữa này?</label>
           <div class="member-chips" id="mChips"></div>
@@ -291,6 +295,27 @@ main{padding:16px;max-width:600px;margin:0 auto;}
       </div>
       <div class="divider">Bữa đã nhập</div>
       <div id="mealList"><div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div></div>
+    </div>
+
+    <!-- QUYẾT TOÁN -->
+    <div id="page-qt" class="page">
+      <div class="page-head">
+        <div><h2>Quyết toán</h2><div class="sub">Chốt sổ & reset về 0</div></div>
+      </div>
+
+      <!-- Trạng thái hiện tại -->
+      <div class="card" id="adminQtSection">
+        <h3>📋 Trạng thái hiện tại</h3>
+        <div id="qtCurrentSettle"></div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--line);">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:10px;">Sau khi mấy anh em thanh toán xong, Admin bấm <b>Chốt sổ</b> để lưu lại và reset về 0.</div>
+          <button class="btn btn-gold btn-block" onclick="doQuyetToan()">⚡ Chốt sổ & Reset về 0</button>
+        </div>
+      </div>
+
+      <!-- Lịch sử quyết toán -->
+      <div class="divider">Lịch sử quyết toán</div>
+      <div id="qtHistoryList"><div class="empty-state"><div class="ico">📂</div><p>Chưa có lần quyết toán nào</p></div></div>
     </div>
 
     <!-- SETTINGS -->
@@ -341,6 +366,7 @@ main{padding:16px;max-width:600px;margin:0 auto;}
     <button class="nav-item active" onclick="goPage('dash')"><span class="ic">📊</span><span>Tổng kết</span></button>
     <button class="nav-item" onclick="goPage('expense')"><span class="ic">💸</span><span>Thu chi</span></button>
     <button class="nav-item" onclick="goPage('meal')"><span class="ic">🍽️</span><span>Bữa ăn</span></button>
+    <button class="nav-item" onclick="goPage('qt')"><span class="ic">✅</span><span>Quyết toán</span></button>
     <button class="nav-item" onclick="goPage('settings')"><span class="ic">⚙️</span><span>Cài đặt</span></button>
   </nav>
 </div>
@@ -364,11 +390,13 @@ const db = firebase.firestore();
 const COL_USERS     = 'chitieu_users';
 const COL_EXPENSES  = 'chitieu_expenses';
 const COL_MEALS     = 'chitieu_meals';
+const COL_QT        = 'chitieu_quyettoan';
 
 let currentUser = null;
 let allUsers = [];
 let allExpenses = [];
 let allMeals = [];
+let allQT = [];
 let unsubscribers = [];
 
 // ==================== INIT ====================
@@ -442,7 +470,13 @@ function startListeners() {
     renderAll();
   });
 
-  unsubscribers = [u1, u2, u3];
+  // QT history
+  const u4 = db.collection(COL_QT).orderBy('ts','desc').onSnapshot(snap => {
+    allQT = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderQT();
+  });
+
+  unsubscribers = [u1, u2, u3, u4];
 }
 
 // ==================== MEMBERS ====================
@@ -517,10 +551,11 @@ async function addExpense() {
   const cat   = document.getElementById('eCat').value;
   const amt   = parseInt(document.getElementById('eAmt').value) || 0;
   const note  = document.getElementById('eNote').value.trim() || cat;
+  const date  = document.getElementById('eDate').value || todayStr();
   if (amt <= 0) { showToast('Nhập số tiền!', 'error'); return; }
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
   try {
-    await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, note, time, ts: Date.now(), addedBy: currentUser.name });
+    await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, note, date, time, ts: Date.now(), addedBy: currentUser.name });
     document.getElementById('eAmt').value = '';
     document.getElementById('eNote').value = '';
     showToast('Đã lưu!', 'success');
@@ -541,13 +576,21 @@ async function addMeal() {
   const meal  = document.getElementById('mMeal').value;
   const payer = document.getElementById('mPayer').value;
   const cost  = parseInt(document.getElementById('mCost').value) || 0;
-  const diners = getCheckedChips();
+  const date  = document.getElementById('mDate').value || todayStr();
+  const allChips = getCheckedChips();
   if (cost <= 0) { showToast('Nhập tiền chợ!', 'error'); return; }
-  if (diners.length === 0) { showToast('Chọn người ăn!', 'error'); return; }
-  const perHead = Math.round(cost / diners.length);
+  if (allChips.length === 0) { showToast('Chọn người ăn!', 'error'); return; }
+
+  // Tách Quỹ ra — Quỹ trả phần của mình, không tính vào nợ cá nhân
+  const diners = allChips.filter(d => d !== '🏦 Quỹ');
+  const quyPays = allChips.includes('🏦 Quỹ');
+  const totalPeople = allChips.length;
+  const perHead = Math.round(cost / totalPeople);
+  const quyAmt = quyPays ? perHead : 0;
+
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
   try {
-    await db.collection(COL_MEALS).add({ meal, payer, cost, diners, perHead, time, ts: Date.now(), addedBy: currentUser.name });
+    await db.collection(COL_MEALS).add({ meal, payer, cost, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now(), addedBy: currentUser.name });
     document.getElementById('mCost').value = '';
     document.getElementById('perHeadPreview').textContent = '';
     initMealChips();
@@ -590,7 +633,9 @@ function calcBalances() {
 
   allMeals.forEach(m => {
     if (!bal.hasOwnProperty(m.payer)) bal[m.payer] = 0;
-    bal[m.payer] += m.cost;
+    // Payer gets back total cost minus what Quỹ covers
+    const quyAmt = m.quyAmt || 0;
+    bal[m.payer] += (m.cost - quyAmt);
     m.diners.forEach(d => {
       if (!bal.hasOwnProperty(d)) bal[d] = 0;
       bal[d] -= m.perHead;
@@ -686,14 +731,14 @@ function renderDash() {
           <div class="tx-icon bua">🍽️</div>
           <div class="tx-detail">
             <div class="top"><span class="nm">Bữa ${e.meal}</span><span class="amt amt-chi">-${fmt(e.amt)}</span></div>
-            <div class="meta">${e.payer} trả · ${e.diners.join(', ')} · ${e.time||''}</div>
+            <div class="meta">${fmtDate(e.date)} · ${e.payer} trả · ${e.diners.join(', ')}${e.quyPays?' · 🏦 Quỹ':''}</div>
           </div>
         </div>`
       : `<div class="tx-item">
           <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
           <div class="tx-detail">
             <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
-            <div class="meta">${e.cat} · ${e.payer} · ${e.time||''}</div>
+            <div class="meta">${fmtDate(e.date)} · ${e.time||''} · ${e.payer}</div>
           </div>
         </div>`
     ).join('');
@@ -707,7 +752,7 @@ function renderExpenses() {
       <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
       <div class="tx-detail">
         <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
-        <div class="meta">${e.cat} · ${e.payer} · ${e.time||''} · ${e.addedBy||''}</div>
+        <div class="meta">${fmtDate(e.date)} · ${e.time||''} · ${e.cat} · ${e.payer}</div>
       </div>
       <button class="del-btn" onclick="deleteExpense('${e.id}')">✕</button>
     </div>`).join('');
@@ -721,17 +766,29 @@ function renderMeals() {
       <div class="mh">
         <div>
           <strong>🍽️ Bữa ${m.meal}</strong>
-          <div class="mpay">${m.payer} trả · ${fmt(m.cost)} · ${m.time||''}</div>
+          <div class="mpay">${fmtDate(m.date)} · ${m.time||''} · ${m.payer} trả · ${fmt(m.cost)}</div>
         </div>
         <button class="del-btn" onclick="deleteMeal('${m.id}')">✕</button>
       </div>
       <div class="diner-chips">
         ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmt(m.perHead)}</span>`).join('')}
+        ${m.quyPays ? `<span class="diner-chip" style="background:var(--gold-soft);color:var(--warn);">🏦 Quỹ · ${fmt(m.quyAmt||m.perHead)}</span>` : ''}
       </div>
     </div>`).join('');
 }
 
 // ==================== SELECTS & CHIPS ====================
+function todayStr() {
+  const d = new Date();
+  return d.toISOString().split('T')[0];
+}
+
+function fmtDate(str) {
+  if (!str) return '';
+  const [y,m,d] = str.split('-');
+  return `${d}/${m}/${y}`;
+}
+
 function initSelects() {
   ['ePayer','mPayer'].forEach(id => {
     const el = document.getElementById(id);
@@ -741,42 +798,178 @@ function initSelects() {
     if (cur && allUsers.find(u=>u.name===cur)) el.value = cur;
     else if (currentUser) el.value = currentUser.name;
   });
+  setDefaultDates();
   initMealChips();
 }
 
 function initMealChips() {
   const el = document.getElementById('mChips');
-  el.innerHTML = allUsers.map(u=>`<div class="mchip on" data-m="${u.name}" onclick="toggleChip(this)">${u.name}</div>`).join('');
+  const memberChips = allUsers.map(u=>`<div class="mchip on" data-m="${u.name}" onclick="toggleChip(this)">${u.name}</div>`).join('');
+  const quyChip = `<div class="mchip quy" data-m="🏦 Quỹ" onclick="toggleChip(this)" style="border-color:var(--gold);color:var(--warn);">🏦 Quỹ</div>`;
+  el.innerHTML = memberChips + quyChip;
   updatePerHead();
+}
+
+function setDefaultDates() {
+  const today = todayStr();
+  const ed = document.getElementById('eDate');
+  const md = document.getElementById('mDate');
+  if (ed && !ed.value) ed.value = today;
+  if (md && !md.value) md.value = today;
 }
 
 function toggleChip(el) { el.classList.toggle('on'); updatePerHead(); }
 
 function updatePerHead() {
   const cost = parseInt(document.getElementById('mCost').value) || 0;
-  const diners = getCheckedChips();
+  const chips = getCheckedChips();
   const el = document.getElementById('perHeadPreview');
-  el.textContent = (cost > 0 && diners.length > 0)
-    ? `Mỗi người: ${fmt(Math.round(cost/diners.length))} (${diners.length} người)`
-    : '';
+  if (cost > 0 && chips.length > 0) {
+    const perHead = Math.round(cost / chips.length);
+    const quyIn = chips.includes('🏦 Quỹ');
+    const info = quyIn ? ` · Quỹ trả ${fmt(perHead)}` : '';
+    el.textContent = `Mỗi người: ${fmt(perHead)} (${chips.length} suất${info})`;
+  } else {
+    el.textContent = '';
+  }
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mCost').addEventListener('input', updatePerHead);
 });
 
+// ==================== QUYẾT TOÁN ====================
+async function doQuyetToan() {
+  if (currentUser.role !== 'admin') { showToast('Chỉ Admin mới được chốt sổ!', 'error'); return; }
+  const bal = calcBalances();
+  const txns = simplifyDebts(bal);
+  const totChi = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+e.amt,0)
+    + allMeals.reduce((s,m)=>s+m.cost,0);
+  const totThu = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+e.amt,0);
+
+  if (allExpenses.length === 0 && allMeals.length === 0) {
+    showToast('Chưa có dữ liệu để quyết toán!', 'error'); return;
+  }
+
+  const label = prompt('Đặt tên cho lần quyết toán này (VD: Tuần 1 tháng 6):');
+  if (label === null) return;
+
+  const snapshot = {
+    label: label || 'Quyết toán ' + new Date().toLocaleDateString('vi-VN'),
+    ts: Date.now(),
+    date: todayStr(),
+    doneBy: currentUser.name,
+    totChi, totThu,
+    balances: Object.entries(bal).map(([name, b]) => ({ name, balance: Math.round(b) })),
+    transactions: txns,
+    expenseCount: allExpenses.length,
+    mealCount: allMeals.length,
+  };
+
+  if (!confirm(`Chốt sổ "${snapshot.label}"?\n\nSẽ lưu lại toàn bộ và XÓA dữ liệu hiện tại để bắt đầu lại.`)) return;
+
+  try {
+    // Save snapshot
+    await db.collection(COL_QT).add(snapshot);
+
+    // Delete all expenses & meals
+    const batch = db.batch();
+    const [eSnap, mSnap] = await Promise.all([
+      db.collection(COL_EXPENSES).get(),
+      db.collection(COL_MEALS).get()
+    ]);
+    eSnap.docs.forEach(d => batch.delete(d.ref));
+    mSnap.docs.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+
+    showToast('Đã chốt sổ & reset thành công! 🎉', 'success');
+    goPage('qt');
+  } catch(e) { showToast('Lỗi khi chốt sổ!', 'error'); console.error(e); }
+}
+
+function renderQT() {
+  // Current settle preview
+  const bal = calcBalances();
+  const txns = simplifyDebts(bal);
+  const cs = document.getElementById('qtCurrentSettle');
+  if (cs) {
+    if (txns.length === 0 && allExpenses.length === 0 && allMeals.length === 0) {
+      cs.innerHTML = '<div class="empty-state" style="padding:16px 0"><div class="ico">✅</div><p>Không có gì để quyết toán</p></div>';
+    } else if (txns.length === 0) {
+      cs.innerHTML = '<div class="empty-state" style="padding:16px 0"><div class="ico">🎉</div><p>Tất cả đã hòa — có thể chốt sổ!</p></div>';
+    } else {
+      cs.innerHTML = txns.map(t => `
+        <div class="settle-card">
+          <div class="settle-row">
+            <div class="avatar" style="width:30px;height:30px;font-size:11px">${t.from.slice(0,2)}</div>
+            <span style="font-size:13px;font-weight:600">${t.from}</span>
+            <span class="settle-arrow">→</span>
+            <div class="avatar" style="width:30px;height:30px;font-size:11px;background:var(--good)">${t.to.slice(0,2)}</div>
+            <span style="font-size:13px;font-weight:600">${t.to}</span>
+            <span class="settle-amt">${fmt(t.amount)}</span>
+          </div>
+        </div>`).join('');
+    }
+  }
+
+  // Show/hide admin section
+  const adminQt = document.getElementById('adminQtSection');
+  if (adminQt) adminQt.classList.toggle('hidden', !currentUser || currentUser.role !== 'admin');
+
+  // History
+  const hl = document.getElementById('qtHistoryList');
+  if (!hl) return;
+  if (allQT.length === 0) {
+    hl.innerHTML = '<div class="empty-state"><div class="ico">📂</div><p>Chưa có lần quyết toán nào</p></div>';
+    return;
+  }
+  hl.innerHTML = allQT.map(qt => `
+    <div class="card" style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div>
+          <div style="font-weight:600;font-size:14px;color:var(--forest)">${qt.label}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${fmtDate(qt.date)} · Chốt bởi ${qt.doneBy}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--muted)">${qt.expenseCount} khoản · ${qt.mealCount} bữa</div>
+          <div style="font-size:12px;color:var(--bad);margin-top:1px">Chi: ${fmt(qt.totChi)}</div>
+        </div>
+      </div>
+      ${qt.transactions && qt.transactions.length > 0
+        ? `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Thanh toán trong kỳ</div>
+           ${qt.transactions.map(t=>`
+            <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+              <span style="font-weight:600">${t.from}</span>
+              <span style="color:var(--warn)">→</span>
+              <span style="font-weight:600">${t.to}</span>
+              <span style="margin-left:auto;font-weight:700;color:var(--warn)">${fmt(t.amount)}</span>
+            </div>`).join('')}`
+        : '<div style="font-size:12px;color:var(--good);padding:4px 0">✅ Tất cả đã hòa trong kỳ này</div>'
+      }
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--line)">
+        <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Số dư từng người</div>
+        ${qt.balances.map(b=>`
+          <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
+            <span>${b.name}</span>
+            <span style="font-weight:600;color:${b.balance>0?'var(--good)':b.balance<0?'var(--bad)':'var(--muted)'}">${b.balance===0?'Hòa':(b.balance>0?'+':'')+fmt(b.balance)}</span>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+}
+
 // ==================== NAV ====================
 function goPage(p) {
   document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(el=>el.classList.remove('active'));
   document.getElementById('page-'+p).classList.add('active');
-  const idx = {dash:0,expense:1,meal:2,settings:3}[p];
+  const idx = {dash:0,expense:1,meal:2,qt:3,settings:4}[p];
   if (idx !== undefined) document.querySelectorAll('.nav-item')[idx].classList.add('active');
   if (p === 'settings') {
     const isAdmin = currentUser && currentUser.role === 'admin';
     document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
     document.getElementById('adminDataSection').classList.toggle('hidden', !isAdmin);
   }
+  if (p === 'qt') renderQT();
 }
 
 // ==================== TOAST ====================
