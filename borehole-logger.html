@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>Borehole Logger</title>
+<link rel="icon" href="data:image/png;base64,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" />
+<link rel="apple-touch-icon" href="data:image/png;base64,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" />
+<meta name="theme-color" content="#0F4C5C" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Borehole Logger" />
+<style>
+/* =========================================================
+   Borehole Logger — styles.css
+   Mobile-first, light/dark themed via CSS variables.
+   ========================================================= */
+
+:root {
+  --color-primary: #0F4C5C;
+  --color-primary-light: #16697A;
+  --color-success: #2E7D32;
+  --color-success-bg: #E6F3E7;
+  --color-warning: #B8860B;
+  --color-warning-bg: #FBF1DD;
+  --color-danger: #C0392B;
+  --color-danger-bg: #FBEAE8;
+
+  --bg: #F4F6F6;
+  --surface: #FFFFFF;
+  --card: #FFFFFF;
+  --text: #16242A;
+  --text-secondary: #5C7077;
+  --border: #DDE5E6;
+  --input-bg: #FFFFFF;
+  --tab-inactive: #9AAAAE;
+  --shadow: 0 1px 3px rgba(15, 35, 40, 0.08), 0 1px 2px rgba(15, 35, 40, 0.06);
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+
+[data-theme="dark"] {
+  --bg: #0D1517;
+  --surface: #172022;
+  --card: #1C2628;
+  --text: #ECEFEF;
+  --text-secondary: #93A3A7;
+  --border: #2A3638;
+  --input-bg: #1C2628;
+  --tab-inactive: #5C6E72;
+  --color-success-bg: #16291A;
+  --color-warning-bg: #2A2210;
+  --color-danger-bg: #2B1715;
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Inter", Arial, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.view { display: none; flex-direction: column; flex: 1; min-height: 100vh; }
+.view.active { display: flex; }
+
+/* ---------- Header ---------- */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--color-primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  padding: 14px 16px;
+  gap: 10px;
+  min-height: 56px;
+}
+.app-header .title {
+  font-size: 18px;
+  font-weight: 700;
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.app-header .subtitle {
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.85;
+  display: block;
+}
+.icon-btn {
+  background: rgba(255,255,255,0.12);
+  border: none;
+  color: #fff;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.icon-btn:active { background: rgba(255,255,255,0.25); }
+
+/* ---------- Content ---------- */
+.content {
+  flex: 1;
+  padding: 14px 16px 90px;
+  overflow-y: auto;
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 15px 16px;
+  border-radius: var(--radius);
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: opacity .15s ease;
+}
+.btn:active { opacity: 0.8; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-secondary { background: var(--card); color: var(--color-primary); border: 1.5px solid var(--color-primary); }
+.btn-danger { background: var(--color-danger); color: #fff; }
+.btn-ghost { background: transparent; color: var(--color-primary); font-weight: 600; }
+.btn-sm { padding: 10px 14px; font-size: 14px; width: auto; }
+.btn-fab {
+  position: fixed;
+  bottom: 24px;
+  right: calc(50% - 240px + 24px);
+  width: 56px;
+  height: 56px;
+  border-radius: 28px;
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 26px;
+  border: none;
+  box-shadow: 0 4px 14px rgba(15,35,40,0.35);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 15;
+}
+@media (max-width: 480px) {
+  .btn-fab { right: 24px; }
+}
+
+/* ---------- Cards / lists ---------- */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.list-item {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.list-item:active { background: var(--bg); }
+.list-item .li-main { flex: 1; min-width: 0; }
+.list-item .li-title { font-weight: 700; font-size: 15px; margin-bottom: 2px; }
+.list-item .li-sub { font-size: 13px; color: var(--text-secondary); }
+.list-item .chevron { color: var(--tab-inactive); font-size: 18px; }
+
+.empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 60px 20px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ---------- Forms ---------- */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+.field input[type="text"],
+.field input[type="number"],
+.field input[type="email"],
+.field input[type="password"],
+.field select,
+.field textarea {
+  width: 100%;
+  padding: 13px 14px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--border);
+  background: var(--input-bg);
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+}
+.field input:focus, .field select:focus, .field textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+.field .error-text { color: var(--color-danger); font-size: 12.5px; margin-top: 5px; }
+.field-row { display: flex; gap: 10px; }
+.field-row .field { flex: 1; }
+.input-with-suffix { position: relative; }
+.input-with-suffix .suffix {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-secondary);
+  font-size: 14px;
+  pointer-events: none;
+}
+
+/* segmented control (unit toggle, lang toggle) */
+.segmented {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.segmented button {
+  flex: 1;
+  padding: 9px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+.segmented button.active { background: var(--color-primary); color: #fff; }
+
+/* piece rows */
+.piece-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+.piece-row input { flex: 1; }
+.piece-remove {
+  width: 38px; height: 46px;
+  border-radius: var(--radius-sm);
+  border: 1.5px solid var(--color-danger);
+  color: var(--color-danger);
+  background: transparent;
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* ---------- Result card ---------- */
+.result-card {
+  background: var(--card);
+  border: 1.5px solid var(--color-primary);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 6px 0 18px;
+}
+.result-grid { display: flex; gap: 14px; margin-bottom: 12px; }
+.result-stat { flex: 1; text-align: center; }
+.result-stat .val { font-size: 24px; font-weight: 800; color: var(--color-primary); }
+.result-stat .lbl { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+}
+.badge-good { background: var(--color-success-bg); color: var(--color-success); }
+.badge-warning { background: var(--color-warning-bg); color: var(--color-warning); }
+.badge-bad { background: var(--color-danger-bg); color: var(--color-danger); }
+.badge-row { display: flex; justify-content: center; }
+
+/* ---------- Tab bar (Add Sample: Rock / SPT) ---------- */
+.tab-bar {
+  display: flex;
+  border-bottom: 1.5px solid var(--border);
+  background: var(--surface);
+  position: sticky;
+  top: 56px;
+  z-index: 18;
+}
+.tab-bar button {
+  flex: 1;
+  padding: 13px 0;
+  background: none;
+  border: none;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+}
+.tab-bar button.active { color: var(--color-primary); border-bottom-color: var(--color-primary); }
+
+/* ---------- Settings rows ---------- */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--border);
+}
+.settings-row:last-child { border-bottom: none; }
+.settings-row .label { font-size: 15px; font-weight: 600; }
+
+.switch { position: relative; width: 48px; height: 28px; flex-shrink: 0; }
+.switch input { display: none; }
+.switch .track {
+  position: absolute; inset: 0;
+  background: var(--border);
+  border-radius: 14px;
+  transition: background .15s;
+  cursor: pointer;
+}
+.switch input:checked + .track { background: var(--color-primary); }
+.switch .thumb {
+  position: absolute; top: 3px; left: 3px;
+  width: 22px; height: 22px;
+  background: #fff;
+  border-radius: 11px;
+  transition: transform .15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+.switch input:checked ~ .track .thumb { transform: translateX(20px); }
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-overlay.active { display: flex; }
+.modal-sheet {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-radius: 18px 18px 0 0;
+  padding: 22px 18px 28px;
+  max-height: 88vh;
+  overflow-y: auto;
+  animation: slideUp .2s ease;
+}
+@keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.modal-sheet h2 { margin: 0 0 16px; font-size: 18px; }
+.modal-actions { display: flex; gap: 10px; margin-top: 6px; }
+
+/* ---------- Login ---------- */
+.login-view .content { display: flex; flex-direction: column; justify-content: center; flex: 1; padding: 24px; }
+.login-logo {
+  text-align: center;
+  font-size: 44px;
+  margin-bottom: 6px;
+}
+.login-title { text-align: center; font-size: 22px; font-weight: 800; margin-bottom: 4px; }
+.login-subtitle { text-align: center; color: var(--text-secondary); font-size: 14px; margin-bottom: 28px; }
+.login-lang-toggle { display: flex; justify-content: center; margin-bottom: 18px; }
+
+/* ---------- Toast ---------- */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--text);
+  color: var(--bg);
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 14px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s, transform .2s;
+  z-index: 100;
+  max-width: 90%;
+  text-align: center;
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ---------- Connection banner ---------- */
+.conn-banner {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+  padding: 7px 10px;
+  display: none;
+}
+.conn-banner.show { display: block; }
+
+/* ---------- Misc ---------- */
+.spinner {
+  width: 22px; height: 22px;
+  border: 3px solid rgba(255,255,255,0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.spinner.dark { border: 3px solid rgba(15,76,92,0.25); border-top-color: var(--color-primary); }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.section-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin: 18px 0 10px;
+}
+.export-row { display: flex; gap: 10px; margin-bottom: 16px; }
+
+.center-loading { display: flex; align-items: center; justify-content: center; flex: 1; min-height: 60vh; }
+
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Offline banner -->
+  <div id="connBanner" class="conn-banner" data-i18n="common.offline"></div>
+
+  <!-- ================= LOGIN ================= -->
+  <section id="view-login" class="view login-view">
+    <div class="content">
+      <div class="login-lang-toggle">
+        <div class="segmented" style="width:140px;">
+          <button id="loginLangEn" class="active">EN</button>
+          <button id="loginLangVi">VI</button>
+        </div>
+      </div>
+      <div class="login-logo">⛏️</div>
+      <div class="login-title" data-i18n="common.appName"></div>
+      <div class="login-subtitle">HAIC Cambodia — Field Data</div>
+
+      <div class="field">
+        <label data-i18n="common.email"></label>
+        <input type="email" id="loginEmail" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label data-i18n="common.password"></label>
+        <input type="password" id="loginPassword" autocomplete="current-password" />
+      </div>
+      <div class="field error-text" id="loginError" style="display:none;"></div>
+      <button class="btn btn-primary" id="loginSubmitBtn">
+        <span id="loginBtnLabel" data-i18n="common.login"></span>
+      </button>
+
+      <div style="display:flex; align-items:center; gap:10px; margin:18px 0; color:var(--text-secondary); font-size:13px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span data-i18n="common.orDivider"></span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+
+      <button class="btn btn-secondary" id="googleSignInBtn" style="gap:10px;">
+        <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
+          <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84c-.21 1.13-.85 2.09-1.81 2.73v2.27h2.92c1.7-1.57 2.69-3.88 2.69-6.64z"/>
+          <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.17l-2.92-2.27c-.81.54-1.84.86-3.04.86-2.34 0-4.32-1.58-5.03-3.71H.96v2.34C2.44 15.98 5.48 18 9 18z"/>
+          <path fill="#FBBC05" d="M3.97 10.71A5.4 5.4 0 0 1 3.68 9c0-.59.1-1.17.29-1.71V4.95H.96A8.99 8.99 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.34z"/>
+          <path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0 5.48 0 2.44 2.02.96 4.95l3.01 2.34C4.68 5.16 6.66 3.58 9 3.58z"/>
+        </svg>
+        <span id="googleBtnLabel" data-i18n="common.signInWithGoogle"></span>
+      </button>
+
+      <div id="loginConfigWarning" class="field error-text" style="display:none; margin-top:18px; text-align:center;">
+        Firebase is not configured yet. Edit <code>js/firebase-config.js</code> with your project credentials, then reload.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= NOT AUTHORIZED ================= -->
+  <section id="view-not-authorized" class="view">
+    <div class="content" style="display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; flex:1; padding:30px;">
+      <div style="font-size:42px; margin-bottom:14px;">🔒</div>
+      <div style="font-size:18px; font-weight:800; margin-bottom:10px;" data-i18n="common.notAuthorizedTitle"></div>
+      <div style="color:var(--text-secondary); font-size:14px; line-height:1.6; margin-bottom:8px;" data-i18n="common.notAuthorizedBody"></div>
+      <div style="font-weight:700; margin-bottom:26px;" id="notAuthorizedEmail"></div>
+      <button class="btn btn-secondary" id="notAuthorizedLogoutBtn" data-i18n="common.logout"></button>
+    </div>
+  </section>
+
+  <!-- ================= PROJECTS ================= -->
+  <section id="view-projects" class="view">
+    <header class="app-header">
+      <span class="title" data-i18n="projects.title"></span>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+      <button class="icon-btn" id="logoutBtn" title="Log out">⏻</button>
+    </header>
+    <div class="content" id="projectsList"></div>
+    <button class="btn-fab" id="newProjectFab">+</button>
+  </section>
+
+  <!-- ================= BOREHOLES ================= -->
+  <section id="view-boreholes" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToProjectsBtn">←</button>
+      <span class="title" id="boreholesTitle">
+        <span class="subtitle" id="boreholesProjectName"></span>
+        <span data-i18n="boreholes.title"></span>
+      </span>
+    </header>
+    <div class="content" id="boreholesList"></div>
+    <button class="btn-fab" id="newBoreholeFab">+</button>
+  </section>
+
+  <!-- ================= BOREHOLE DETAIL (timeline) ================= -->
+  <section id="view-borehole-detail" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToBoreholesBtn">←</button>
+      <span class="title" id="boreholeDetailTitle"></span>
+    </header>
+    <div class="content">
+      <div class="export-row">
+        <button class="btn btn-secondary btn-sm" id="exportPdfBtn" style="flex:1;" data-i18n="common.exportPDF"></button>
+        <button class="btn btn-secondary btn-sm" id="exportExcelBtn" style="flex:1;" data-i18n="common.exportExcel"></button>
+      </div>
+      <div class="section-label" data-i18n="boreholes.timeline"></div>
+      <div id="samplesTimeline"></div>
+    </div>
+    <button class="btn-fab" id="addSampleFab">+</button>
+  </section>
+
+  <!-- ================= ADD SAMPLE (Rock Core / SPT Soil tabs) ================= -->
+  <section id="view-add-sample" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToDetailBtn">←</button>
+      <span class="title" data-i18n="boreholes.addSample"></span>
+    </header>
+    <div class="tab-bar">
+      <button id="tabRock" class="active" data-i18n="tabs.rockCore"></button>
+      <button id="tabSoil" data-i18n="tabs.sptSoil"></button>
+    </div>
+
+    <!-- ---- Rock Core form ---- -->
+    <div class="content" id="panelRock">
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="rock.depthFrom"></label>
+          <input type="number" inputmode="decimal" id="rockDepthFrom" />
+        </div>
+        <div class="field">
+          <label data-i18n="rock.depthTo"></label>
+          <input type="number" inputmode="decimal" id="rockDepthTo" />
+        </div>
+      </div>
+      <div class="field error-text" id="rockDepthError" style="display:none;"></div>
+
+      <div class="field">
+        <label data-i18n="rock.unit"></label>
+        <div class="segmented" id="rockUnitToggle">
+          <button data-unit="cm" class="active">cm</button>
+          <button data-unit="m">m</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-i18n="rock.corePieces"></label>
+        <div id="piecesContainer"></div>
+        <div class="field error-text" id="piecesError" style="display:none;"></div>
+        <button class="btn btn-secondary btn-sm" id="addPieceBtn" data-i18n="rock.addPiece"></button>
+      </div>
+
+      <div class="result-card">
+        <div class="result-grid">
+          <div class="result-stat"><div class="val" id="rockRunLengthVal">0</div><div class="lbl" data-i18n="rock.runLength"></div></div>
+          <div class="result-stat"><div class="val" id="rockTcrVal">0%</div><div class="lbl" data-i18n="rock.tcr"></div></div>
+          <div class="result-stat"><div class="val" id="rockRqdVal">0%</div><div class="lbl" data-i18n="rock.rqd"></div></div>
+        </div>
+        <div class="badge-row"><span class="badge" id="rockQualityBadge">—</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="saveRockBtn" data-i18n="rock.saveSample"></button>
+    </div>
+
+    <!-- ---- SPT Soil form ---- -->
+    <div class="content" id="panelSoil" style="display:none;">
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="soil.depthFrom"></label>
+          <input type="number" inputmode="decimal" id="soilDepthFrom" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.depthTo"></label>
+          <input type="number" inputmode="decimal" id="soilDepthTo" />
+        </div>
+      </div>
+      <div class="field error-text" id="soilDepthError" style="display:none;"></div>
+
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="soil.n1"></label>
+          <input type="number" inputmode="numeric" id="soilN1" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.n2"></label>
+          <input type="number" inputmode="numeric" id="soilN2" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.n3"></label>
+          <input type="number" inputmode="numeric" id="soilN3" />
+        </div>
+      </div>
+      <div class="field error-text" id="sptError" style="display:none;"></div>
+
+      <div class="field">
+        <label data-i18n="soil.soilType"></label>
+        <select id="soilType">
+          <option value="CLAY" data-i18n="soilTypes.CLAY"></option>
+          <option value="SANDY_CLAY" data-i18n="soilTypes.SANDY_CLAY"></option>
+          <option value="SAND" data-i18n="soilTypes.SAND"></option>
+          <option value="CLAYEY_SAND" data-i18n="soilTypes.CLAYEY_SAND"></option>
+        </select>
+      </div>
+
+      <div class="result-card">
+        <div class="result-grid">
+          <div class="result-stat"><div class="val" id="soilNsptVal">0</div><div class="lbl" data-i18n="soil.nspt"></div></div>
+        </div>
+        <div class="badge-row"><span class="badge" id="soilStateBadge">—</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="saveSoilBtn" data-i18n="soil.saveSample"></button>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="view-settings" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backFromSettingsBtn">←</button>
+      <span class="title" data-i18n="common.settings"></span>
+    </header>
+    <div class="content">
+      <div class="card">
+        <div class="settings-row">
+          <span class="label" data-i18n="common.language"></span>
+          <div class="segmented" style="width:140px;">
+            <button id="settingsLangEn">EN</button>
+            <button id="settingsLangVi">VI</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="label" data-i18n="common.darkMode"></span>
+          <label class="switch">
+            <input type="checkbox" id="darkModeToggle" />
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:6px;" data-i18n="common.signedInAs"></div>
+        <div style="font-weight:700;" id="settingsUserEmail"></div>
+      </div>
+      <button class="btn btn-danger" id="settingsLogoutBtn" data-i18n="common.logout"></button>
+    </div>
+  </section>
+
+  <!-- ================= MODALS ================= -->
+  <div class="modal-overlay" id="newProjectModal">
+    <div class="modal-sheet">
+      <h2 data-i18n="projects.newProject"></h2>
+      <div class="field">
+        <label data-i18n="projects.projectName"></label>
+        <input type="text" id="newProjectName" />
+      </div>
+      <div class="field">
+        <label data-i18n="projects.location"></label>
+        <input type="text" id="newProjectLocation" />
+      </div>
+      <div class="field">
+        <label data-i18n="projects.client"></label>
+        <input type="text" id="newProjectClient" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelNewProjectBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-primary" id="saveNewProjectBtn" data-i18n="common.save"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="newBoreholeModal">
+    <div class="modal-sheet">
+      <h2 data-i18n="boreholes.newBorehole"></h2>
+      <div class="field">
+        <label data-i18n="boreholes.boreholeName"></label>
+        <input type="text" id="newBoreholeName" />
+      </div>
+      <div class="field">
+        <label data-i18n="boreholes.coordinates"></label>
+        <input type="text" id="newBoreholeCoordinates" placeholder="e.g. 11.5564, 104.9282" />
+      </div>
+      <div class="field">
+        <label data-i18n="boreholes.groundElevation"></label>
+        <input type="number" inputmode="decimal" id="newBoreholeElevation" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelNewBoreholeBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-primary" id="saveNewBoreholeBtn" data-i18n="common.save"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-sheet">
+      <h2 id="confirmModalText" data-i18n="common.deleteConfirm"></h2>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirmCancelBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-danger" id="confirmOkBtn" data-i18n="common.delete"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<!-- ===== External libraries (loaded in the browser, not bundled) ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script type="module">
+// ===== i18n =====
+// =========================================================
+// Borehole Logger — i18n.js
+// Bilingual EN/VI dictionary + translate() helper.
+// =========================================================
+
+const dictionaries = {
+  en: {
+    common: {
+      appName: "Borehole Logger",
+      save: "Save",
+      cancel: "Cancel",
+      add: "Add",
+      delete: "Delete",
+      edit: "Edit",
+      logout: "Log out",
+      login: "Log in",
+      email: "Email",
+      password: "Password",
+      loading: "Loading...",
+      noData: "No data yet",
+      settings: "Settings",
+      language: "Language",
+      darkMode: "Dark mode",
+      export: "Export",
+      exportPDF: "Export PDF",
+      exportExcel: "Export Excel",
+      confirm: "Confirm",
+      back: "Back",
+      meters: "m",
+      centimeters: "cm",
+      percent: "%",
+      offline: "Offline – changes will sync when online",
+      synced: "Synced",
+      deleteConfirm: "Delete this item? This cannot be undone.",
+      signedInAs: "Signed in as",
+      signInWithGoogle: "Sign in with Google",
+      orDivider: "or",
+      notAuthorizedTitle: "Account not authorized yet",
+      notAuthorizedBody: "You're signed in, but your account hasn't been approved for this app yet. Ask your admin to add your email to the allow list.",
+    },
+    projects: {
+      title: "Projects",
+      newProject: "New Project",
+      projectName: "Project name",
+      location: "Location",
+      client: "Client",
+      noProjects: "No projects yet. Tap + to create one.",
+    },
+    boreholes: {
+      title: "Boreholes",
+      newBorehole: "New Borehole",
+      boreholeName: "Borehole name",
+      coordinates: "Coordinates",
+      groundElevation: "Ground elevation (m)",
+      noBoreholes: "No boreholes yet. Tap + to create one.",
+      timeline: "Timeline",
+      addSample: "Add Sample",
+    },
+    tabs: { rockCore: "Rock Core", sptSoil: "SPT Soil" },
+    rock: {
+      title: "Rock Core",
+      depthFrom: "Depth from (m)",
+      depthTo: "Depth to (m)",
+      corePieces: "Core piece lengths",
+      addPiece: "Add piece",
+      pieceLength: "Piece length",
+      unit: "Unit",
+      tcr: "TCR",
+      rqd: "RQD",
+      rockQuality: "Rock quality",
+      runLength: "Run length",
+      saveSample: "Save Rock Sample",
+    },
+    soil: {
+      title: "SPT Soil",
+      depthFrom: "Depth from (m)",
+      depthTo: "Depth to (m)",
+      n1: "N1 (0-15 cm)",
+      n2: "N2 (15-30 cm)",
+      n3: "N3 (30-45 cm)",
+      nspt: "NSPT",
+      soilType: "Soil type",
+      soilState: "Soil state",
+      saveSample: "Save Soil Sample",
+      selectSoilType: "Select soil type",
+    },
+    soilTypes: { CLAY: "CLAY", SANDY_CLAY: "Sandy CLAY", SAND: "SAND", CLAYEY_SAND: "Clayey SAND" },
+    rockQuality: { VERY_POOR: "Very Poor", POOR: "Poor", FAIR: "Fair", GOOD: "Good", EXCELLENT: "Excellent" },
+    soilState: {
+      VERY_SOFT: "Very soft", SOFT: "Soft", MEDIUM: "Medium", STIFF: "Stiff",
+      VERY_STIFF: "Very stiff", HARD: "Hard", VERY_LOOSE: "Very loose", LOOSE: "Loose",
+      MEDIUM_DENSE: "Medium dense", DENSE: "Dense", VERY_DENSE: "Very dense",
+    },
+    sample: { rock: "Rock", soil: "Soil", depthRange: "{{from}} - {{to}} m" },
+    errors: {
+      required: "This field is required",
+      depthRequired: "Depth from and depth to are required",
+      depthToMustExceedFrom: "Depth to must be greater than depth from",
+      depthRangeTooLarge: "Depth range looks too large - please check",
+      atLeastOnePiece: "Add at least one core piece",
+      invalidPieceLength: "Each piece length must be a valid number",
+      recoveredExceedsRun: "Total recovered length cannot exceed the run length",
+      allBlowCountsRequired: "N1, N2 and N3 are all required",
+      sptRefusal: "Blow count above 50 indicates refusal - please confirm this value",
+      loginFailed: "Login failed. Please check your email and password.",
+      genericError: "Something went wrong. Please try again.",
+    },
+  },
+  vi: {
+    common: {
+      appName: "Nhật ký Hố khoan",
+      save: "Lưu",
+      cancel: "Hủy",
+      add: "Thêm",
+      delete: "Xóa",
+      edit: "Sửa",
+      logout: "Đăng xuất",
+      login: "Đăng nhập",
+      email: "Email",
+      password: "Mật khẩu",
+      loading: "Đang tải...",
+      noData: "Chưa có dữ liệu",
+      settings: "Cài đặt",
+      language: "Ngôn ngữ",
+      darkMode: "Chế độ tối",
+      export: "Xuất file",
+      exportPDF: "Xuất PDF",
+      exportExcel: "Xuất Excel",
+      confirm: "Xác nhận",
+      back: "Quay lại",
+      meters: "m",
+      centimeters: "cm",
+      percent: "%",
+      offline: "Ngoại tuyến – sẽ đồng bộ khi có mạng",
+      synced: "Đã đồng bộ",
+      deleteConfirm: "Xóa mục này? Không thể hoàn tác.",
+      signedInAs: "Đăng nhập với",
+      signInWithGoogle: "Đăng nhập bằng Google",
+      orDivider: "hoặc",
+      notAuthorizedTitle: "Tài khoản chưa được cấp quyền",
+      notAuthorizedBody: "Anh/chị đã đăng nhập, nhưng tài khoản này chưa được cấp quyền dùng app. Vui lòng liên hệ quản trị viên để thêm email vào danh sách cho phép.",
+    },
+    projects: {
+      title: "Dự án",
+      newProject: "Dự án mới",
+      projectName: "Tên dự án",
+      location: "Địa điểm",
+      client: "Chủ đầu tư",
+      noProjects: "Chưa có dự án nào. Nhấn + để tạo.",
+    },
+    boreholes: {
+      title: "Hố khoan",
+      newBorehole: "Hố khoan mới",
+      boreholeName: "Tên hố khoan",
+      coordinates: "Tọa độ",
+      groundElevation: "Cao độ mặt đất (m)",
+      noBoreholes: "Chưa có hố khoan nào. Nhấn + để tạo.",
+      timeline: "Dòng thời gian",
+      addSample: "Thêm mẫu",
+    },
+    tabs: { rockCore: "Lõi đá", sptSoil: "SPT Đất" },
+    rock: {
+      title: "Lõi đá",
+      depthFrom: "Độ sâu từ (m)",
+      depthTo: "Độ sâu đến (m)",
+      corePieces: "Chiều dài mẫu lõi",
+      addPiece: "Thêm mảnh",
+      pieceLength: "Chiều dài mảnh",
+      unit: "Đơn vị",
+      tcr: "TCR",
+      rqd: "RQD",
+      rockQuality: "Chất lượng đá",
+      runLength: "Chiều dài hiệp khoan",
+      saveSample: "Lưu mẫu đá",
+    },
+    soil: {
+      title: "SPT Đất",
+      depthFrom: "Độ sâu từ (m)",
+      depthTo: "Độ sâu đến (m)",
+      n1: "N1 (0-15 cm)",
+      n2: "N2 (15-30 cm)",
+      n3: "N3 (30-45 cm)",
+      nspt: "NSPT",
+      soilType: "Loại đất",
+      soilState: "Trạng thái đất",
+      saveSample: "Lưu mẫu đất",
+      selectSoilType: "Chọn loại đất",
+    },
+    soilTypes: { CLAY: "Sét", SANDY_CLAY: "Sét pha cát", SAND: "Cát", CLAYEY_SAND: "Cát pha sét" },
+    rockQuality: { VERY_POOR: "Rất kém", POOR: "Kém", FAIR: "Trung bình", GOOD: "Tốt", EXCELLENT: "Rất tốt" },
+    soilState: {
+      VERY_SOFT: "Rất mềm", SOFT: "Mềm", MEDIUM: "Trung bình", STIFF: "Cứng",
+      VERY_STIFF: "Rất cứng", HARD: "Cứng chắc", VERY_LOOSE: "Rất rời rạc", LOOSE: "Rời rạc",
+      MEDIUM_DENSE: "Chặt vừa", DENSE: "Chặt", VERY_DENSE: "Rất chặt",
+    },
+    sample: { rock: "Đá", soil: "Đất", depthRange: "{{from}} - {{to}} m" },
+    errors: {
+      required: "Vui lòng nhập trường này",
+      depthRequired: "Vui lòng nhập độ sâu từ và đến",
+      depthToMustExceedFrom: "Độ sâu đến phải lớn hơn độ sâu từ",
+      depthRangeTooLarge: "Khoảng độ sâu có vẻ quá lớn - vui lòng kiểm tra lại",
+      atLeastOnePiece: "Thêm ít nhất một mảnh lõi",
+      invalidPieceLength: "Mỗi chiều dài mảnh phải là số hợp lệ",
+      recoveredExceedsRun: "Tổng chiều dài thu hồi không thể vượt quá chiều dài hiệp khoan",
+      allBlowCountsRequired: "Cần nhập đầy đủ N1, N2 và N3",
+      sptRefusal: "Số búa trên 50 cho thấy đất từ chối xuyên - vui lòng xác nhận giá trị này",
+      loginFailed: "Đăng nhập thất bại. Vui lòng kiểm tra email và mật khẩu.",
+      genericError: "Đã xảy ra lỗi. Vui lòng thử lại.",
+    },
+  },
+};
+
+let currentLang = localStorage.getItem("bh_lang") || "en";
+
+function getLang() {
+  return currentLang;
+}
+
+function setLang(lang) {
+  currentLang = lang === "vi" ? "vi" : "en";
+  localStorage.setItem("bh_lang", currentLang);
+}
+
+// translate("common.save"), translate("sample.depthRange", { from: 1, to: 2 })
+function t(key, vars) {
+  const parts = key.split(".");
+  let node = dictionaries[currentLang];
+  for (const p of parts) {
+    if (node == null) break;
+    node = node[p];
+  }
+  if (node == null) {
+    // fallback to English
+    node = dictionaries.en;
+    for (const p of parts) {
+      if (node == null) break;
+      node = node[p];
+    }
+  }
+  if (typeof node !== "string") return key;
+  if (vars) {
+    return node.replace(/\{\{(\w+)\}\}/g, (_, name) => (vars[name] !== undefined ? vars[name] : ""));
+  }
+  return node;
+}
+
+// Applies translations to every element with data-i18n="key" (textContent)
+// and data-i18n-ph="key" (placeholder attribute).
+function applyI18n(root = document) {
+  root.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.getAttribute("data-i18n"));
+  });
+  root.querySelectorAll("[data-i18n-ph]").forEach((el) => {
+    el.setAttribute("placeholder", t(el.getAttribute("data-i18n-ph")));
+  });
+}
+
+// ===== theme =====
+// =========================================================
+// Borehole Logger — theme.js
+// Light/dark theme, persisted in localStorage, defaults to
+// the device's system color scheme on first load.
+// =========================================================
+
+const STORAGE_KEY = "bh_theme";
+
+function getTheme() {
+  const stored = localStorage.getItem(STORAGE_KEY);
+  if (stored === "light" || stored === "dark") return stored;
+  return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function setTheme(mode) {
+  const theme = mode === "dark" ? "dark" : "light";
+  localStorage.setItem(STORAGE_KEY, theme);
+  document.documentElement.setAttribute("data-theme", theme);
+}
+
+function applyStoredTheme() {
+  document.documentElement.setAttribute("data-theme", getTheme());
+}
+
+// ===== calculations =====
+// =========================================================
+// Borehole Logger — calculations.js
+// Ported 1:1 from the original RN app's rockCalculations.ts /
+// soilCalculations.ts / validation.ts. Logic is unchanged.
+// =========================================================
+
+// ---------- Rock Core (TCR / RQD) ----------
+
+function normalizeToCm(pieces, unit) {
+  if (unit === "m") return pieces.map((p) => p * 100);
+  return pieces;
+}
+
+function getRunLengthCm(depthFromM, depthToM) {
+  return (depthToM - depthFromM) * 100;
+}
+
+function clampPercent(value) {
+  if (Number.isNaN(value)) return 0;
+  return Math.min(100, Math.max(0, Math.round(value * 10) / 10));
+}
+
+// TCR = total recovered length / run length, in %
+function calcTCR(piecesCm, runLengthCm) {
+  if (runLengthCm <= 0) return 0;
+  const totalRecovered = piecesCm.reduce((sum, p) => sum + p, 0);
+  return clampPercent((totalRecovered / runLengthCm) * 100);
+}
+
+// RQD = sum of intact pieces >= 10cm / run length, in %
+function calcRQD(piecesCm, runLengthCm) {
+  if (runLengthCm <= 0) return 0;
+  const sumOfSoundPieces = piecesCm.filter((p) => p >= 10).reduce((sum, p) => sum + p, 0);
+  return clampPercent((sumOfSoundPieces / runLengthCm) * 100);
+}
+
+// Deere (1964) rock mass quality classification, based on RQD.
+function classifyRockQuality(rqd) {
+  if (rqd < 25) return "VERY_POOR";
+  if (rqd < 50) return "POOR";
+  if (rqd < 75) return "FAIR";
+  if (rqd < 90) return "GOOD";
+  return "EXCELLENT";
+}
+
+function rockQualityTone(quality) {
+  if (quality === "VERY_POOR" || quality === "POOR") return "bad";
+  if (quality === "FAIR") return "warning";
+  return "good";
+}
+
+// ---------- SPT Soil (NSPT) ----------
+
+// NSPT = N2 + N3 (N1 is the seating drive, excluded by standard practice)
+function calcNSPT(n2, n3) {
+  const total = (n2 || 0) + (n3 || 0);
+  return Math.round(total);
+}
+
+function isClayFamily(soilType) {
+  return soilType === "CLAY" || soilType === "SANDY_CLAY";
+}
+
+// NOTE: Sandy CLAY -> clay table, Clayey SAND -> sand table.
+// The source paper form only defines ranges for CLAY and SAND; mixed
+// types are mapped to the closest family. Adjust here if your firm's
+// internal standard differs.
+function classifySoilState(nspt, soilType) {
+  if (isClayFamily(soilType)) {
+    if (nspt < 2) return "VERY_SOFT";
+    if (nspt < 4) return "SOFT";
+    if (nspt < 8) return "MEDIUM";
+    if (nspt < 15) return "STIFF";
+    if (nspt < 30) return "VERY_STIFF";
+    return "HARD";
+  }
+  if (nspt < 4) return "VERY_LOOSE";
+  if (nspt < 10) return "LOOSE";
+  if (nspt < 30) return "MEDIUM_DENSE";
+  if (nspt < 50) return "DENSE";
+  return "VERY_DENSE";
+}
+
+function soilStateTone(state) {
+  if (["VERY_SOFT", "SOFT", "VERY_LOOSE", "LOOSE"].includes(state)) return "bad";
+  if (["MEDIUM", "MEDIUM_DENSE"].includes(state)) return "warning";
+  return "good";
+}
+
+// ---------- Validation ----------
+
+function isPositiveNumber(value) {
+  if (value === undefined || value === null) return false;
+  const s = String(value).trim();
+  if (s === "") return false;
+  const n = Number(s);
+  return !Number.isNaN(n) && n >= 0;
+}
+
+function validateDepthRange(depthFromStr, depthToStr) {
+  if (!isPositiveNumber(depthFromStr) || !isPositiveNumber(depthToStr)) {
+    return { valid: false, errorKey: "errors.depthRequired" };
+  }
+  const from = Number(depthFromStr);
+  const to = Number(depthToStr);
+  if (to <= from) return { valid: false, errorKey: "errors.depthToMustExceedFrom" };
+  if (to - from > 50) return { valid: false, errorKey: "errors.depthRangeTooLarge" };
+  return { valid: true };
+}
+
+function validateCorePieces(piecesStr, runLengthCm) {
+  if (piecesStr.length === 0) return { valid: false, errorKey: "errors.atLeastOnePiece" };
+  for (const p of piecesStr) {
+    if (!isPositiveNumber(p)) return { valid: false, errorKey: "errors.invalidPieceLength" };
+  }
+  const total = piecesStr.reduce((sum, p) => sum + Number(p), 0);
+  if (total > runLengthCm * 1.02) return { valid: false, errorKey: "errors.recoveredExceedsRun" };
+  return { valid: true };
+}
+
+function validateSPT(n1, n2, n3) {
+  for (const n of [n1, n2, n3]) {
+    if (!isPositiveNumber(n)) return { valid: false, errorKey: "errors.allBlowCountsRequired" };
+    if (Number(n) > 50) return { valid: false, errorKey: "errors.sptRefusal" };
+  }
+  return { valid: true };
+}
+
+function validateRequired(value) {
+  if (!value || value.trim() === "") return { valid: false, errorKey: "errors.required" };
+  return { valid: true };
+}
+
+const calc = { normalizeToCm, getRunLengthCm, calcTCR, calcRQD, classifyRockQuality, rockQualityTone, calcNSPT, isClayFamily, classifySoilState, soilStateTone, isPositiveNumber, validateDepthRange, validateCorePieces, validateSPT, validateRequired };
+
+// ===== firebase config =====
+// =========================================================
+// Borehole Logger — firebase-config.js
+//
+// 1. Go to https://console.firebase.google.com
+// 2. Open (or create) your project — e.g. "haic-app"
+// 3. Project settings (gear icon) → General → "Your apps" →
+//    Add app → Web (</>) → register an app (any nickname)
+// 4. Firebase gives you a config object — paste the values below.
+// 5. Also enable, in the Firebase console:
+//      - Authentication → Sign-in method → Email/Password → Enable
+//      - Firestore Database → Create database (Production mode)
+// =========================================================
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCfhZcs6xE5AC4hWjLlr4b043FkrLqjN0c",
+  authDomain: "soil-rock-description.firebaseapp.com",
+  projectId: "soil-rock-description",
+  storageBucket: "soil-rock-description.firebasestorage.app",
+  messagingSenderId: "750664546971",
+  appId: "1:750664546971:web:3e0dab717c674b6559e43e",
+};
+
+// ===== firebase init =====
+// =========================================================
+// Borehole Logger — firebase-init.js
+// Initializes Firebase App, Auth, and Firestore (with
+// offline persistence so the app keeps working without signal
+// in the field, syncing automatically once back online).
+// =========================================================
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-app.js";
+import {
+  getAuth,
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  signOut,
+  GoogleAuthProvider,
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentSingleTabManager,
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+let app, auth, db, googleProvider, initError = null;
+
+try {
+  if (!firebaseConfig.apiKey || firebaseConfig.apiKey.startsWith("PASTE_")) {
+    initError = "missing-config";
+  } else {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+    db = initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentSingleTabManager() }),
+    });
+  }
+} catch (e) {
+  console.error("Firebase init failed:", e);
+  initError = e;
+}
+
+
+// ===== firestore service =====
+// =========================================================
+// Borehole Logger — firestore-service.js
+// projects/{projectId}/boreholes/{boreholeId}/samples/{sampleId}
+// Samples are written with addDoc only (never overwritten),
+// so a borehole's sample timeline is append-only.
+// =========================================================
+
+import {
+  collection,
+  doc,
+  addDoc,
+  deleteDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+
+function projectsCol() {
+  return collection(db, "projects");
+}
+function boreholesCol(projectId) {
+  return collection(db, "projects", projectId, "boreholes");
+}
+function samplesCol(projectId, boreholeId) {
+  return collection(db, "projects", projectId, "boreholes", boreholeId, "samples");
+}
+
+function createProject(data) {
+  return addDoc(projectsCol(), { ...data, createdAt: serverTimestamp() });
+}
+
+function listenProjects(onChange, onError) {
+  const q = query(projectsCol(), orderBy("createdAt", "desc"));
+  return onSnapshot(
+    q,
+    (snap) => onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }))),
+    (err) => { if (onError) onError(err); }
+  );
+}
+
+function createBorehole(projectId, data) {
+  return addDoc(boreholesCol(projectId), { ...data, createdAt: serverTimestamp() });
+}
+
+function listenBoreholes(projectId, onChange) {
+  const q = query(boreholesCol(projectId), orderBy("createdAt", "desc"));
+  return onSnapshot(q, (snap) => {
+    onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+// Append-only: always addDoc, never setDoc on a fixed id, so previous
+// samples are never overwritten.
+function addSample(projectId, boreholeId, data) {
+  return addDoc(samplesCol(projectId, boreholeId), { ...data, createdAt: serverTimestamp() });
+}
+
+function deleteSample(projectId, boreholeId, sampleId) {
+  return deleteDoc(doc(db, "projects", projectId, "boreholes", boreholeId, "samples", sampleId));
+}
+
+function listenSamples(projectId, boreholeId, onChange) {
+  const q = query(samplesCol(projectId, boreholeId), orderBy("depthFrom", "asc"));
+  return onSnapshot(q, (snap) => {
+    onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+  });
+}
+
+const fs = { projectsCol, boreholesCol, samplesCol, createProject, listenProjects, createBorehole, listenBoreholes, addSample, deleteSample, listenSamples };
+
+// ===== export (pdf/excel) =====
+// =========================================================
+// Borehole Logger — export.js
+// PDF export (jsPDF + autotable) mirrors the F-01.HAIC-LAB-15MAT
+// layout. Excel export (SheetJS) produces an .xlsx workbook.
+// Both trigger a normal browser download.
+// =========================================================
+
+function sampleRow(s) {
+  if (s.type === "ROCK") {
+    return [
+      `${s.depthFrom.toFixed(2)} - ${s.depthTo.toFixed(2)}`,
+      t("sample.rock"),
+      `TCR: ${s.tcr.toFixed(1)}%`,
+      `RQD: ${s.rqd.toFixed(1)}%`,
+      t(`rockQuality.${s.rockQuality}`),
+    ];
+  }
+  return [
+    `${s.depthFrom.toFixed(2)} - ${s.depthTo.toFixed(2)}`,
+    t("sample.soil"),
+    `NSPT: ${s.nspt}`,
+    t(`soilTypes.${s.soilType}`),
+    t(`soilState.${s.soilState}`),
+  ];
+}
+
+async function exportBoreholeLogToPDF(project, borehole, samples) {
+  // jsPDF + jspdf-autotable are loaded globally via CDN <script> tags in index.html
+  const { jsPDF } = window.jspdf;
+  const docPdf = new jsPDF({ unit: "pt", format: "a4" });
+
+  docPdf.setFontSize(16);
+  docPdf.setTextColor(15, 76, 92);
+  docPdf.text(`${project.name} — ${borehole.name}`, 40, 40);
+
+  docPdf.setFontSize(10);
+  docPdf.setTextColor(90, 105, 110);
+  docPdf.text("Form Ref: F-01.HAIC-LAB-15MAT", 40, 58);
+
+  let metaY = 76;
+  docPdf.setTextColor(50, 60, 64);
+  if (project.location) {
+    docPdf.text(`Location: ${project.location}`, 40, metaY);
+    metaY += 14;
+  }
+  if (borehole.coordinates) {
+    docPdf.text(`Coordinates: ${borehole.coordinates}`, 40, metaY);
+    metaY += 14;
+  }
+  docPdf.text(`Generated: ${new Date().toLocaleString()}`, 40, metaY);
+  metaY += 10;
+
+  docPdf.autoTable({
+    startY: metaY + 10,
+    head: [["Depth (m)", "Type", "Result 1", "Result 2", "Classification"]],
+    body: samples.map(sampleRow),
+    headStyles: { fillColor: [15, 76, 92], textColor: 255, fontSize: 9 },
+    bodyStyles: { fontSize: 9 },
+    styles: { cellPadding: 5 },
+    margin: { left: 40, right: 40 },
+  });
+
+  docPdf.save(`${borehole.name.replace(/\s+/g, "_")}.pdf`);
+}
+
+async function exportBoreholeLogToExcel(project, borehole, samples) {
+  // SheetJS (XLSX) is loaded globally via CDN <script> tag in index.html
+  const rows = samples.map((s) => {
+    const base = {
+      [t("rock.depthFrom")]: s.depthFrom,
+      [t("rock.depthTo")]: s.depthTo,
+      Type: s.type,
+    };
+    if (s.type === "ROCK") {
+      return {
+        ...base,
+        "Core pieces (cm)": (s.corePieces || []).join(", "),
+        TCR: s.tcr,
+        RQD: s.rqd,
+        [t("rock.rockQuality")]: t(`rockQuality.${s.rockQuality}`),
+      };
+    }
+    return {
+      ...base,
+      N1: s.n1,
+      N2: s.n2,
+      N3: s.n3,
+      NSPT: s.nspt,
+      [t("soil.soilType")]: t(`soilTypes.${s.soilType}`),
+      [t("soil.soilState")]: t(`soilState.${s.soilState}`),
+    };
+  });
+
+  const worksheet = window.XLSX.utils.json_to_sheet(rows);
+  const workbook = window.XLSX.utils.book_new();
+  window.XLSX.utils.book_append_sheet(workbook, worksheet, borehole.name.substring(0, 31));
+  window.XLSX.writeFile(workbook, `${borehole.name.replace(/\s+/g, "_")}.xlsx`);
+}
+
+// ===== main app =====
+// =========================================================
+// Borehole Logger — app.js
+// Main application logic: view routing, auth, rendering,
+// live Firestore listeners, and form/calculation wiring.
+// =========================================================
+
+
+// ---------------------------------------------------------
+// App state
+// ---------------------------------------------------------
+const state = {
+  user: null,
+  project: null,    // { id, name, location, client }
+  borehole: null,    // { id, name, coordinates, groundElevation }
+  samples: [],       // current borehole's samples (live)
+  rockUnit: "cm",
+  rockPieces: [""],  // string inputs
+  unsub: { projects: null, boreholes: null, samples: null },
+};
+
+// ---------------------------------------------------------
+// Boot
+// ---------------------------------------------------------
+applyStoredTheme();
+document.getElementById("darkModeToggle").checked = getTheme() === "dark";
+applyI18n();
+syncLangButtons();
+
+if (initError === "missing-config") {
+  document.getElementById("loginConfigWarning").style.display = "block";
+  document.getElementById("loginSubmitBtn").disabled = true;
+  document.getElementById("googleSignInBtn").disabled = true;
+} else {
+  getRedirectResult(auth).catch((e) => console.error("Google redirect error:", e));
+  onAuthStateChanged(auth, (user) => {
+    state.user = user;
+    if (user) {
+      document.getElementById("settingsUserEmail").textContent = user.email || "";
+      document.getElementById("notAuthorizedEmail").textContent = user.email || "";
+      showView("view-projects");
+      startProjectsListener();
+    } else {
+      stopAllListeners();
+      showView("view-login");
+    }
+  });
+}
+
+window.addEventListener("online", () => document.getElementById("connBanner").classList.remove("show"));
+window.addEventListener("offline", () => document.getElementById("connBanner").classList.add("show"));
+if (!navigator.onLine) document.getElementById("connBanner").classList.add("show");
+
+// ---------------------------------------------------------
+// View routing
+// ---------------------------------------------------------
+function showView(id) {
+  document.querySelectorAll(".view").forEach((v) => v.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ---------------------------------------------------------
+// Toast
+// ---------------------------------------------------------
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+}
+
+// ---------------------------------------------------------
+// Generic confirm modal
+// ---------------------------------------------------------
+function openModal(id) { document.getElementById(id).classList.add("active"); }
+function closeModal(id) { document.getElementById(id).classList.remove("active"); }
+
+let confirmCallback = null;
+function askConfirm(message, onYes) {
+  document.getElementById("confirmModalText").textContent = message || t("common.deleteConfirm");
+  confirmCallback = onYes;
+  openModal("confirmModal");
+}
+document.getElementById("confirmCancelBtn").addEventListener("click", () => closeModal("confirmModal"));
+document.getElementById("confirmOkBtn").addEventListener("click", () => {
+  closeModal("confirmModal");
+  if (confirmCallback) confirmCallback();
+  confirmCallback = null;
+});
+
+// ---------------------------------------------------------
+// Language + theme controls
+// ---------------------------------------------------------
+function syncLangButtons() {
+  const lang = getLang();
+  document.getElementById("loginLangEn").classList.toggle("active", lang === "en");
+  document.getElementById("loginLangVi").classList.toggle("active", lang === "vi");
+  document.getElementById("settingsLangEn").classList.toggle("active", lang === "en");
+  document.getElementById("settingsLangVi").classList.toggle("active", lang === "vi");
+}
+function changeLang(lang) {
+  setLang(lang);
+  applyI18n();
+  syncLangButtons();
+  // re-render dynamic lists so translated labels (classifications, etc.) refresh
+  if (state.project) renderBoreholesIfVisible();
+  renderSamples();
+  recalcRock();
+  recalcSoil();
+}
+document.getElementById("loginLangEn").addEventListener("click", () => changeLang("en"));
+document.getElementById("loginLangVi").addEventListener("click", () => changeLang("vi"));
+document.getElementById("settingsLangEn").addEventListener("click", () => changeLang("en"));
+document.getElementById("settingsLangVi").addEventListener("click", () => changeLang("vi"));
+
+document.getElementById("darkModeToggle").addEventListener("change", (e) => {
+  setTheme(e.target.checked ? "dark" : "light");
+});
+
+// ---------------------------------------------------------
+// Auth
+// ---------------------------------------------------------
+document.getElementById("loginSubmitBtn").addEventListener("click", async () => {
+  const email = document.getElementById("loginEmail").value.trim();
+  const password = document.getElementById("loginPassword").value;
+  const errEl = document.getElementById("loginError");
+  const btnLabel = document.getElementById("loginBtnLabel");
+  errEl.style.display = "none";
+  if (!email || !password) {
+    errEl.textContent = t("errors.loginFailed");
+    errEl.style.display = "block";
+    return;
+  }
+  btnLabel.innerHTML = '<span class="spinner"></span>';
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (e) {
+    console.error(e);
+    errEl.textContent = t("errors.loginFailed");
+    errEl.style.display = "block";
+  } finally {
+    btnLabel.textContent = t("common.login");
+  }
+});
+
+function logout() {
+  signOut(auth);
+}
+document.getElementById("logoutBtn").addEventListener("click", logout);
+document.getElementById("settingsLogoutBtn").addEventListener("click", logout);
+document.getElementById("notAuthorizedLogoutBtn").addEventListener("click", logout);
+
+document.getElementById("googleSignInBtn").addEventListener("click", async () => {
+  const label = document.getElementById("googleBtnLabel");
+  const original = label.textContent;
+  label.innerHTML = '<span class="spinner dark"></span>';
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (e) {
+    const popupBlockedCodes = [
+      "auth/popup-blocked",
+      "auth/cancelled-popup-request",
+      "auth/operation-not-supported-in-this-environment",
+    ];
+    if (popupBlockedCodes.includes(e.code)) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return; // page will navigate away
+      } catch (e2) {
+        console.error("Google redirect sign-in failed:", e2);
+      }
+    } else if (e.code !== "auth/popup-closed-by-user") {
+      console.error("Google sign-in failed:", e);
+      toast(t("errors.loginFailed"));
+    }
+  } finally {
+    label.textContent = original;
+  }
+});
+
+// ---------------------------------------------------------
+// Listener lifecycle
+// ---------------------------------------------------------
+function stopAllListeners() {
+  Object.keys(state.unsub).forEach((k) => {
+    if (state.unsub[k]) state.unsub[k]();
+    state.unsub[k] = null;
+  });
+}
+
+function startProjectsListener() {
+  if (state.unsub.projects) state.unsub.projects();
+  state.unsub.projects = fs.listenProjects(renderProjects, (err) => {
+    console.error("Projects listener error:", err);
+    if (err.code === "permission-denied") {
+      stopAllListeners();
+      showView("view-not-authorized");
+    }
+  });
+}
+
+// ---------------------------------------------------------
+// PROJECTS view
+// ---------------------------------------------------------
+function renderProjects(projects) {
+  const el = document.getElementById("projectsList");
+  if (projects.length === 0) {
+    el.innerHTML = `<div class="empty-state">${t("projects.noProjects")}</div>`;
+    return;
+  }
+  el.innerHTML = projects
+    .map(
+      (p) => `
+      <div class="list-item" data-id="${p.id}">
+        <div class="li-main">
+          <div class="li-title">${escapeHtml(p.name)}</div>
+          <div class="li-sub">${escapeHtml(p.location || "")}${p.client ? " · " + escapeHtml(p.client) : ""}</div>
+        </div>
+        <div class="chevron">›</div>
+      </div>`
+    )
+    .join("");
+  el.querySelectorAll(".list-item").forEach((row) => {
+    row.addEventListener("click", () => {
+      const p = projects.find((x) => x.id === row.dataset.id);
+      openBoreholes(p);
+    });
+  });
+}
+
+document.getElementById("settingsBtn").addEventListener("click", () => showView("view-settings"));
+document.getElementById("backFromSettingsBtn").addEventListener("click", () => showView("view-projects"));
+
+document.getElementById("newProjectFab").addEventListener("click", () => {
+  document.getElementById("newProjectName").value = "";
+  document.getElementById("newProjectLocation").value = "";
+  document.getElementById("newProjectClient").value = "";
+  openModal("newProjectModal");
+});
+document.getElementById("cancelNewProjectBtn").addEventListener("click", () => closeModal("newProjectModal"));
+document.getElementById("saveNewProjectBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newProjectName").value.trim();
+  if (!name) { toast(t("errors.required")); return; }
+  await fs.createProject({
+    name,
+    location: document.getElementById("newProjectLocation").value.trim(),
+    client: document.getElementById("newProjectClient").value.trim(),
+  });
+  closeModal("newProjectModal");
+});
+
+// ---------------------------------------------------------
+// BOREHOLES view
+// ---------------------------------------------------------
+function openBoreholes(project) {
+  state.project = project;
+  document.getElementById("boreholesProjectName").textContent = project.name;
+  showView("view-boreholes");
+  if (state.unsub.boreholes) state.unsub.boreholes();
+  state.unsub.boreholes = fs.listenBoreholes(project.id, renderBoreholes);
+}
+
+let lastBoreholes = [];
+function renderBoreholesIfVisible() {
+  renderBoreholes(lastBoreholes);
+}
+function renderBoreholes(boreholes) {
+  lastBoreholes = boreholes;
+  const el = document.getElementById("boreholesList");
+  if (boreholes.length === 0) {
+    el.innerHTML = `<div class="empty-state">${t("boreholes.noBoreholes")}</div>`;
+    return;
+  }
+  el.innerHTML = boreholes
+    .map(
+      (b) => `
+      <div class="list-item" data-id="${b.id}">
+        <div class="li-main">
+          <div class="li-title">${escapeHtml(b.name)}</div>
+          <div class="li-sub">${escapeHtml(b.coordinates || "")}</div>
+        </div>
+        <div class="chevron">›</div>
+      </div>`
+    )
+    .join("");
+  el.querySelectorAll(".list-item").forEach((row) => {
+    row.addEventListener("click", () => {
+      const b = boreholes.find((x) => x.id === row.dataset.id);
+      openBoreholeDetail(b);
+    });
+  });
+}
+
+document.getElementById("backToProjectsBtn").addEventListener("click", () => {
+  if (state.unsub.boreholes) state.unsub.boreholes();
+  showView("view-projects");
+});
+
+document.getElementById("newBoreholeFab").addEventListener("click", () => {
+  document.getElementById("newBoreholeName").value = "";
+  document.getElementById("newBoreholeCoordinates").value = "";
+  document.getElementById("newBoreholeElevation").value = "";
+  openModal("newBoreholeModal");
+});
+document.getElementById("cancelNewBoreholeBtn").addEventListener("click", () => closeModal("newBoreholeModal"));
+document.getElementById("saveNewBoreholeBtn").addEventListener("click", async () => {
+  const name = document.getElementById("newBoreholeName").value.trim();
+  if (!name) { toast(t("errors.required")); return; }
+  await fs.createBorehole(state.project.id, {
+    name,
+    coordinates: document.getElementById("newBoreholeCoordinates").value.trim(),
+    groundElevation: document.getElementById("newBoreholeElevation").value
+      ? Number(document.getElementById("newBoreholeElevation").value)
+      : null,
+  });
+  closeModal("newBoreholeModal");
+});
+
+// ---------------------------------------------------------
+// BOREHOLE DETAIL (timeline)
+// ---------------------------------------------------------
+function openBoreholeDetail(borehole) {
+  state.borehole = borehole;
+  document.getElementById("boreholeDetailTitle").textContent = borehole.name;
+  showView("view-borehole-detail");
+  if (state.unsub.samples) state.unsub.samples();
+  state.unsub.samples = fs.listenSamples(state.project.id, borehole.id, (samples) => {
+    state.samples = samples;
+    renderSamples();
+  });
+}
+
+function renderSamples() {
+  const el = document.getElementById("samplesTimeline");
+  const samples = state.samples;
+  const hasSamples = samples.length > 0;
+  document.getElementById("exportPdfBtn").disabled = !hasSamples;
+  document.getElementById("exportExcelBtn").disabled = !hasSamples;
+  if (!hasSamples) {
+    el.innerHTML = `<div class="empty-state">${t("common.noData")}</div>`;
+    return;
+  }
+  el.innerHTML = samples
+    .map((s) => {
+      const range = t("sample.depthRange", { from: s.depthFrom.toFixed(2), to: s.depthTo.toFixed(2) });
+      let line1, line2, tone;
+      if (s.type === "ROCK") {
+        line1 = `${t("sample.rock")} · TCR ${s.tcr.toFixed(1)}% · RQD ${s.rqd.toFixed(1)}%`;
+        line2 = t(`rockQuality.${s.rockQuality}`);
+        tone = calc.rockQualityTone(s.rockQuality);
+      } else {
+        line1 = `${t("sample.soil")} · NSPT ${s.nspt} · ${t(`soilTypes.${s.soilType}`)}`;
+        line2 = t(`soilState.${s.soilState}`);
+        tone = calc.soilStateTone(s.soilState);
+      }
+      return `
+        <div class="list-item" data-id="${s.id}">
+          <div class="li-main">
+            <div class="li-title">${range}</div>
+            <div class="li-sub">${escapeHtml(line1)}</div>
+          </div>
+          <span class="badge badge-${tone}">${escapeHtml(line2)}</span>
+        </div>`;
+    })
+    .join("");
+
+  el.querySelectorAll(".list-item").forEach((row) => {
+    let pressTimer = null;
+    const fire = () => {
+      askConfirm(t("common.deleteConfirm"), async () => {
+        await fs.deleteSample(state.project.id, state.borehole.id, row.dataset.id);
+        toast(t("common.delete"));
+      });
+    };
+    row.addEventListener("touchstart", () => { pressTimer = setTimeout(fire, 550); });
+    row.addEventListener("touchend", () => clearTimeout(pressTimer));
+    row.addEventListener("mousedown", () => { pressTimer = setTimeout(fire, 550); });
+    row.addEventListener("mouseup", () => clearTimeout(pressTimer));
+    row.addEventListener("mouseleave", () => clearTimeout(pressTimer));
+  });
+}
+
+document.getElementById("backToBoreholesBtn").addEventListener("click", () => {
+  if (state.unsub.samples) state.unsub.samples();
+  showView("view-boreholes");
+});
+
+document.getElementById("exportPdfBtn").addEventListener("click", async () => {
+  try {
+    await exportBoreholeLogToPDF(state.project, state.borehole, state.samples);
+  } catch (e) {
+    console.error(e);
+    toast(t("errors.genericError"));
+  }
+});
+document.getElementById("exportExcelBtn").addEventListener("click", async () => {
+  try {
+    await exportBoreholeLogToExcel(state.project, state.borehole, state.samples);
+  } catch (e) {
+    console.error(e);
+    toast(t("errors.genericError"));
+  }
+});
+
+// ---------------------------------------------------------
+// ADD SAMPLE — tab switching
+// ---------------------------------------------------------
+document.getElementById("addSampleFab").addEventListener("click", () => {
+  resetRockForm();
+  resetSoilForm();
+  switchAddSampleTab("rock");
+  showView("view-add-sample");
+});
+document.getElementById("backToDetailBtn").addEventListener("click", () => showView("view-borehole-detail"));
+
+function switchAddSampleTab(tab) {
+  document.getElementById("tabRock").classList.toggle("active", tab === "rock");
+  document.getElementById("tabSoil").classList.toggle("active", tab === "soil");
+  document.getElementById("panelRock").style.display = tab === "rock" ? "block" : "none";
+  document.getElementById("panelSoil").style.display = tab === "soil" ? "block" : "none";
+}
+document.getElementById("tabRock").addEventListener("click", () => switchAddSampleTab("rock"));
+document.getElementById("tabSoil").addEventListener("click", () => switchAddSampleTab("soil"));
+
+// ---------------------------------------------------------
+// ROCK CORE form
+// ---------------------------------------------------------
+function resetRockForm() {
+  document.getElementById("rockDepthFrom").value = "";
+  document.getElementById("rockDepthTo").value = "";
+  document.getElementById("rockDepthError").style.display = "none";
+  document.getElementById("piecesError").style.display = "none";
+  state.rockUnit = "cm";
+  document.querySelectorAll("#rockUnitToggle button").forEach((b) => b.classList.toggle("active", b.dataset.unit === "cm"));
+  state.rockPieces = [""];
+  renderPieces();
+  recalcRock();
+}
+
+function renderPieces() {
+  const el = document.getElementById("piecesContainer");
+  el.innerHTML = state.rockPieces
+    .map(
+      (val, idx) => `
+      <div class="piece-row">
+        <input type="number" inputmode="decimal" class="piece-input" data-idx="${idx}" value="${val}" placeholder="${t("rock.pieceLength")} ${idx + 1}" />
+        <button class="piece-remove" data-idx="${idx}" ${state.rockPieces.length === 1 ? "disabled style='opacity:.35'" : ""}>✕</button>
+      </div>`
+    )
+    .join("");
+  el.querySelectorAll(".piece-input").forEach((inp) => {
+    inp.addEventListener("input", (e) => {
+      state.rockPieces[Number(e.target.dataset.idx)] = e.target.value;
+      recalcRock();
+    });
+  });
+  el.querySelectorAll(".piece-remove").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      const idx = Number(e.target.dataset.idx);
+      if (state.rockPieces.length === 1) return;
+      state.rockPieces.splice(idx, 1);
+      renderPieces();
+      recalcRock();
+    });
+  });
+}
+document.getElementById("addPieceBtn").addEventListener("click", () => {
+  state.rockPieces.push("");
+  renderPieces();
+  recalcRock();
+});
+document.querySelectorAll("#rockUnitToggle button").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    state.rockUnit = btn.dataset.unit;
+    document.querySelectorAll("#rockUnitToggle button").forEach((b) => b.classList.toggle("active", b === btn));
+    recalcRock();
+  });
+});
+["rockDepthFrom", "rockDepthTo"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", recalcRock);
+});
+
+function recalcRock() {
+  const fromStr = document.getElementById("rockDepthFrom").value;
+  const toStr = document.getElementById("rockDepthTo").value;
+  const from = Number(fromStr) || 0;
+  const to = Number(toStr) || 0;
+  const runLengthCm = to > from ? calc.getRunLengthCm(from, to) : 0;
+
+  const piecesCm = calc.normalizeToCm(
+    state.rockPieces.map((p) => Number(p) || 0),
+    state.rockUnit
+  );
+  const tcr = calc.calcTCR(piecesCm, runLengthCm);
+  const rqd = calc.calcRQD(piecesCm, runLengthCm);
+  const quality = calc.classifyRockQuality(rqd);
+
+  document.getElementById("rockRunLengthVal").textContent = `${runLengthCm.toFixed(0)} cm`;
+  document.getElementById("rockTcrVal").textContent = `${tcr.toFixed(1)}%`;
+  document.getElementById("rockRqdVal").textContent = `${rqd.toFixed(1)}%`;
+  const badge = document.getElementById("rockQualityBadge");
+  badge.textContent = t(`rockQuality.${quality}`);
+  badge.className = `badge badge-${calc.rockQualityTone(quality)}`;
+}
+
+document.getElementById("saveRockBtn").addEventListener("click", async () => {
+  const fromStr = document.getElementById("rockDepthFrom").value;
+  const toStr = document.getElementById("rockDepthTo").value;
+  const depthErr = document.getElementById("rockDepthError");
+  const piecesErr = document.getElementById("piecesError");
+  depthErr.style.display = "none";
+  piecesErr.style.display = "none";
+
+  const depthCheck = calc.validateDepthRange(fromStr, toStr);
+  if (!depthCheck.valid) {
+    depthErr.textContent = t(depthCheck.errorKey);
+    depthErr.style.display = "block";
+    return;
+  }
+  const from = Number(fromStr);
+  const to = Number(toStr);
+  const runLengthCm = calc.getRunLengthCm(from, to);
+  const piecesCm = calc.normalizeToCm(state.rockPieces.map((p) => Number(p) || 0), state.rockUnit);
+  const piecesCheck = calc.validateCorePieces(state.rockPieces, runLengthCm);
+  if (!piecesCheck.valid) {
+    piecesErr.textContent = t(piecesCheck.errorKey);
+    piecesErr.style.display = "block";
+    return;
+  }
+
+  const tcr = calc.calcTCR(piecesCm, runLengthCm);
+  const rqd = calc.calcRQD(piecesCm, runLengthCm);
+  const rockQuality = calc.classifyRockQuality(rqd);
+
+  await fs.addSample(state.project.id, state.borehole.id, {
+    type: "ROCK",
+    depthFrom: from,
+    depthTo: to,
+    corePieces: piecesCm,
+    tcr, rqd, rockQuality,
+  });
+  toast(t("common.save"));
+  showView("view-borehole-detail");
+});
+
+// ---------------------------------------------------------
+// SPT SOIL form
+// ---------------------------------------------------------
+function resetSoilForm() {
+  document.getElementById("soilDepthFrom").value = "";
+  document.getElementById("soilDepthTo").value = "";
+  document.getElementById("soilN1").value = "";
+  document.getElementById("soilN2").value = "";
+  document.getElementById("soilN3").value = "";
+  document.getElementById("soilType").value = "CLAY";
+  document.getElementById("soilDepthError").style.display = "none";
+  document.getElementById("sptError").style.display = "none";
+  recalcSoil();
+}
+["soilN1", "soilN2", "soilN3", "soilType"].forEach((id) => {
+  document.getElementById(id).addEventListener("input", recalcSoil);
+});
+
+function recalcSoil() {
+  const n2 = Number(document.getElementById("soilN2").value) || 0;
+  const n3 = Number(document.getElementById("soilN3").value) || 0;
+  const soilType = document.getElementById("soilType").value;
+  const nspt = calc.calcNSPT(n2, n3);
+  const state_ = calc.classifySoilState(nspt, soilType);
+  document.getElementById("soilNsptVal").textContent = nspt;
+  const badge = document.getElementById("soilStateBadge");
+  badge.textContent = t(`soilState.${state_}`);
+  badge.className = `badge badge-${calc.soilStateTone(state_)}`;
+}
+
+document.getElementById("saveSoilBtn").addEventListener("click", async () => {
+  const fromStr = document.getElementById("soilDepthFrom").value;
+  const toStr = document.getElementById("soilDepthTo").value;
+  const n1 = document.getElementById("soilN1").value;
+  const n2 = document.getElementById("soilN2").value;
+  const n3 = document.getElementById("soilN3").value;
+  const soilType = document.getElementById("soilType").value;
+  const depthErr = document.getElementById("soilDepthError");
+  const sptErr = document.getElementById("sptError");
+  depthErr.style.display = "none";
+  sptErr.style.display = "none";
+
+  const depthCheck = calc.validateDepthRange(fromStr, toStr);
+  if (!depthCheck.valid) {
+    depthErr.textContent = t(depthCheck.errorKey);
+    depthErr.style.display = "block";
+    return;
+  }
+  const sptCheck = calc.validateSPT(n1, n2, n3);
+  if (!sptCheck.valid) {
+    sptErr.textContent = t(sptCheck.errorKey);
+    sptErr.style.display = "block";
+    // A blow count over 50 (refusal) is flagged but not blocked — missing or
+    // non-numeric values are a hard stop, refusal is just a heads-up.
+    if (sptCheck.errorKey !== "errors.sptRefusal") return;
+  }
+
+  const nspt = calc.calcNSPT(Number(n2), Number(n3));
+  const soilState = calc.classifySoilState(nspt, soilType);
+
+  await fs.addSample(state.project.id, state.borehole.id, {
+    type: "SOIL",
+    depthFrom: Number(fromStr),
+    depthTo: Number(toStr),
+    n1: Number(n1), n2: Number(n2), n3: Number(n3),
+    nspt, soilType, soilState,
+  });
+  toast(t("common.save"));
+  showView("view-borehole-detail");
+});
+
+// ---------------------------------------------------------
+// Utils
+// ---------------------------------------------------------
+function escapeHtml(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+</script>
+</body>
+</html>
