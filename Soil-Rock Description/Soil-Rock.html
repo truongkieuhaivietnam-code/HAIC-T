@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover" />
+<title>Borehole Logger</title>
+<link rel="icon" href="assets/icon.png" />
+<link rel="apple-touch-icon" href="assets/icon.png" />
+<meta name="theme-color" content="#0F4C5C" />
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- Offline banner -->
+  <div id="connBanner" class="conn-banner" data-i18n="common.offline"></div>
+
+  <!-- ================= LOGIN ================= -->
+  <section id="view-login" class="view login-view">
+    <div class="content">
+      <div class="login-lang-toggle">
+        <div class="segmented" style="width:140px;">
+          <button id="loginLangEn" class="active">EN</button>
+          <button id="loginLangVi">VI</button>
+        </div>
+      </div>
+      <div class="login-logo">⛏️</div>
+      <div class="login-title" data-i18n="common.appName"></div>
+      <div class="login-subtitle">HAIC Cambodia — Field Data</div>
+
+      <div class="field">
+        <label data-i18n="common.email"></label>
+        <input type="email" id="loginEmail" autocomplete="username" />
+      </div>
+      <div class="field">
+        <label data-i18n="common.password"></label>
+        <input type="password" id="loginPassword" autocomplete="current-password" />
+      </div>
+      <div class="field error-text" id="loginError" style="display:none;"></div>
+      <button class="btn btn-primary" id="loginSubmitBtn">
+        <span id="loginBtnLabel" data-i18n="common.login"></span>
+      </button>
+      <div id="loginConfigWarning" class="field error-text" style="display:none; margin-top:18px; text-align:center;">
+        Firebase is not configured yet. Edit <code>js/firebase-config.js</code> with your project credentials, then reload.
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= PROJECTS ================= -->
+  <section id="view-projects" class="view">
+    <header class="app-header">
+      <span class="title" data-i18n="projects.title"></span>
+      <button class="icon-btn" id="settingsBtn" title="Settings">⚙️</button>
+      <button class="icon-btn" id="logoutBtn" title="Log out">⏻</button>
+    </header>
+    <div class="content" id="projectsList"></div>
+    <button class="btn-fab" id="newProjectFab">+</button>
+  </section>
+
+  <!-- ================= BOREHOLES ================= -->
+  <section id="view-boreholes" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToProjectsBtn">←</button>
+      <span class="title" id="boreholesTitle">
+        <span class="subtitle" id="boreholesProjectName"></span>
+        <span data-i18n="boreholes.title"></span>
+      </span>
+    </header>
+    <div class="content" id="boreholesList"></div>
+    <button class="btn-fab" id="newBoreholeFab">+</button>
+  </section>
+
+  <!-- ================= BOREHOLE DETAIL (timeline) ================= -->
+  <section id="view-borehole-detail" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToBoreholesBtn">←</button>
+      <span class="title" id="boreholeDetailTitle"></span>
+    </header>
+    <div class="content">
+      <div class="export-row">
+        <button class="btn btn-secondary btn-sm" id="exportPdfBtn" style="flex:1;" data-i18n="common.exportPDF"></button>
+        <button class="btn btn-secondary btn-sm" id="exportExcelBtn" style="flex:1;" data-i18n="common.exportExcel"></button>
+      </div>
+      <div class="section-label" data-i18n="boreholes.timeline"></div>
+      <div id="samplesTimeline"></div>
+    </div>
+    <button class="btn-fab" id="addSampleFab">+</button>
+  </section>
+
+  <!-- ================= ADD SAMPLE (Rock Core / SPT Soil tabs) ================= -->
+  <section id="view-add-sample" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backToDetailBtn">←</button>
+      <span class="title" data-i18n="boreholes.addSample"></span>
+    </header>
+    <div class="tab-bar">
+      <button id="tabRock" class="active" data-i18n="tabs.rockCore"></button>
+      <button id="tabSoil" data-i18n="tabs.sptSoil"></button>
+    </div>
+
+    <!-- ---- Rock Core form ---- -->
+    <div class="content" id="panelRock">
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="rock.depthFrom"></label>
+          <input type="number" inputmode="decimal" id="rockDepthFrom" />
+        </div>
+        <div class="field">
+          <label data-i18n="rock.depthTo"></label>
+          <input type="number" inputmode="decimal" id="rockDepthTo" />
+        </div>
+      </div>
+      <div class="field error-text" id="rockDepthError" style="display:none;"></div>
+
+      <div class="field">
+        <label data-i18n="rock.unit"></label>
+        <div class="segmented" id="rockUnitToggle">
+          <button data-unit="cm" class="active">cm</button>
+          <button data-unit="m">m</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label data-i18n="rock.corePieces"></label>
+        <div id="piecesContainer"></div>
+        <div class="field error-text" id="piecesError" style="display:none;"></div>
+        <button class="btn btn-secondary btn-sm" id="addPieceBtn" data-i18n="rock.addPiece"></button>
+      </div>
+
+      <div class="result-card">
+        <div class="result-grid">
+          <div class="result-stat"><div class="val" id="rockRunLengthVal">0</div><div class="lbl" data-i18n="rock.runLength"></div></div>
+          <div class="result-stat"><div class="val" id="rockTcrVal">0%</div><div class="lbl" data-i18n="rock.tcr"></div></div>
+          <div class="result-stat"><div class="val" id="rockRqdVal">0%</div><div class="lbl" data-i18n="rock.rqd"></div></div>
+        </div>
+        <div class="badge-row"><span class="badge" id="rockQualityBadge">—</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="saveRockBtn" data-i18n="rock.saveSample"></button>
+    </div>
+
+    <!-- ---- SPT Soil form ---- -->
+    <div class="content" id="panelSoil" style="display:none;">
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="soil.depthFrom"></label>
+          <input type="number" inputmode="decimal" id="soilDepthFrom" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.depthTo"></label>
+          <input type="number" inputmode="decimal" id="soilDepthTo" />
+        </div>
+      </div>
+      <div class="field error-text" id="soilDepthError" style="display:none;"></div>
+
+      <div class="field-row">
+        <div class="field">
+          <label data-i18n="soil.n1"></label>
+          <input type="number" inputmode="numeric" id="soilN1" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.n2"></label>
+          <input type="number" inputmode="numeric" id="soilN2" />
+        </div>
+        <div class="field">
+          <label data-i18n="soil.n3"></label>
+          <input type="number" inputmode="numeric" id="soilN3" />
+        </div>
+      </div>
+      <div class="field error-text" id="sptError" style="display:none;"></div>
+
+      <div class="field">
+        <label data-i18n="soil.soilType"></label>
+        <select id="soilType">
+          <option value="CLAY" data-i18n="soilTypes.CLAY"></option>
+          <option value="SANDY_CLAY" data-i18n="soilTypes.SANDY_CLAY"></option>
+          <option value="SAND" data-i18n="soilTypes.SAND"></option>
+          <option value="CLAYEY_SAND" data-i18n="soilTypes.CLAYEY_SAND"></option>
+        </select>
+      </div>
+
+      <div class="result-card">
+        <div class="result-grid">
+          <div class="result-stat"><div class="val" id="soilNsptVal">0</div><div class="lbl" data-i18n="soil.nspt"></div></div>
+        </div>
+        <div class="badge-row"><span class="badge" id="soilStateBadge">—</span></div>
+      </div>
+
+      <button class="btn btn-primary" id="saveSoilBtn" data-i18n="soil.saveSample"></button>
+    </div>
+  </section>
+
+  <!-- ================= SETTINGS ================= -->
+  <section id="view-settings" class="view">
+    <header class="app-header">
+      <button class="icon-btn" id="backFromSettingsBtn">←</button>
+      <span class="title" data-i18n="common.settings"></span>
+    </header>
+    <div class="content">
+      <div class="card">
+        <div class="settings-row">
+          <span class="label" data-i18n="common.language"></span>
+          <div class="segmented" style="width:140px;">
+            <button id="settingsLangEn">EN</button>
+            <button id="settingsLangVi">VI</button>
+          </div>
+        </div>
+        <div class="settings-row">
+          <span class="label" data-i18n="common.darkMode"></span>
+          <label class="switch">
+            <input type="checkbox" id="darkModeToggle" />
+            <span class="track"><span class="thumb"></span></span>
+          </label>
+        </div>
+      </div>
+      <div class="card">
+        <div style="font-size:13px; color:var(--text-secondary); margin-bottom:6px;" data-i18n="common.signedInAs"></div>
+        <div style="font-weight:700;" id="settingsUserEmail"></div>
+      </div>
+      <button class="btn btn-danger" id="settingsLogoutBtn" data-i18n="common.logout"></button>
+    </div>
+  </section>
+
+  <!-- ================= MODALS ================= -->
+  <div class="modal-overlay" id="newProjectModal">
+    <div class="modal-sheet">
+      <h2 data-i18n="projects.newProject"></h2>
+      <div class="field">
+        <label data-i18n="projects.projectName"></label>
+        <input type="text" id="newProjectName" />
+      </div>
+      <div class="field">
+        <label data-i18n="projects.location"></label>
+        <input type="text" id="newProjectLocation" />
+      </div>
+      <div class="field">
+        <label data-i18n="projects.client"></label>
+        <input type="text" id="newProjectClient" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelNewProjectBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-primary" id="saveNewProjectBtn" data-i18n="common.save"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="newBoreholeModal">
+    <div class="modal-sheet">
+      <h2 data-i18n="boreholes.newBorehole"></h2>
+      <div class="field">
+        <label data-i18n="boreholes.boreholeName"></label>
+        <input type="text" id="newBoreholeName" />
+      </div>
+      <div class="field">
+        <label data-i18n="boreholes.coordinates"></label>
+        <input type="text" id="newBoreholeCoordinates" placeholder="e.g. 11.5564, 104.9282" />
+      </div>
+      <div class="field">
+        <label data-i18n="boreholes.groundElevation"></label>
+        <input type="number" inputmode="decimal" id="newBoreholeElevation" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="cancelNewBoreholeBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-primary" id="saveNewBoreholeBtn" data-i18n="common.save"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-sheet">
+      <h2 id="confirmModalText" data-i18n="common.deleteConfirm"></h2>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" id="confirmCancelBtn" data-i18n="common.cancel"></button>
+        <button class="btn btn-danger" id="confirmOkBtn" data-i18n="common.delete"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<!-- ===== External libraries (loaded in the browser, not bundled) ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.2/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script type="module" src="js/app.js"></script>
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW registration failed:", e));
+    });
+  }
+</script>
+</body>
+</html>
