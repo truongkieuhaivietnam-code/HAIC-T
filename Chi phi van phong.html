@@ -261,8 +261,16 @@ main{padding:16px;max-width:600px;margin:0 auto;}
               <option>💊 Y tế</option><option>🎉 Vui chơi</option><option>📦 Khác (tự nhập)</option>
             </select>
           </div>
-          <div class="form-group" style="margin:0"><label>Số tiền (₫/R)</label>
-            <input type="number" id="eAmt" placeholder="50000" min="0" step="1000">
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Số tiền</label>
+            <input type="number" id="eAmt" placeholder="0" min="0" step="0.01">
+          </div>
+          <div class="form-group" style="margin:0"><label>Đơn vị tiền</label>
+            <select id="eCurrency">
+              <option value="USD">🇺🇸 USD ($)</option>
+              <option value="KHR">🇰🇭 Riel (R)</option>
+              <option value="VND">🇻🇳 VND (₫)</option>
+            </select>
           </div>
         </div>
         <div class="form-group hidden" id="customCatRow">
@@ -289,9 +297,18 @@ main{padding:16px;max-width:600px;margin:0 auto;}
         <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Tâm đi chợ 1 lần, chia cho nhiều bữa khác nhau người ăn</div>
         <div class="form-row2" style="margin-bottom:10px">
           <div class="form-group" style="margin:0"><label>Người đi chợ</label><select id="splitPayer"></select></div>
-          <div class="form-group" style="margin:0"><label>Tổng tiền chợ</label><input type="number" id="splitTotal" placeholder="90000" min="0" step="1000" oninput="updateSplitPreview()"></div>
+          <div class="form-group" style="margin:0"><label>Tổng tiền chợ</label><input type="number" id="splitTotal" placeholder="0" min="0" step="0.01" oninput="updateSplitPreview()"></div>
         </div>
-        <div class="form-group"><label>Ngày đi chợ</label><input type="date" id="splitDate"></div>
+        <div class="form-row2" style="margin-bottom:10px">
+          <div class="form-group" style="margin:0"><label>Đơn vị tiền</label>
+            <select id="splitCurrency" onchange="updateSplitPreview()">
+              <option value="USD">🇺🇸 USD ($)</option>
+              <option value="KHR">🇰🇭 Riel (R)</option>
+              <option value="VND">🇻🇳 VND (₫)</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Ngày đi chợ</label><input type="date" id="splitDate"></div>
+        </div>
         <div style="font-size:12px;font-weight:700;color:var(--forest);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Chọn bữa & người ăn</div>
         <div id="splitMeals">
           <!-- Sáng -->
@@ -334,7 +351,14 @@ main{padding:16px;max-width:600px;margin:0 auto;}
             <select id="mMeal"><option value="Sáng">🌅 Sáng</option><option value="Trưa">☀️ Trưa</option><option value="Tối">🌙 Tối</option><option value="Phụ">🍵 Phụ</option></select>
           </div>
           <div class="form-group" style="margin:0"><label>Người trả</label><select id="mPayer"></select></div>
-          <div class="form-group" style="margin:0"><label>Tiền chợ</label><input type="number" id="mCost" placeholder="0" min="0" step="1000"></div>
+          <div class="form-group" style="margin:0"><label>Tiền chợ</label><input type="number" id="mCost" placeholder="0" min="0" step="0.01"></div>
+        </div>
+        <div class="form-group"><label>Đơn vị tiền</label>
+          <select id="mCurrency">
+            <option value="USD">🇺🇸 USD ($)</option>
+            <option value="KHR">🇰🇭 Riel (R)</option>
+            <option value="VND">🇻🇳 VND (₫)</option>
+          </select>
         </div>
         <div class="form-group"><label>Ngày</label><input type="date" id="mDate"></div>
         <div class="form-group">
@@ -630,7 +654,8 @@ function getSplitChecked(key) {
 }
 
 function updateSplitPreview() {
-  const total = parseInt(document.getElementById('splitTotal').value) || 0;
+  const total = parseFloat(document.getElementById('splitTotal').value) || 0;
+  const currency = document.getElementById('splitCurrency').value;
   const keys = ['sang','trua','toi'];
   const labels = {sang:'Sáng',trua:'Trưa',toi:'Tối'};
   const checked = keys.filter(k => document.getElementById('sb-'+k).checked);
@@ -641,15 +666,15 @@ function updateSplitPreview() {
     return;
   }
 
-  const perMeal = Math.round(total / checked.length);
+  const perMeal = total / checked.length;
   let preview = [];
   keys.forEach(k => {
     const badge = document.getElementById('scb-'+k);
     if (checked.includes(k)) {
-      badge.textContent = fmt(perMeal) + '/bữa';
+      badge.textContent = fmtAmt(perMeal, currency) + '/bữa';
       const diners = getSplitChecked(k);
       if (diners.length > 0) {
-        preview.push(`${labels[k]}: ${fmt(Math.round(perMeal/diners.length))}/người`);
+        preview.push(`${labels[k]}: ${fmtAmt(perMeal/diners.length, currency)}/người`);
       }
     } else {
       badge.textContent = '';
@@ -659,12 +684,13 @@ function updateSplitPreview() {
 }
 
 async function addSplitMeals() {
-  const total = parseInt(document.getElementById('splitTotal').value) || 0;
-  const payer = document.getElementById('splitPayer').value;
-  const date  = document.getElementById('splitDate').value || todayStr();
-  const keys  = ['sang','trua','toi'];
-  const labels = {sang:'Sáng',trua:'Trưa',toi:'Tối'};
-  const checked = keys.filter(k => document.getElementById('sb-'+k).checked);
+  const total    = parseFloat(document.getElementById('splitTotal').value) || 0;
+  const currency = document.getElementById('splitCurrency').value;
+  const payer    = document.getElementById('splitPayer').value;
+  const date     = document.getElementById('splitDate').value || todayStr();
+  const keys     = ['sang','trua','toi'];
+  const labels   = {sang:'Sáng',trua:'Trưa',toi:'Tối'};
+  const checked  = keys.filter(k => document.getElementById('sb-'+k).checked);
 
   if (total <= 0) { showToast('Nhập tổng tiền chợ!', 'error'); return; }
   if (checked.length === 0) { showToast('Chọn ít nhất 1 bữa!', 'error'); return; }
@@ -674,7 +700,7 @@ async function addSplitMeals() {
     if (diners_all.length === 0) { showToast(`Bữa ${labels[k]}: chọn người ăn!`, 'error'); return; }
   }
 
-  const perMeal = Math.round(total / checked.length);
+  const perMeal = total / checked.length;
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
 
   try {
@@ -687,7 +713,7 @@ async function addSplitMeals() {
       const perHead = Math.round(perMeal / totalPeople);
       const quyAmt = quyPays ? perHead : 0;
       const ref = db.collection(COL_MEALS).doc();
-      batch.set(ref, { meal: labels[k], payer, cost: perMeal, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now() + keys.indexOf(k), addedBy: currentUser.name, fromSplit: true });
+      batch.set(ref, { meal: labels[k], payer, cost: perMeal, currency, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now() + keys.indexOf(k), addedBy: currentUser.name, fromSplit: true });
     });
     await batch.commit();
 
@@ -711,13 +737,14 @@ async function addExpense() {
   const cat   = catSel === '📦 Khác (tự nhập)'
     ? (document.getElementById('eCustomCat').value.trim() || 'Khác')
     : catSel;
-  const amt   = parseInt(document.getElementById('eAmt').value) || 0;
+  const amt      = parseFloat(document.getElementById('eAmt').value) || 0;
+  const currency = document.getElementById('eCurrency').value;
   const note  = document.getElementById('eNote').value.trim() || cat;
   const date  = document.getElementById('eDate').value || todayStr();
   if (amt <= 0) { showToast('Nhập số tiền!', 'error'); return; }
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
   try {
-    await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, note, date, time, ts: Date.now(), addedBy: currentUser.name });
+    await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, currency, note, date, time, ts: Date.now(), addedBy: currentUser.name });
     document.getElementById('eAmt').value = '';
     document.getElementById('eNote').value = '';
     document.getElementById('eCustomCat').value = '';
@@ -740,7 +767,8 @@ function getCheckedChips() {
 async function addMeal() {
   const meal  = document.getElementById('mMeal').value;
   const payer = document.getElementById('mPayer').value;
-  const cost  = parseInt(document.getElementById('mCost').value) || 0;
+  const cost     = parseFloat(document.getElementById('mCost').value) || 0;
+  const currency = document.getElementById('mCurrency').value;
   const date  = document.getElementById('mDate').value || todayStr();
   const allChips = getCheckedChips();
   if (cost <= 0) { showToast('Nhập tiền chợ!', 'error'); return; }
@@ -755,7 +783,7 @@ async function addMeal() {
 
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
   try {
-    await db.collection(COL_MEALS).add({ meal, payer, cost, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now(), addedBy: currentUser.name });
+    await db.collection(COL_MEALS).add({ meal, payer, cost, currency, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now(), addedBy: currentUser.name });
     document.getElementById('mCost').value = '';
     document.getElementById('perHeadPreview').textContent = '';
     initMealChips();
@@ -784,6 +812,24 @@ async function clearAllData() {
   } catch(e) { showToast('Lỗi!', 'error'); }
 }
 
+// ==================== CURRENCY ====================
+const RATES = { USD: 1, KHR: 1/4000, VND: 1/26000 };
+const SYMBOLS = { USD: '$', KHR: 'R', VND: '₫' };
+
+function toUSD(amt, currency) {
+  return amt * (RATES[currency] || 1);
+}
+
+function fmtUSD(usd) {
+  return '$' + usd.toFixed(2);
+}
+
+function fmtAmt(amt, currency) {
+  const sym = SYMBOLS[currency] || '';
+  if (currency === 'USD') return '$' + Number(amt).toFixed(2);
+  return new Intl.NumberFormat('vi-VN').format(Math.round(amt)) + sym;
+}
+
 // ==================== CALC ====================
 function fmt(n) { return new Intl.NumberFormat('vi-VN').format(Math.round(Math.abs(n))) + '₫'; }
 
@@ -793,17 +839,19 @@ function calcBalances() {
 
   allExpenses.forEach(e => {
     if (!bal.hasOwnProperty(e.payer)) bal[e.payer] = 0;
-    bal[e.payer] += (e.type === 'chi') ? e.amt : -e.amt;
+    const usd = toUSD(e.amt, e.currency || 'VND');
+    bal[e.payer] += (e.type === 'chi') ? usd : -usd;
   });
 
   allMeals.forEach(m => {
     if (!bal.hasOwnProperty(m.payer)) bal[m.payer] = 0;
-    // Payer gets back total cost minus what Quỹ covers
-    const quyAmt = m.quyAmt || 0;
-    bal[m.payer] += (m.cost - quyAmt);
+    const costUSD = toUSD(m.cost, m.currency || 'VND');
+    const perHeadUSD = toUSD(m.perHead, m.currency || 'VND');
+    const quyAmtUSD = toUSD(m.quyAmt || 0, m.currency || 'VND');
+    bal[m.payer] += (costUSD - quyAmtUSD);
     m.diners.forEach(d => {
       if (!bal.hasOwnProperty(d)) bal[d] = 0;
-      bal[d] -= m.perHead;
+      bal[d] -= perHeadUSD;
     });
   });
 
@@ -813,8 +861,8 @@ function calcBalances() {
 function simplifyDebts(bal) {
   const cred = [], debt = [];
   Object.entries(bal).forEach(([p,b]) => {
-    if (b > 1)  cred.push({ p, b: +b });
-    else if (b < -1) debt.push({ p, b: -b });
+    if (b > 0.001)  cred.push({ p, b: +b });
+    else if (b < -0.001) debt.push({ p, b: -b });
   });
   cred.sort((a,b) => b.b - a.b);
   debt.sort((a,b) => b.b - a.b);
@@ -822,10 +870,10 @@ function simplifyDebts(bal) {
   let i=0, j=0;
   while (i < cred.length && j < debt.length) {
     const pay = Math.min(cred[i].b, debt[j].b);
-    if (pay > 1) txns.push({ from: debt[j].p, to: cred[i].p, amount: Math.round(pay) });
+    if (pay > 0.001) txns.push({ from: debt[j].p, to: cred[i].p, amount: pay });
     cred[i].b -= pay; debt[j].b -= pay;
-    if (cred[i].b < 1) i++;
-    if (debt[j].b < 1) j++;
+    if (cred[i].b < 0.001) i++;
+    if (debt[j].b < 0.001) j++;
   }
   return txns;
 }
@@ -838,21 +886,21 @@ function renderAll() {
 }
 
 function renderDash() {
-  const totChi = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+e.amt,0)
-    + allMeals.reduce((s,m)=>s+m.cost,0);
-  const totThu = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+e.amt,0);
-  const con = totThu - totChi;
+  const totChiUSD = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+toUSD(e.amt,e.currency||'VND'),0)
+    + allMeals.reduce((s,m)=>s+toUSD(m.cost,m.currency||'VND'),0);
+  const totThuUSD = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+toUSD(e.amt,e.currency||'VND'),0);
+  const conUSD = totThuUSD - totChiUSD;
   const bal = calcBalances();
   const txns = simplifyDebts(bal);
 
   const now = new Date();
   document.getElementById('dashDate').textContent = now.toLocaleDateString('vi-VN',{weekday:'long',day:'2-digit',month:'2-digit',year:'numeric'});
-  document.getElementById('dashBalance').textContent = (con >= 0 ? '+' : '-') + fmt(con);
-  document.getElementById('dashChi').textContent = fmt(totChi);
-  document.getElementById('dashThu').textContent = fmt(totThu);
+  document.getElementById('dashBalance').textContent = (conUSD >= 0 ? '+' : '-') + fmtUSD(Math.abs(conUSD));
+  document.getElementById('dashChi').textContent = fmtUSD(totChiUSD);
+  document.getElementById('dashThu').textContent = fmtUSD(totThuUSD);
   document.getElementById('dashBua').textContent = allMeals.length + ' bữa';
 
-  // Settle
+  // Settle — amounts in USD
   const sl = document.getElementById('settleList');
   sl.innerHTML = txns.length === 0
     ? '<div class="empty-state"><div class="ico">✅</div><p>Tất cả đã hòa!</p></div>'
@@ -864,28 +912,32 @@ function renderDash() {
           <span class="settle-arrow">→</span>
           <div class="avatar" style="width:32px;height:32px;font-size:12px;background:var(--good)">${t.to.slice(0,2)}</div>
           <span style="font-size:13px;font-weight:600">${t.to}</span>
-          <span class="settle-amt">${fmt(t.amount)}</span>
+          <span class="settle-amt">${fmtUSD(t.amount)}</span>
         </div>
       </div>`).join('');
 
-  // Balance
+  // Balance in USD
   const bl = document.getElementById('balanceList');
-  bl.innerHTML = allUsers.map(u => {
-    const b = Math.round(bal[u.name] || 0);
-    return `<div class="debt-row">
-      <div class="avatar">${u.name.slice(0,2)}</div>
-      <div class="debt-info">
-        <div class="nm">${u.name}${u.role==='admin'?' 👑':''}</div>
-        <div class="sub">${b>0?'Được nhận lại':b<0?'Đang nợ nhóm':'Hòa'}</div>
-      </div>
-      <div class="debt-amt ${b>0?'pos':b<0?'neg':''}">${b===0?'—':(b>0?'+':'-')+fmt(b)}</div>
-    </div>`;
-  }).join('');
+  bl.innerHTML = `
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px 10px;background:var(--cream);border-radius:8px;line-height:1.8">
+      💱 Tỉ giá quy đổi: <b>1$ = 4,000R = 26,000₫</b>
+    </div>
+    ${allUsers.map(u => {
+      const b = bal[u.name] || 0;
+      return `<div class="debt-row">
+        <div class="avatar">${u.name.slice(0,2)}</div>
+        <div class="debt-info">
+          <div class="nm">${u.name}${u.role==='admin'?' 👑':''}</div>
+          <div class="sub">${b>0.005?'Được nhận lại':b<-0.005?'Đang nợ nhóm':'Hòa'}</div>
+        </div>
+        <div class="debt-amt ${b>0.005?'pos':b<-0.005?'neg':''}">${Math.abs(b)<0.005?'—':(b>0?'+':'-')+fmtUSD(Math.abs(b))}</div>
+      </div>`;
+    }).join('')}`;
 
   // Recent
   const recent = [
     ...allExpenses.slice(0,10).map(e=>({...e,kind:'expense'})),
-    ...allMeals.slice(0,10).map(m=>({...m,kind:'meal',amt:m.cost}))
+    ...allMeals.slice(0,10).map(m=>({...m,kind:'meal'}))
   ].sort((a,b)=>b.ts-a.ts).slice(0,6);
 
   const rl = document.getElementById('recentList');
@@ -895,14 +947,14 @@ function renderDash() {
       ? `<div class="tx-item">
           <div class="tx-icon bua">🍽️</div>
           <div class="tx-detail">
-            <div class="top"><span class="nm">Bữa ${e.meal}</span><span class="amt amt-chi">-${fmt(e.amt)}</span></div>
+            <div class="top"><span class="nm">Bữa ${e.meal}</span><span class="amt amt-chi">-${fmtAmt(e.cost,e.currency||'VND')} <span style="font-size:10px;color:var(--muted)">(${fmtUSD(toUSD(e.cost,e.currency||'VND'))})</span></span></div>
             <div class="meta">${fmtDate(e.date)} · ${e.payer} trả · ${e.diners.join(', ')}${e.quyPays?' · 🏦 Quỹ':''}</div>
           </div>
         </div>`
       : `<div class="tx-item">
           <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
           <div class="tx-detail">
-            <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
+            <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmtAmt(e.amt,e.currency||'VND')} <span style="font-size:10px;color:var(--muted)">(${fmtUSD(toUSD(e.amt,e.currency||'VND'))})</span></span></div>
             <div class="meta">${fmtDate(e.date)} · ${e.time||''} · ${e.payer}</div>
           </div>
         </div>`
@@ -912,34 +964,41 @@ function renderDash() {
 function renderExpenses() {
   const el = document.getElementById('expenseList');
   if (allExpenses.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">📭</div><p>Chưa có khoản nào</p></div>'; return; }
-  el.innerHTML = allExpenses.map(e => `
-    <div class="tx-item">
+  el.innerHTML = allExpenses.map(e => {
+    const cur = e.currency || 'VND';
+    const usd = toUSD(e.amt, cur);
+    return `<div class="tx-item">
       <div class="tx-icon ${e.type}">${e.type==='chi'?'💸':'💰'}</div>
       <div class="tx-detail">
-        <div class="top"><span class="nm">${e.note}</span><span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmt(e.amt)}</span></div>
-        <div class="meta">${fmtDate(e.date)} · ${e.time||''} · ${e.cat} · ${e.payer}</div>
+        <div class="top"><span class="nm">${e.note}</span>
+          <span class="amt amt-${e.type}">${e.type==='chi'?'-':'+'}&nbsp;${fmtAmt(e.amt,cur)}</span>
+        </div>
+        <div class="meta">${fmtDate(e.date)} · ${e.cat} · ${e.payer} · <span style="color:var(--gold)">≈${fmtUSD(usd)}</span></div>
       </div>
       <button class="del-btn" onclick="deleteExpense('${e.id}')">✕</button>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function renderMeals() {
   const el = document.getElementById('mealList');
   if (allMeals.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div>'; return; }
-  el.innerHTML = allMeals.map(m => `
-    <div class="meal-card">
+  el.innerHTML = allMeals.map(m => {
+    const cur = m.currency || 'VND';
+    return `<div class="meal-card">
       <div class="mh">
         <div>
           <strong>🍽️ Bữa ${m.meal}</strong>
-          <div class="mpay">${fmtDate(m.date)} · ${m.time||''} · ${m.payer} trả · ${fmt(m.cost)}</div>
+          <div class="mpay">${fmtDate(m.date)} · ${m.payer} trả · ${fmtAmt(m.cost,cur)} <span style="color:var(--gold)">≈${fmtUSD(toUSD(m.cost,cur))}</span></div>
         </div>
         <button class="del-btn" onclick="deleteMeal('${m.id}')">✕</button>
       </div>
       <div class="diner-chips">
-        ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmt(m.perHead)}</span>`).join('')}
-        ${m.quyPays ? `<span class="diner-chip" style="background:var(--gold-soft);color:var(--warn);">🏦 Quỹ · ${fmt(m.quyAmt||m.perHead)}</span>` : ''}
+        ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmtAmt(m.perHead,cur)}</span>`).join('')}
+        ${m.quyPays ? `<span class="diner-chip" style="background:var(--gold-soft);color:var(--warn);">🏦 Quỹ · ${fmtAmt(m.quyAmt||m.perHead,cur)}</span>` : ''}
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // ==================== SELECTS & CHIPS ====================
@@ -1009,9 +1068,9 @@ async function doQuyetToan() {
   if (currentUser.role !== 'admin') { showToast('Chỉ Admin mới được chốt sổ!', 'error'); return; }
   const bal = calcBalances();
   const txns = simplifyDebts(bal);
-  const totChi = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+e.amt,0)
-    + allMeals.reduce((s,m)=>s+m.cost,0);
-  const totThu = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+e.amt,0);
+  const totChiUSD = allExpenses.filter(e=>e.type==='chi').reduce((s,e)=>s+toUSD(e.amt,e.currency||'VND'),0)
+    + allMeals.reduce((s,m)=>s+toUSD(m.cost,m.currency||'VND'),0);
+  const totThuUSD = allExpenses.filter(e=>e.type==='thu').reduce((s,e)=>s+toUSD(e.amt,e.currency||'VND'),0);
 
   if (allExpenses.length === 0 && allMeals.length === 0) {
     showToast('Chưa có dữ liệu để quyết toán!', 'error'); return;
@@ -1025,7 +1084,7 @@ async function doQuyetToan() {
     ts: Date.now(),
     date: todayStr(),
     doneBy: currentUser.name,
-    totChi, totThu,
+    totChi: totChiUSD, totThu: totThuUSD,
     balances: Object.entries(bal).map(([name, b]) => ({ name, balance: Math.round(b) })),
     transactions: txns,
     expenseCount: allExpenses.length,
@@ -1098,7 +1157,7 @@ function renderQT() {
         </div>
         <div style="text-align:right">
           <div style="font-size:12px;color:var(--muted)">${qt.expenseCount} khoản · ${qt.mealCount} bữa</div>
-          <div style="font-size:12px;color:var(--bad);margin-top:1px">Chi: ${fmt(qt.totChi)}</div>
+          <div style="font-size:12px;color:var(--bad);margin-top:1px">Chi: ${fmtUSD(qt.totChi)}</div>
         </div>
       </div>
       ${qt.transactions && qt.transactions.length > 0
@@ -1108,7 +1167,7 @@ function renderQT() {
               <span style="font-weight:600">${t.from}</span>
               <span style="color:var(--warn)">→</span>
               <span style="font-weight:600">${t.to}</span>
-              <span style="margin-left:auto;font-weight:700;color:var(--warn)">${fmt(t.amount)}</span>
+              <span style="margin-left:auto;font-weight:700;color:var(--warn)">${fmtUSD(t.amount)}</span>
             </div>`).join('')}`
         : '<div style="font-size:12px;color:var(--good);padding:4px 0">✅ Tất cả đã hòa trong kỳ này</div>'
       }
@@ -1117,7 +1176,7 @@ function renderQT() {
         ${qt.balances.map(b=>`
           <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0">
             <span>${b.name}</span>
-            <span style="font-weight:600;color:${b.balance>0?'var(--good)':b.balance<0?'var(--bad)':'var(--muted)'}">${b.balance===0?'Hòa':(b.balance>0?'+':'')+fmt(b.balance)}</span>
+            <span style="font-weight:600;color:${b.balance>0?'var(--good)':b.balance<0?'var(--bad)':'var(--muted)'}">${b.balance===0?'Hòa':(b.balance>0?'+':'')+fmtUSD(Math.abs(b.balance))}</span>
           </div>`).join('')}
       </div>
     </div>`).join('');
