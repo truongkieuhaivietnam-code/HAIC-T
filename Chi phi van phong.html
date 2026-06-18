@@ -529,28 +529,29 @@ function startListeners() {
   // Users
   const u1 = db.collection(COL_USERS).onSnapshot(snap => {
     allUsers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    initSelects();
-    renderMembersList();
+    try { initSelects(); } catch(e) { console.warn('initSelects:', e); }
+    try { renderMembersList(); } catch(e) { console.warn('renderMembersList:', e); }
     renderAll();
-  });
+  }, err => console.error('Users listener:', err));
 
-  // Expenses — ordered by timestamp desc
+  // Expenses
   const u2 = db.collection(COL_EXPENSES).orderBy('ts','desc').onSnapshot(snap => {
     allExpenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderAll();
-  });
+  }, err => console.error('Expenses listener:', err));
 
   // Meals
   const u3 = db.collection(COL_MEALS).orderBy('ts','desc').onSnapshot(snap => {
     allMeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     renderAll();
-  });
+  }, err => console.error('Meals listener:', err));
 
   // QT history
   const u4 = db.collection(COL_QT).orderBy('ts','desc').onSnapshot(snap => {
     allQT = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    renderQT();
-  });
+    // Only render if on QT page
+    if (document.getElementById('page-qt').classList.contains('active')) renderQT();
+  }, err => console.error('QT listener:', err));
 
   unsubscribers = [u1, u2, u3, u4];
 }
@@ -1023,8 +1024,8 @@ function initSelects() {
     else if (currentUser) el.value = currentUser.name;
   });
   setDefaultDates();
-  initMealChips();
-  initSplitChips();
+  if (document.getElementById('mChips')) initMealChips();
+  if (document.getElementById('sc-sang')) initSplitChips();
 }
 
 function initMealChips() {
@@ -1189,10 +1190,32 @@ function goPage(p) {
   document.getElementById('page-'+p).classList.add('active');
   const idx = {dash:0,expense:1,meal:2,qt:3,settings:4}[p];
   if (idx !== undefined) document.querySelectorAll('.nav-item')[idx].classList.add('active');
+
+  if (p === 'meal') {
+    initMealChips();
+    initSplitChips();
+    setDefaultDates();
+    // Sync payer selects
+    ['mPayer','splitPayer'].forEach(id => {
+      const el = document.getElementById(id);
+      if (!el || el.options.length > 0) return;
+      el.innerHTML = allUsers.map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+      if (currentUser) el.value = currentUser.name;
+    });
+  }
+  if (p === 'expense') {
+    setDefaultDates();
+    const ep = document.getElementById('ePayer');
+    if (ep && ep.options.length === 0) {
+      ep.innerHTML = allUsers.map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+      if (currentUser) ep.value = currentUser.name;
+    }
+  }
   if (p === 'settings') {
     const isAdmin = currentUser && currentUser.role === 'admin';
     document.getElementById('adminSection').classList.toggle('hidden', !isAdmin);
     document.getElementById('adminDataSection').classList.toggle('hidden', !isAdmin);
+    renderMembersList();
   }
   if (p === 'qt') renderQT();
 }
