@@ -534,22 +534,24 @@ function startListeners() {
     renderAll();
   }, err => console.error('Users listener:', err));
 
-  // Expenses
-  const u2 = db.collection(COL_EXPENSES).orderBy('ts','desc').onSnapshot(snap => {
-    allExpenses = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Expenses — no orderBy to avoid index requirement, sort in JS
+  const u2 = db.collection(COL_EXPENSES).onSnapshot(snap => {
+    allExpenses = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.ts||0) - (a.ts||0));
     renderAll();
   }, err => console.error('Expenses listener:', err));
 
   // Meals
-  const u3 = db.collection(COL_MEALS).orderBy('ts','desc').onSnapshot(snap => {
-    allMeals = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const u3 = db.collection(COL_MEALS).onSnapshot(snap => {
+    allMeals = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.ts||0) - (a.ts||0));
     renderAll();
   }, err => console.error('Meals listener:', err));
 
   // QT history
-  const u4 = db.collection(COL_QT).orderBy('ts','desc').onSnapshot(snap => {
-    allQT = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    // Only render if on QT page
+  const u4 = db.collection(COL_QT).onSnapshot(snap => {
+    allQT = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .sort((a,b) => (b.ts||0) - (a.ts||0));
     if (document.getElementById('page-qt').classList.contains('active')) renderQT();
   }, err => console.error('QT listener:', err));
 
