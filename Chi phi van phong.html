@@ -255,14 +255,19 @@ main{padding:16px;max-width:600px;margin:0 auto;}
         </div>
         <div class="form-row2" style="margin-bottom:12px">
           <div class="form-group" style="margin:0"><label>Danh mục</label>
-            <select id="eCat">
+            <select id="eCat" onchange="toggleCustomCat()">
               <option>🛒 Đi chợ</option><option>🍜 Ăn uống</option><option>🏠 Sinh hoạt</option>
-              <option>⚡ Điện nước</option><option>🛍️ Mua sắm</option><option>🚗 Di chuyển</option><option>📦 Khác</option>
+              <option>⚡ Điện nước</option><option>🛍️ Mua sắm</option><option>🚗 Di chuyển</option>
+              <option>💊 Y tế</option><option>🎉 Vui chơi</option><option>📦 Khác (tự nhập)</option>
             </select>
           </div>
           <div class="form-group" style="margin:0"><label>Số tiền (₫/R)</label>
             <input type="number" id="eAmt" placeholder="50000" min="0" step="1000">
           </div>
+        </div>
+        <div class="form-group hidden" id="customCatRow">
+          <label>Tên khoản phát sinh</label>
+          <input type="text" id="eCustomCat" placeholder="Nhập tên danh mục...">
         </div>
         <div class="form-row2" style="margin-bottom:12px">
           <div class="form-group" style="margin:0"><label>Ngày</label><input type="date" id="eDate"></div>
@@ -277,7 +282,53 @@ main{padding:16px;max-width:600px;margin:0 auto;}
     <!-- BỮA ĂN -->
     <div id="page-meal" class="page">
       <div class="page-head"><div><h2>Bữa ăn</h2><div class="sub">Chia tiền theo từng bữa</div></div></div>
+
+      <!-- CÔNG CỤ CHIA CHỢ 1 LẦN -->
+      <div class="card" style="border:1.5px solid var(--gold-soft)">
+        <h3 style="display:flex;align-items:center;gap:6px;margin-bottom:4px">🧮 Chia chợ 1 lần cho nhiều bữa <span style="font-size:11px;background:var(--gold-soft);color:var(--warn);padding:2px 8px;border-radius:20px;font-family:inherit">Tiện ích</span></h3>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Tâm đi chợ 1 lần, chia cho nhiều bữa khác nhau người ăn</div>
+        <div class="form-row2" style="margin-bottom:10px">
+          <div class="form-group" style="margin:0"><label>Người đi chợ</label><select id="splitPayer"></select></div>
+          <div class="form-group" style="margin:0"><label>Tổng tiền chợ</label><input type="number" id="splitTotal" placeholder="90000" min="0" step="1000" oninput="updateSplitPreview()"></div>
+        </div>
+        <div class="form-group"><label>Ngày đi chợ</label><input type="date" id="splitDate"></div>
+        <div style="font-size:12px;font-weight:700;color:var(--forest);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Chọn bữa & người ăn</div>
+        <div id="splitMeals">
+          <!-- Sáng -->
+          <div class="split-bua" data-bua="Sáng" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <input type="checkbox" id="sb-sang" onchange="updateSplitPreview()" style="width:16px;height:16px;accent-color:var(--forest)">
+              <label for="sb-sang" style="font-weight:600;font-size:13px;color:var(--forest);text-transform:none;letter-spacing:0;margin:0">🌅 Bữa Sáng</label>
+              <span class="split-cost-badge" id="scb-sang" style="font-size:11px;color:var(--warn);margin-left:auto;font-weight:600"></span>
+            </div>
+            <div class="member-chips" id="sc-sang"></div>
+          </div>
+          <!-- Trưa -->
+          <div class="split-bua" data-bua="Trưa" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <input type="checkbox" id="sb-trua" onchange="updateSplitPreview()" style="width:16px;height:16px;accent-color:var(--forest)">
+              <label for="sb-trua" style="font-weight:600;font-size:13px;color:var(--forest);text-transform:none;letter-spacing:0;margin:0">☀️ Bữa Trưa</label>
+              <span class="split-cost-badge" id="scb-trua" style="font-size:11px;color:var(--warn);margin-left:auto;font-weight:600"></span>
+            </div>
+            <div class="member-chips" id="sc-trua"></div>
+          </div>
+          <!-- Tối -->
+          <div class="split-bua" data-bua="Tối" style="border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <input type="checkbox" id="sb-toi" onchange="updateSplitPreview()" style="width:16px;height:16px;accent-color:var(--forest)">
+              <label for="sb-toi" style="font-weight:600;font-size:13px;color:var(--forest);text-transform:none;letter-spacing:0;margin:0">🌙 Bữa Tối</label>
+              <span class="split-cost-badge" id="scb-toi" style="font-size:11px;color:var(--warn);margin-left:auto;font-weight:600"></span>
+            </div>
+            <div class="member-chips" id="sc-toi"></div>
+          </div>
+        </div>
+        <div id="splitPreview" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:16px;"></div>
+        <button class="btn btn-gold btn-block" onclick="addSplitMeals()">🧮 Tính & Thêm tất cả bữa</button>
+      </div>
+
+      <!-- NHẬP BỮA ĐƠN LẺ -->
       <div class="card">
+        <h3>➕ Thêm 1 bữa riêng lẻ</h3>
         <div class="form-row3" style="margin-bottom:12px">
           <div class="form-group" style="margin:0"><label>Bữa</label>
             <select id="mMeal"><option value="Sáng">🌅 Sáng</option><option value="Trưa">☀️ Trưa</option><option value="Tối">🌙 Tối</option><option value="Phụ">🍵 Phụ</option></select>
@@ -293,6 +344,7 @@ main{padding:16px;max-width:600px;margin:0 auto;}
         <div id="perHeadPreview" style="font-size:12px;color:var(--muted);margin-bottom:10px;min-height:18px;"></div>
         <button class="btn btn-forest btn-block" onclick="addMeal()">+ Thêm bữa</button>
       </div>
+
       <div class="divider">Bữa đã nhập</div>
       <div id="mealList"><div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div></div>
     </div>
@@ -544,11 +596,121 @@ async function changePassword() {
   } catch(e) { showToast('Lỗi khi đổi mật khẩu!', 'error'); }
 }
 
+// ==================== CUSTOM CATEGORY ====================
+function toggleCustomCat() {
+  const val = document.getElementById('eCat').value;
+  document.getElementById('customCatRow').classList.toggle('hidden', val !== '📦 Khác (tự nhập)');
+}
+
+// ==================== SPLIT MEALS (chợ 1 lần) ====================
+function initSplitChips() {
+  ['sang','trua','toi'].forEach(key => {
+    const el = document.getElementById('sc-'+key);
+    if (!el) return;
+    const memberChips = allUsers.map(u=>`<div class="mchip" data-m="${u.name}" onclick="toggleSplitChip(this)" style="font-size:12px;padding:4px 11px">${u.name}</div>`).join('');
+    const quy = `<div class="mchip" data-m="🏦 Quỹ" onclick="toggleSplitChip(this)" style="font-size:12px;padding:4px 11px;border-color:var(--gold);color:var(--warn)">🏦 Quỹ</div>`;
+    el.innerHTML = memberChips + quy;
+  });
+  // set splitPayer options
+  const sp = document.getElementById('splitPayer');
+  if (sp) {
+    const cur = sp.value;
+    sp.innerHTML = allUsers.map(u=>`<option value="${u.name}">${u.name}</option>`).join('');
+    if (cur && allUsers.find(u=>u.name===cur)) sp.value = cur;
+    else if (currentUser) sp.value = currentUser.name;
+  }
+  const sd = document.getElementById('splitDate');
+  if (sd && !sd.value) sd.value = todayStr();
+}
+
+function toggleSplitChip(el) { el.classList.toggle('on'); updateSplitPreview(); }
+
+function getSplitChecked(key) {
+  return [...document.querySelectorAll('#sc-'+key+' .mchip.on')].map(e=>e.dataset.m);
+}
+
+function updateSplitPreview() {
+  const total = parseInt(document.getElementById('splitTotal').value) || 0;
+  const keys = ['sang','trua','toi'];
+  const labels = {sang:'Sáng',trua:'Trưa',toi:'Tối'};
+  const checked = keys.filter(k => document.getElementById('sb-'+k).checked);
+
+  if (total <= 0 || checked.length === 0) {
+    keys.forEach(k => document.getElementById('scb-'+k).textContent = '');
+    document.getElementById('splitPreview').textContent = '';
+    return;
+  }
+
+  const perMeal = Math.round(total / checked.length);
+  let preview = [];
+  keys.forEach(k => {
+    const badge = document.getElementById('scb-'+k);
+    if (checked.includes(k)) {
+      badge.textContent = fmt(perMeal) + '/bữa';
+      const diners = getSplitChecked(k);
+      if (diners.length > 0) {
+        preview.push(`${labels[k]}: ${fmt(Math.round(perMeal/diners.length))}/người`);
+      }
+    } else {
+      badge.textContent = '';
+    }
+  });
+  document.getElementById('splitPreview').textContent = preview.join(' · ');
+}
+
+async function addSplitMeals() {
+  const total = parseInt(document.getElementById('splitTotal').value) || 0;
+  const payer = document.getElementById('splitPayer').value;
+  const date  = document.getElementById('splitDate').value || todayStr();
+  const keys  = ['sang','trua','toi'];
+  const labels = {sang:'Sáng',trua:'Trưa',toi:'Tối'};
+  const checked = keys.filter(k => document.getElementById('sb-'+k).checked);
+
+  if (total <= 0) { showToast('Nhập tổng tiền chợ!', 'error'); return; }
+  if (checked.length === 0) { showToast('Chọn ít nhất 1 bữa!', 'error'); return; }
+
+  for (const k of checked) {
+    const diners_all = getSplitChecked(k);
+    if (diners_all.length === 0) { showToast(`Bữa ${labels[k]}: chọn người ăn!`, 'error'); return; }
+  }
+
+  const perMeal = Math.round(total / checked.length);
+  const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
+
+  try {
+    const batch = db.batch();
+    checked.forEach(k => {
+      const allChips = getSplitChecked(k);
+      const diners = allChips.filter(d => d !== '🏦 Quỹ');
+      const quyPays = allChips.includes('🏦 Quỹ');
+      const totalPeople = allChips.length;
+      const perHead = Math.round(perMeal / totalPeople);
+      const quyAmt = quyPays ? perHead : 0;
+      const ref = db.collection(COL_MEALS).doc();
+      batch.set(ref, { meal: labels[k], payer, cost: perMeal, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now() + keys.indexOf(k), addedBy: currentUser.name, fromSplit: true });
+    });
+    await batch.commit();
+
+    // Reset split form
+    document.getElementById('splitTotal').value = '';
+    keys.forEach(k => {
+      document.getElementById('sb-'+k).checked = false;
+      document.getElementById('scb-'+k).textContent = '';
+      document.querySelectorAll('#sc-'+k+' .mchip').forEach(c=>c.classList.remove('on'));
+    });
+    document.getElementById('splitPreview').textContent = '';
+    showToast(`Đã thêm ${checked.length} bữa từ ${fmt(total)} tiền chợ! 🎉`, 'success');
+  } catch(e) { showToast('Lỗi khi lưu!', 'error'); console.error(e); }
+}
+
 // ==================== EXPENSES ====================
 async function addExpense() {
   const type  = document.getElementById('eType').value;
   const payer = document.getElementById('ePayer').value;
-  const cat   = document.getElementById('eCat').value;
+  const catSel = document.getElementById('eCat').value;
+  const cat   = catSel === '📦 Khác (tự nhập)'
+    ? (document.getElementById('eCustomCat').value.trim() || 'Khác')
+    : catSel;
   const amt   = parseInt(document.getElementById('eAmt').value) || 0;
   const note  = document.getElementById('eNote').value.trim() || cat;
   const date  = document.getElementById('eDate').value || todayStr();
@@ -558,6 +720,9 @@ async function addExpense() {
     await db.collection(COL_EXPENSES).add({ type, payer, cat, amt, note, date, time, ts: Date.now(), addedBy: currentUser.name });
     document.getElementById('eAmt').value = '';
     document.getElementById('eNote').value = '';
+    document.getElementById('eCustomCat').value = '';
+    document.getElementById('eCat').value = '🛒 Đi chợ';
+    document.getElementById('customCatRow').classList.add('hidden');
     showToast('Đã lưu!', 'success');
   } catch(e) { showToast('Lỗi khi lưu!', 'error'); }
 }
@@ -800,6 +965,7 @@ function initSelects() {
   });
   setDefaultDates();
   initMealChips();
+  initSplitChips();
 }
 
 function initMealChips() {
