@@ -477,10 +477,14 @@ let unsubscribers = [];
 
 // ==================== INIT ====================
 async function init() {
-  // Ensure default admin exists
-  const adminSnap = await db.collection(COL_USERS).doc('admin').get();
-  if (!adminSnap.exists) {
-    await db.collection(COL_USERS).doc('admin').set({ name:'admin', password:'1234', role:'admin', createdAt: Date.now() });
+  try {
+    // Check if any users exist, if not create default admin
+    const usersSnap = await db.collection(COL_USERS).limit(1).get();
+    if (usersSnap.empty) {
+      await db.collection(COL_USERS).add({ name:'admin', password:'1234', role:'admin', createdAt: Date.now() });
+    }
+  } catch(e) {
+    console.error('Init error:', e);
   }
   document.getElementById('loadingOverlay').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
@@ -493,12 +497,15 @@ async function doLogin() {
   if (!nameInput || !pass) { document.getElementById('loginError').textContent = 'Vui lòng điền đầy đủ!'; return; }
 
   try {
-    const snap = await db.collection(COL_USERS).where('name','==',nameInput).limit(1).get();
-    if (snap.empty) { document.getElementById('loginError').textContent = 'Tên không tồn tại!'; return; }
-    const doc = snap.docs[0];
-    const u = { id: doc.id, ...doc.data() };
-    if (u.password !== pass) { document.getElementById('loginError').textContent = 'Mật khẩu không đúng!'; return; }
+    // Get all users and filter in JS to avoid needing Firestore index
+    const snap = await db.collection(COL_USERS).get();
+    const matched = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      .find(u => u.name.toLowerCase() === nameInput.toLowerCase());
 
+    if (!matched) { document.getElementById('loginError').textContent = 'Tên không tồn tại!'; return; }
+    if (matched.password !== pass) { document.getElementById('loginError').textContent = 'Mật khẩu không đúng!'; return; }
+
+    const u = matched;
     currentUser = u;
     document.getElementById('loginError').textContent = '';
     document.getElementById('loginScreen').style.display = 'none';
