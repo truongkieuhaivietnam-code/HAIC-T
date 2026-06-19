@@ -70,7 +70,7 @@
   button.secondary{background:#5d6d7e;}
   button.accent{background:var(--accent);}
   button.danger{background:var(--danger);}
-  button.small{padding:5px 9px; font-size:12px; border-radius:6px;}
+  button.small{padding:5px 9px; font-size:12px; border-radius:6px; margin-right:4px;}
   button.ghost{background:#eef1f3; color:var(--primary);}
   .table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:8px;}
   table{border-collapse:collapse; width:100%; min-width:1180px; font-size:12px;}
@@ -108,27 +108,25 @@
     transition:opacity .25s; pointer-events:none;
   }
   .toast.show{opacity:1;}
-  .gammamax-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
-  .gammamax-row .field{flex:1; min-width:180px; margin-bottom:0;}
   small.hint{display:block; color:var(--muted); font-size:10.5px; margin-top:3px;}
 
-  /* ---- Login / Auth screens ---- */
+  /* ---- Login screen ---- */
   #loginScreen{
     position:fixed; inset:0; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
     display:flex; align-items:center; justify-content:center; z-index:500; padding:16px;
   }
   .login-box{
-    background:#fff; border-radius:14px; padding:26px 22px; max-width:380px; width:100%;
-    box-shadow:0 10px 30px rgba(0,0,0,.25);
+    background:#fff; border-radius:14px; padding:30px 24px; max-width:380px; width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center;
   }
-  .login-box h2{color:var(--primary); font-size:16px; text-align:center; margin:0 0 4px;}
-  .login-box .sub{text-align:center; font-size:11.5px; color:var(--muted); margin-bottom:18px;}
-  .login-error{color:var(--danger); font-size:12.5px; margin:6px 0; min-height:16px; text-align:center;}
-  .login-box button.primary-btn{width:100%; padding:10px; font-size:14px; margin-top:6px;}
-  .bootstrap-link{
-    text-align:center; margin-top:14px; font-size:11.5px; color:var(--muted);
+  .login-box h2{color:var(--primary); font-size:16px; margin:0 0 4px;}
+  .login-box .sub{font-size:11.5px; color:var(--muted); margin-bottom:22px;}
+  .login-error{color:var(--danger); font-size:12.5px; margin-top:12px; min-height:16px;}
+  .google-btn{
+    display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+    padding:11px; font-size:14px; background:#fff; color:#3c4043; border:1px solid #d5dbdb;
   }
-  .bootstrap-link a{color:var(--primary); cursor:pointer; text-decoration:underline;}
+  .google-btn:hover{ background:#f7f8f8; }
   #appShell{display:none;}
   .accounts-table{width:100%; border-collapse:collapse; font-size:12.5px;}
   .accounts-table th,.accounts-table td{border:1px solid var(--border); padding:6px 8px; text-align:left;}
@@ -137,7 +135,6 @@
   .badge.admin{background:#eaf2e8; color:var(--accent);}
   .badge.user{background:#eaf0f6; color:var(--primary);}
   .badge.inactive{background:#fbeaea; color:var(--danger);}
-  .badge.pending{background:#fdf3e3; color:#b9770e;}
 </style>
 </head>
 <body>
@@ -147,57 +144,16 @@
   <div class="login-box">
     <h2>HAIC — Đăng nhập / Login</h2>
     <div class="sub">F-03.HAIC-LAB-15MAT &middot; Field Density Test (Sand Cone)</div>
-    <div class="field">
-      <label>Tài khoản / Username</label>
-      <input id="loginUsername" type="text" autocomplete="username" placeholder="admin">
-    </div>
-    <div class="field">
-      <label>Mật khẩu / Password</label>
-      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••">
-    </div>
+    <button class="google-btn" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48">
+        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.5 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8.1 3l6-6C34.6 6.1 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.5z"/>
+        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.9 1.1 8.1 3l6-6C34.6 6.1 29.6 4 24 4 16 4 9 8.5 6.3 14.7z"/>
+        <path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.8 14.1-5.1l-6.5-5.4C29.5 35.4 26.9 36 24 36c-5.4 0-9.9-3.5-11.4-8.4l-6.6 5C8.9 39.5 15.9 44 24 44z"/>
+        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 3-3 5.5-5.7 7.1l6.5 5.4C39.9 37 44 31.1 44 24c0-1.3-.1-2.6-.4-3.5z"/>
+      </svg>
+      Đăng nhập bằng Google
+    </button>
     <div class="login-error" id="loginError"></div>
-    <button class="primary-btn" onclick="login()">Đăng nhập / Login</button>
-    <div class="bootstrap-link">
-      Lần đầu sử dụng? <a onclick="bootstrapAdmin()">Khởi tạo tài khoản admin (admin / 123456)</a>
-    </div>
-  </div>
-</div>
-
-<!-- ======================= FORCE CHANGE PASSWORD ======================= -->
-<div class="modal-bg" id="forceChangeModal">
-  <div class="modal">
-    <h3>Đổi mật khẩu lần đầu / Change Password Required</h3>
-    <p style="font-size:12.5px; color:var(--muted);">Đây là lần đăng nhập đầu tiên. Vui lòng đặt mật khẩu mới trước khi tiếp tục.<br>This is your first login. Please set a new password before continuing.</p>
-    <div class="field">
-      <label>Mật khẩu mới / New password (tối thiểu 6 ký tự)</label>
-      <input id="forceNewPass" type="password">
-    </div>
-    <div class="field">
-      <label>Nhập lại mật khẩu / Confirm new password</label>
-      <input id="forceNewPass2" type="password">
-    </div>
-    <div class="login-error" id="forceChangeError"></div>
-    <button onclick="submitForceChange()">Xác nhận / Confirm</button>
-  </div>
-</div>
-
-<!-- ======================= VOLUNTARY CHANGE PASSWORD ======================= -->
-<div class="modal-bg" id="changePassModal">
-  <div class="modal">
-    <h3>Đổi mật khẩu / Change Password</h3>
-    <div class="field">
-      <label>Mật khẩu mới / New password</label>
-      <input id="cpNewPass" type="password">
-    </div>
-    <div class="field">
-      <label>Nhập lại mật khẩu / Confirm new password</label>
-      <input id="cpNewPass2" type="password">
-    </div>
-    <div class="login-error" id="cpError"></div>
-    <div class="row-actions">
-      <button onclick="submitChangePassword()">Lưu / Save</button>
-      <button class="secondary" onclick="closeChangePassModal()">Đóng / Close</button>
-    </div>
   </div>
 </div>
 
@@ -211,7 +167,6 @@
   <div class="userbar">
     <div class="who" id="whoami">—</div>
     <div class="actions">
-      <button class="ghost" onclick="openChangePassModal()">🔑 Đổi mật khẩu</button>
       <button class="danger" onclick="logout()">Đăng xuất</button>
     </div>
   </div>
@@ -219,40 +174,27 @@
 
 <div class="wrap">
 
-  <!-- ADMIN: ACCOUNT MANAGEMENT -->
+  <!-- ADMIN: ACCESS MANAGEMENT -->
   <div class="card" id="adminCard" style="display:none;">
-    <h2>Quản Lý Tài Khoản / Account Management (Admin)</h2>
-    <div class="grid3">
+    <h2>Quản Lý Truy Cập / Access Management (Admin)</h2>
+    <div class="grid2">
       <div class="field">
-        <label>Tài khoản mới / Username</label>
-        <input id="newUsername" type="text" placeholder="vd: lan.nv">
+        <label>Email Gmail nhân viên</label>
+        <input id="newEmail" type="email" placeholder="nhanvien@gmail.com">
       </div>
       <div class="field">
         <label>Họ tên / Display name</label>
-        <input id="newDisplayName" type="text" placeholder="Nguyễn Văn Lan">
-      </div>
-      <div class="field">
-        <label>Mật khẩu tạm / Temp password</label>
-        <input id="newTempPass" type="text" placeholder="vd: 123456">
-        <small class="hint">Firebase yêu cầu mật khẩu tối thiểu 6 ký tự.</small>
+        <input id="newDisplayName" type="text" placeholder="Nguyễn Văn A">
       </div>
     </div>
-    <div class="grid3">
-      <div class="field">
-        <label>Vai trò / Role</label>
-        <select id="newRole">
-          <option value="user">Nhân viên / Staff</option>
-        </select>
-        <small class="hint">Tài khoản tạo từ app luôn là Nhân viên. Để cấp quyền Admin, chỉnh trực tiếp trong Firebase Console (field "role").</small>
-      </div>
-    </div>
+    <small class="hint">Dùng đúng địa chỉ Gmail nhân viên đã/sẽ dùng để đăng nhập (Google Sign-In). Tài khoản thêm từ app luôn là vai trò Nhân viên. Để cấp quyền Admin, chỉnh trực tiếp trong Firebase Console (field "role" trong collection "allowlist").</small>
     <div class="row-actions">
-      <button class="accent" onclick="createAccount()">+ Tạo tài khoản / Create Account</button>
-      <button class="ghost" onclick="loadAccountsList()">↻ Làm mới / Refresh</button>
+      <button class="accent" onclick="addAllowlist()">+ Thêm quyền truy cập / Grant Access</button>
+      <button class="ghost" onclick="loadAllowlist()">↻ Làm mới / Refresh</button>
     </div>
     <div style="overflow-x:auto; margin-top:12px;">
       <table class="accounts-table" id="accountsTable">
-        <thead><tr><th>Username</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
+        <thead><tr><th>Email</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
         <tbody id="accountsBody"></tbody>
       </table>
     </div>
@@ -406,8 +348,7 @@
 
 <script>
 /* ====================================================================
-   FIREBASE CONFIG — Điền thông tin project Firebase của bạn vào đây.
-   Lấy tại: Firebase Console > Project Settings > General > Your apps > SDK setup and configuration
+   FIREBASE CONFIG
    ==================================================================== */
 const firebaseConfig = {
   apiKey: "AIzaSyBE9fxhwSKASe6GrxM6qd1yTQpfv4UUrrM",
@@ -419,198 +360,167 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
-const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence().catch(()=>{});
 
-const PSEUDO_DOMAIN = "haic.local";
-function usernameToEmail(u){ return u.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + "@" + PSEUDO_DOMAIN; }
+const googleProvider = new firebase.auth.GoogleAuthProvider();
+let currentUserData = null; // {email, displayName, role, uid}
 
-let currentUserData = null; // {uid, username, displayName, role, active, mustChangePassword}
-
-/* ---------------- BOOTSTRAP DEFAULT ADMIN ---------------- */
-async function bootstrapAdmin(){
-  try{
-    const email = usernameToEmail('admin');
-    const cred = await auth.createUserWithEmailAndPassword(email, '123456');
-    await db.collection('users').doc(cred.user.uid).set({
-      username: 'admin',
-      displayName: 'Administrator',
-      role: 'user', // nâng quyền admin thủ công trong Firebase Console sau khi khởi tạo
-      active: true,
-      mustChangePassword: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: 'system-bootstrap'
-    });
-    await auth.signOut();
-    showLoginMsg('Đã tạo tài khoản admin/123456. Vui lòng đăng nhập, sau đó vào Firebase Console đổi field "role" của tài khoản này thành "admin".', false);
-  }catch(e){
-    if(e.code === 'auth/email-already-in-use'){
-      showLoginMsg('Tài khoản admin đã được khởi tạo trước đó. Hãy đăng nhập.', true);
-    } else {
-      showLoginMsg('Lỗi: ' + e.message, true);
-    }
-  }
-}
 function showLoginMsg(msg, isError){
   const el = document.getElementById('loginError');
   el.textContent = msg;
   el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
 }
 
-/* ---------------- LOGIN / LOGOUT ---------------- */
-async function login(){
-  const username = document.getElementById('loginUsername').value.trim();
-  const password = document.getElementById('loginPassword').value;
+function isLikelyMobileOrPWA(){
+  return window.matchMedia('(display-mode: standalone)').matches ||
+         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/* ---------------- GOOGLE SIGN-IN / SIGN-OUT ---------------- */
+async function signInGoogle(){
   showLoginMsg('', false);
-  if(!username || !password){ showLoginMsg('Nhập đầy đủ tài khoản và mật khẩu / Enter username and password', true); return; }
   try{
-    const email = usernameToEmail(username);
-    const cred = await auth.signInWithEmailAndPassword(email, password);
-    const docSnap = await db.collection('users').doc(cred.user.uid).get();
-    if(!docSnap.exists){
-      showLoginMsg('Tài khoản chưa được cấp quyền sử dụng app này.', true);
-      await auth.signOut();
-      return;
-    }
-    const udata = docSnap.data();
-    if(udata.active === false){
-      showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
-      await auth.signOut();
-      return;
-    }
-    currentUserData = { ...udata, uid: cred.user.uid };
-    if(udata.mustChangePassword){
-      document.getElementById('forceChangeModal').style.display = 'flex';
-    } else {
-      enterApp();
-    }
+    await auth.signInWithPopup(googleProvider);
   }catch(e){
-    showLoginMsg('Sai tài khoản hoặc mật khẩu / Wrong username or password', true);
+    const fallbackCodes = ['auth/popup-blocked','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'];
+    if(fallbackCodes.includes(e.code) || isLikelyMobileOrPWA()){
+      try{ await auth.signInWithRedirect(googleProvider); }
+      catch(e2){ showLoginMsg('Lỗi đăng nhập: ' + e2.message, true); }
+    } else {
+      showLoginMsg('Lỗi đăng nhập: ' + e.message, true);
+    }
   }
 }
 
 function logout(){
   auth.signOut();
-  currentUserData = null;
-  document.getElementById('appShell').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  document.getElementById('loginUsername').value = '';
-  document.getElementById('loginPassword').value = '';
-  showLoginMsg('', false);
 }
 
+/* ---------------- AUTH STATE / ALLOWLIST CHECK ---------------- */
+auth.onAuthStateChanged(async (user) => {
+  if(!user){
+    currentUserData = null;
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    return;
+  }
+  const email = (user.email || '').toLowerCase();
+  if(!email){
+    showLoginMsg('Tài khoản Google không có email khả dụng.', true);
+    await auth.signOut();
+    return;
+  }
+  try{
+    const docRef = db.collection('allowlist').doc(email);
+    const docSnap = await docRef.get();
+
+    if(docSnap.exists){
+      const d = docSnap.data();
+      if(d.active === false){
+        showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+        await auth.signOut();
+        return;
+      }
+      currentUserData = { email, displayName: d.displayName || user.displayName || email, role: d.role || 'user', uid: user.uid };
+      enterApp();
+      return;
+    }
+
+    // not in allowlist yet — check if this is the very first user ever (bootstrap admin)
+    const metaSnap = await db.collection('allowlist').doc('_meta').get();
+    if(!metaSnap.exists){
+      await docRef.set({
+        email,
+        displayName: user.displayName || email,
+        role: 'admin',
+        active: true,
+        addedBy: 'system-bootstrap',
+        addedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      await db.collection('allowlist').doc('_meta').set({
+        bootstrapped: true,
+        bootstrappedBy: email,
+        bootstrappedAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      currentUserData = { email, displayName: user.displayName || email, role: 'admin', uid: user.uid };
+      showToast('Tài khoản đầu tiên — đã tự động cấp quyền Admin.');
+      enterApp();
+    } else {
+      showLoginMsg(`Email ${email} chưa được cấp quyền truy cập. Liên hệ Admin để được thêm vào danh sách.`, true);
+      await auth.signOut();
+    }
+  }catch(e){
+    showLoginMsg('Lỗi: ' + e.message, true);
+    await auth.signOut();
+  }
+});
+
 function enterApp(){
-  document.getElementById('forceChangeModal').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').style.display = 'block';
   document.getElementById('whoami').textContent =
-    `${currentUserData.displayName || currentUserData.username} (${currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên'})`;
+    `${currentUserData.displayName} (${currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên'})`;
   document.getElementById('adminCard').style.display = currentUserData.role === 'admin' ? 'block' : 'none';
-  if(currentUserData.role === 'admin') loadAccountsList();
+  if(currentUserData.role === 'admin') loadAllowlist();
   if(document.getElementById('tbody').children.length === 0) addRow();
 }
 
-/* ---------------- FORCE CHANGE PASSWORD (first login) ---------------- */
-async function submitForceChange(){
-  const p1 = document.getElementById('forceNewPass').value;
-  const p2 = document.getElementById('forceNewPass2').value;
-  const err = document.getElementById('forceChangeError');
-  err.textContent = '';
-  if(p1.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
-  if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
-  try{
-    await auth.currentUser.updatePassword(p1);
-    await db.collection('users').doc(currentUserData.uid).update({ mustChangePassword: false });
-    currentUserData.mustChangePassword = false;
-    document.getElementById('forceNewPass').value = '';
-    document.getElementById('forceNewPass2').value = '';
-    enterApp();
-  }catch(e){ err.textContent = 'Lỗi: ' + e.message; }
-}
-
-/* ---------------- VOLUNTARY CHANGE PASSWORD ---------------- */
-function openChangePassModal(){ document.getElementById('changePassModal').style.display = 'flex'; }
-function closeChangePassModal(){
-  document.getElementById('changePassModal').style.display = 'none';
-  document.getElementById('cpNewPass').value = '';
-  document.getElementById('cpNewPass2').value = '';
-  document.getElementById('cpError').textContent = '';
-}
-async function submitChangePassword(){
-  const p1 = document.getElementById('cpNewPass').value;
-  const p2 = document.getElementById('cpNewPass2').value;
-  const err = document.getElementById('cpError');
-  err.textContent = '';
-  if(p1.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
-  if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
-  try{
-    await auth.currentUser.updatePassword(p1);
-    showToast('Đã đổi mật khẩu / Password updated');
-    closeChangePassModal();
-  }catch(e){ err.textContent = 'Lỗi: ' + e.message; }
-}
-
-/* ---------------- ADMIN: ACCOUNT MANAGEMENT ---------------- */
-async function createAccount(){
-  const username = document.getElementById('newUsername').value.trim().toLowerCase();
+/* ---------------- ADMIN: ALLOWLIST MANAGEMENT ---------------- */
+async function addAllowlist(){
+  const email = document.getElementById('newEmail').value.trim().toLowerCase();
   const displayName = document.getElementById('newDisplayName').value.trim();
-  const tempPass = document.getElementById('newTempPass').value;
-  const role = document.getElementById('newRole').value;
-  if(!username || !tempPass){ alert('Nhập tài khoản và mật khẩu tạm / Enter username and temp password'); return; }
-  if(tempPass.length < 6){ alert('Mật khẩu tối thiểu 6 ký tự'); return; }
+  if(!email || !email.includes('@')){ alert('Nhập email Gmail hợp lệ'); return; }
   try{
-    const email = usernameToEmail(username);
-    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
-    await db.collection('users').doc(cred.user.uid).set({
-      username, displayName, role,
-      active: true,
-      mustChangePassword: true,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-      createdBy: currentUserData.username
+    await db.collection('allowlist').doc(email).set({
+      email, displayName, role: 'user', active: true,
+      addedBy: currentUserData.email,
+      addedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    await secondaryApp.auth().signOut();
-    document.getElementById('newUsername').value = '';
+    document.getElementById('newEmail').value = '';
     document.getElementById('newDisplayName').value = '';
-    document.getElementById('newTempPass').value = '';
-    showToast('Đã tạo tài khoản: ' + username);
-    loadAccountsList();
-  }catch(e){
-    alert(e.code === 'auth/email-already-in-use' ? 'Tài khoản này đã tồn tại.' : ('Lỗi: ' + e.message));
-  }
+    showToast('Đã cấp quyền truy cập: ' + email);
+    loadAllowlist();
+  }catch(e){ alert('Lỗi: ' + e.message); }
 }
 
-async function loadAccountsList(){
+async function loadAllowlist(){
   const tbody = document.getElementById('accountsBody');
   tbody.innerHTML = '<tr><td colspan="5">Đang tải...</td></tr>';
   try{
-    const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+    const snap = await db.collection('allowlist').orderBy('addedAt', 'desc').get();
     tbody.innerHTML = '';
     snap.forEach(doc => {
+      if(doc.id === '_meta') return;
       const d = doc.data();
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${d.username || ''}</td>
+        <td>${d.email}</td>
         <td>${d.displayName || ''}</td>
         <td><span class="badge ${d.role==='admin'?'admin':'user'}">${d.role==='admin'?'Admin':'Nhân viên'}</span></td>
+        <td><span class="badge ${d.active===false?'inactive':'admin'}">${d.active===false?'Đã khóa':'Hoạt động'}</span></td>
         <td>
-          <span class="badge ${d.active===false?'inactive':'admin'}">${d.active===false?'Đã khóa':'Hoạt động'}</span>
-          ${d.mustChangePassword ? '<span class="badge pending">Chưa đổi MK</span>' : ''}
-        </td>
-        <td><button class="small ${d.active===false?'accent':'danger'}" onclick="toggleActive('${doc.id}', ${d.active===false})">${d.active===false?'Mở khóa':'Khóa'}</button></td>
-      `;
+          <button class="small ${d.active===false?'accent':'danger'}" onclick="toggleAllowlistActive('${doc.id}', ${d.active===false})">${d.active===false?'Mở khóa':'Khóa'}</button>
+          ${d.role!=='admin' ? `<button class="small danger" onclick="removeAllowlist('${doc.id}')">Xóa</button>` : ''}
+        </td>`;
       tbody.appendChild(tr);
     });
-    if(snap.empty) tbody.innerHTML = '<tr><td colspan="5">Chưa có tài khoản.</td></tr>';
+    if(tbody.innerHTML.trim() === '') tbody.innerHTML = '<tr><td colspan="5">Chưa có tài khoản.</td></tr>';
   }catch(e){
     tbody.innerHTML = `<tr><td colspan="5">Lỗi tải danh sách: ${e.message}</td></tr>`;
   }
 }
 
-async function toggleActive(uid, setActive){
-  await db.collection('users').doc(uid).update({ active: setActive });
-  loadAccountsList();
+async function toggleAllowlistActive(email, setActive){
+  await db.collection('allowlist').doc(email).update({ active: setActive });
+  loadAllowlist();
+}
+
+async function removeAllowlist(email){
+  if(!confirm('Xóa quyền truy cập của ' + email + '?')) return;
+  await db.collection('allowlist').doc(email).delete();
+  loadAllowlist();
 }
 
 /* ====================================================================
@@ -748,7 +658,7 @@ function saveReport(){
   const date = data.testDate || new Date().toISOString().slice(0,10);
   const key = id + ' — ' + date;
   const existingIdx = all.findIndex(r => r._key === key);
-  const record = { _key: key, _savedAt: new Date().toISOString(), _savedBy: currentUserData?.username || '', ...data };
+  const record = { _key: key, _savedAt: new Date().toISOString(), _savedBy: currentUserData?.email || '', ...data };
   if(existingIdx >= 0){
     if(!confirm('Báo cáo trùng tên đã tồn tại. Ghi đè?\nA report with this name/date exists. Overwrite?')) return;
     all[existingIdx] = record;
@@ -920,32 +830,6 @@ function exportPDF(){
   const fname = `F03_SandCone_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.pdf`;
   doc.save(fname);
 }
-
-/* ---------------- AUTH STATE WATCHER ---------------- */
-auth.onAuthStateChanged(async (user) => {
-  if(!user){
-    document.getElementById('appShell').style.display = 'none';
-    document.getElementById('loginScreen').style.display = 'flex';
-    return;
-  }
-  // user signed in (e.g. page refresh while session persists)
-  if(currentUserData && currentUserData.uid === user.uid) return; // already handled by login()
-  try{
-    const docSnap = await db.collection('users').doc(user.uid).get();
-    if(!docSnap.exists || docSnap.data().active === false){
-      await auth.signOut();
-      return;
-    }
-    const udata = docSnap.data();
-    currentUserData = { ...udata, uid: user.uid };
-    if(udata.mustChangePassword){
-      document.getElementById('loginScreen').style.display = 'none';
-      document.getElementById('forceChangeModal').style.display = 'flex';
-    } else {
-      enterApp();
-    }
-  }catch(e){ /* ignore */ }
-});
 </script>
 </body>
 </html>
