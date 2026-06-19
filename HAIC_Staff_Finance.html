@@ -1689,6 +1689,18 @@ function ensureStructure() {
   STORE.customers.forEach(c => { if (!c.branch) c.branch = "cambodia"; });
   STORE.projects.forEach(p => { if (!p.branch) p.branch = "cambodia"; });
 
+  // Remove old auto-generated "Nhận tạm ứng" income transactions (previous logic was incorrect)
+  // These inflated staff personal balance — only settlement expenses should be recorded
+  const advanceIds = new Set(STORE.advances.map(a => a.id));
+  STORE.transactions = STORE.transactions.filter(tx => {
+    if (!tx.fromAdvanceId) return true; // normal transaction, keep
+    if (!advanceIds.has(tx.fromAdvanceId)) return true; // orphan (advance deleted), keep
+    const adv = STORE.advances.find(a => a.id === tx.fromAdvanceId);
+    // Remove if it's the old income tx for receiving advance cash (type=income, note contains "Nhận tạm ứng")
+    if (tx.type === "income" && adv && adv.status !== "settled") return false;
+    return true;
+  });
+
   // Migrate old per-customer "payments" (flat) into invoices structure
   STORE.customers.forEach(c => {
     if (!c.invoices) c.invoices = [];
@@ -2884,29 +2896,16 @@ function markAdvancePaid(advanceId) {
     detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
   });
 
-  createAdvanceCashTx(adv);
+  // Remove any previously auto-created income tx from this advance (idempotent cleanup)
+  STORE.transactions = STORE.transactions.filter(tx => tx.fromAdvanceId !== adv.id);
 
   persistDebounced();
   showToast(t("toastSaved"), "success");
   renderAll();
 }
 
-function createAdvanceCashTx(adv) {
-  // Records the cash the staff member received (income side of their personal ledger)
-  STORE.transactions.push({
-    id: genId("tx"),
-    type: "income",
-    categoryId: "c_reimbursement",
-    date: todayStr(),
-    amount: adv.amount,
-    projectId: adv.projectId,
-    note: (currentLang === "vi" ? "Nhận tạm ứng: " : "Received advance: ") + (adv.reason || ""),
-    userId: adv.userId,
-    timestamp: new Date().toTimeString().substring(0, 5),
-    createdAt: nowISO(),
-    fromAdvanceId: adv.id,
-  });
-}
+// createAdvanceCashTx intentionally removed — advance cash received is NOT recorded as personal income
+// Only the itemized settlement expenses are recorded upon admin confirmation
 
 // ===================== SETTLEMENT (GIẢI TRÌNH TẠM ỨNG) =====================
 function setupSettlementModals() {
@@ -3113,13 +3112,19 @@ function confirmSettlement() {
   const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
   if (!adv || !adv.settlement) return;
 
-  // Record each itemized expense in the staff member's personal ledger
+  // Remove any previously auto-created transactions from this advance (avoid duplicates)
+  STORE.transactions = STORE.transactions.filter(tx => tx.fromAdvanceId !== adv.id);
+
+  // Record each itemized expense in the staff member's personal ledger only
+  // Advance cash is company money — NOT recorded as personal income/expense
+  // Only the actual spending items are recorded
   adv.settlement.items.forEach(it => {
     STORE.transactions.push({
       id: genId("tx"),
       type: "expense",
-      categoryId: it.categoryId,
-      date: todayStr(),
+      categoryId: it.categoryId === "__custom__" ? "c_other" : it.categoryId,
+      customCategory: it.customCategory || null,
+      date: adv.paidAt ? adv.paidAt.substring(0, 10) : todayStr(),
       amount: it.amount,
       projectId: adv.projectId,
       note: it.note || (currentLang === "vi" ? "Chi từ tạm ứng" : "Settled from advance"),
@@ -3130,42 +3135,6 @@ function confirmSettlement() {
       receipt: it.receipt || undefined,
     });
   });
-
-  // Record the balance adjustment (refund to company or company reimburses shortfall)
-  const balance = adv.settlement.balance;
-  if (Math.abs(balance) > 0.005) {
-    if (balance > 0) {
-      // Staff returns surplus cash -> expense entry (cash leaves their pocket back to company)
-      STORE.transactions.push({
-        id: genId("tx"),
-        type: "expense",
-        categoryId: "c_reimbursement",
-        date: todayStr(),
-        amount: balance,
-        projectId: adv.projectId,
-        note: t("settlementBalanceRefund"),
-        userId: adv.userId,
-        timestamp: new Date().toTimeString().substring(0, 5),
-        createdAt: nowISO(),
-        fromAdvanceId: adv.id,
-      });
-    } else {
-      // Company reimburses shortfall -> income entry for staff
-      STORE.transactions.push({
-        id: genId("tx"),
-        type: "income",
-        categoryId: "c_reimbursement",
-        date: todayStr(),
-        amount: Math.abs(balance),
-        projectId: adv.projectId,
-        note: t("settlementBalanceShortfall"),
-        userId: adv.userId,
-        timestamp: new Date().toTimeString().substring(0, 5),
-        createdAt: nowISO(),
-        fromAdvanceId: adv.id,
-      });
-    }
-  }
 
   adv.status = "settled";
   adv.settlement.confirmedBy = currentUser.id;
