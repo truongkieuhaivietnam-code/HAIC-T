@@ -158,7 +158,7 @@
     <div class="login-error" id="loginError"></div>
     <button class="primary-btn" onclick="login()">Đăng nhập / Login</button>
     <div class="bootstrap-link">
-      Lần đầu sử dụng? <a onclick="bootstrapAdmin()">Khởi tạo tài khoản admin (admin / 1234)</a>
+      Lần đầu sử dụng? <a onclick="bootstrapAdmin()">Khởi tạo tài khoản admin (admin / 123456)</a>
     </div>
   </div>
 </div>
@@ -169,7 +169,7 @@
     <h3>Đổi mật khẩu lần đầu / Change Password Required</h3>
     <p style="font-size:12.5px; color:var(--muted);">Đây là lần đăng nhập đầu tiên. Vui lòng đặt mật khẩu mới trước khi tiếp tục.<br>This is your first login. Please set a new password before continuing.</p>
     <div class="field">
-      <label>Mật khẩu mới / New password (tối thiểu 4 ký tự)</label>
+      <label>Mật khẩu mới / New password (tối thiểu 6 ký tự)</label>
       <input id="forceNewPass" type="password">
     </div>
     <div class="field">
@@ -233,7 +233,8 @@
       </div>
       <div class="field">
         <label>Mật khẩu tạm / Temp password</label>
-        <input id="newTempPass" type="text" placeholder="vd: 1234">
+        <input id="newTempPass" type="text" placeholder="vd: 123456">
+        <small class="hint">Firebase yêu cầu mật khẩu tối thiểu 6 ký tự.</small>
       </div>
     </div>
     <div class="grid3">
@@ -432,7 +433,7 @@ let currentUserData = null; // {uid, username, displayName, role, active, mustCh
 async function bootstrapAdmin(){
   try{
     const email = usernameToEmail('admin');
-    const cred = await auth.createUserWithEmailAndPassword(email, '1234');
+    const cred = await auth.createUserWithEmailAndPassword(email, '123456');
     await db.collection('users').doc(cred.user.uid).set({
       username: 'admin',
       displayName: 'Administrator',
@@ -443,7 +444,7 @@ async function bootstrapAdmin(){
       createdBy: 'system-bootstrap'
     });
     await auth.signOut();
-    showLoginMsg('Đã tạo tài khoản admin/1234. Vui lòng đăng nhập, sau đó vào Firebase Console đổi field "role" của tài khoản này thành "admin".', false);
+    showLoginMsg('Đã tạo tài khoản admin/123456. Vui lòng đăng nhập, sau đó vào Firebase Console đổi field "role" của tài khoản này thành "admin".', false);
   }catch(e){
     if(e.code === 'auth/email-already-in-use'){
       showLoginMsg('Tài khoản admin đã được khởi tạo trước đó. Hãy đăng nhập.', true);
@@ -517,7 +518,7 @@ async function submitForceChange(){
   const p2 = document.getElementById('forceNewPass2').value;
   const err = document.getElementById('forceChangeError');
   err.textContent = '';
-  if(p1.length < 4){ err.textContent = 'Mật khẩu tối thiểu 4 ký tự'; return; }
+  if(p1.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
   if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
   try{
     await auth.currentUser.updatePassword(p1);
@@ -542,7 +543,7 @@ async function submitChangePassword(){
   const p2 = document.getElementById('cpNewPass2').value;
   const err = document.getElementById('cpError');
   err.textContent = '';
-  if(p1.length < 4){ err.textContent = 'Mật khẩu tối thiểu 4 ký tự'; return; }
+  if(p1.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
   if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
   try{
     await auth.currentUser.updatePassword(p1);
@@ -558,7 +559,7 @@ async function createAccount(){
   const tempPass = document.getElementById('newTempPass').value;
   const role = document.getElementById('newRole').value;
   if(!username || !tempPass){ alert('Nhập tài khoản và mật khẩu tạm / Enter username and temp password'); return; }
-  if(tempPass.length < 4){ alert('Mật khẩu tối thiểu 4 ký tự'); return; }
+  if(tempPass.length < 6){ alert('Mật khẩu tối thiểu 6 ký tự'); return; }
   try{
     const email = usernameToEmail(username);
     const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
