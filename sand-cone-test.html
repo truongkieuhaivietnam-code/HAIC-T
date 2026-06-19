@@ -378,6 +378,30 @@ function isLikelyMobileOrPWA(){
          /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
 }
 
+function detectInAppBrowser(){
+  const ua = navigator.userAgent || '';
+  if(/Zalo/i.test(ua)) return 'Zalo';
+  if(/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook/Messenger';
+  if(/Instagram/i.test(ua)) return 'Instagram';
+  if(/Line\//i.test(ua)) return 'LINE';
+  if(/MicroMessenger/i.test(ua)) return 'WeChat';
+  return null;
+}
+
+(function warnInAppBrowser(){
+  const app = detectInAppBrowser();
+  if(app){
+    showLoginMsg(`Bạn đang mở bằng trình duyệt trong ${app} — Google chặn đăng nhập ở đây. Vui lòng bấm "Mở bằng trình duyệt khác" hoặc dán link này vào Safari/Chrome.`, true);
+  }
+})();
+
+// Surface any error from a completed redirect sign-in (e.g. lost session in restrictive webviews)
+auth.getRedirectResult().catch((e) => {
+  if(e && e.code && e.code !== 'auth/no-auth-event'){
+    showLoginMsg('Lỗi đăng nhập (redirect): ' + e.message, true);
+  }
+});
+
 /* ---------------- GOOGLE SIGN-IN / SIGN-OUT ---------------- */
 async function signInGoogle(){
   showLoginMsg('', false);
