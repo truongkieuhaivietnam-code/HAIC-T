@@ -154,6 +154,14 @@
       Đăng nhập bằng Google
     </button>
     <div class="login-error" id="loginError"></div>
+    <div id="inAppWarning" style="display:none; background:#fdf3e3; border:1px solid #f0d8a0; border-radius:8px; padding:10px; margin-top:12px; font-size:12px; color:#7a5c00; text-align:left;">
+      <strong>⚠️ Đang mở trong trình duyệt của <span id="inAppName"></span></strong><br>
+      Google chặn đăng nhập trong trình duyệt ứng dụng này. Hãy mở bằng Safari/Chrome.
+      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
+        <button class="small" onclick="openExternal()" style="flex:1;">📤 Mở trình duyệt ngoài</button>
+        <button class="small ghost" onclick="copyLink()" style="flex:1;">🔗 Copy link</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -391,9 +399,37 @@ function detectInAppBrowser(){
 (function warnInAppBrowser(){
   const app = detectInAppBrowser();
   if(app){
-    showLoginMsg(`Bạn đang mở bằng trình duyệt trong ${app} — Google chặn đăng nhập ở đây. Vui lòng bấm "Mở bằng trình duyệt khác" hoặc dán link này vào Safari/Chrome.`, true);
+    document.getElementById('inAppName').textContent = app;
+    document.getElementById('inAppWarning').style.display = 'block';
+    document.querySelector('.google-btn').style.display = 'none';
   }
 })();
+
+function openExternal(){
+  const url = window.location.href;
+  const ua = navigator.userAgent || '';
+  if(/iPhone|iPad|iPod/i.test(ua)){
+    window.location.href = 'x-safari-' + url;
+  } else if(/Android/i.test(ua)){
+    const stripped = url.replace(/^https?:\/\//, '');
+    window.location.href = 'intent://' + stripped + '#Intent;scheme=https;package=com.android.chrome;end';
+  } else {
+    copyLink();
+  }
+}
+
+function copyLink(){
+  const url = window.location.href;
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Đã copy link. Dán vào Safari/Chrome để mở.');
+    }).catch(() => {
+      prompt('Copy link này và dán vào Safari/Chrome:', url);
+    });
+  } else {
+    prompt('Copy link này và dán vào Safari/Chrome:', url);
+  }
+}
 
 // Surface any error from a completed redirect sign-in (e.g. lost session in restrictive webviews)
 auth.getRedirectResult().catch((e) => {
