@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>F-03.HAIC-LAB-15MAT | Field Density Test (Sand Cone)</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --primary:#1a5276;
+    --primary-dark:#0e3b53;
+    --accent:#1e8449;
+    --danger:#c0392b;
+    --bg:#f4f6f7;
+    --card:#ffffff;
+    --border:#d5dbdb;
+    --text:#212f3c;
+    --muted:#6b7280;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text);
+    padding-bottom:90px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff; padding:14px 16px; position:sticky; top:0; z-index:50;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  header h1{margin:0; font-size:15px; line-height:1.4; font-weight:700;}
+  header .sub{font-size:11px; opacity:.85; margin-top:2px;}
+  .userbar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    margin-top:8px; font-size:12px; background:rgba(255,255,255,.12); border-radius:8px; padding:6px 10px;
+  }
+  .userbar .who{font-weight:700;}
+  .userbar .actions{display:flex; gap:6px; flex-wrap:wrap;}
+  .userbar button{padding:5px 9px; font-size:11.5px; border-radius:6px;}
+  .wrap{max-width:1000px; margin:0 auto; padding:10px;}
+  .card{
+    background:var(--card); border-radius:10px; padding:14px; margin-bottom:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid var(--border);
+  }
+  .card h2{
+    font-size:13px; color:var(--primary); margin:0 0 10px; padding-bottom:6px;
+    border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px;
+  }
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
+  label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:3px; font-weight:600;}
+  label .vi{color:var(--text);}
+  input,textarea,select{
+    width:100%; padding:8px 9px; border:1px solid var(--border); border-radius:6px;
+    font-size:14px; background:#fff; color:var(--text); font-family:inherit;
+  }
+  input:focus,textarea:focus,select:focus{outline:none; border-color:var(--primary);}
+  .field{margin-bottom:10px;}
+  .row-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  button{
+    border:none; border-radius:7px; padding:9px 14px; font-size:13px; font-weight:600;
+    cursor:pointer; color:#fff; background:var(--primary); transition:.15s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button.secondary{background:#5d6d7e;}
+  button.accent{background:var(--accent);}
+  button.danger{background:var(--danger);}
+  button.small{padding:5px 9px; font-size:12px; border-radius:6px;}
+  button.ghost{background:#eef1f3; color:var(--primary);}
+  .table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:8px;}
+  table{border-collapse:collapse; width:100%; min-width:1180px; font-size:12px;}
+  th,td{border:1px solid var(--border); padding:6px; text-align:center;}
+  thead th{background:var(--primary); color:#fff; font-weight:600; font-size:11px; line-height:1.3;}
+  thead tr.units th{background:#eef1f3; color:var(--text); font-weight:500; font-size:10.5px;}
+  tbody td input{padding:5px 4px; font-size:12px; min-width:62px; text-align:center;}
+  tbody td.calc{background:#f6fbf8; font-weight:600; color:var(--accent);}
+  tbody td.label-col input{min-width:100px; text-align:left;}
+  tbody tr:nth-child(even){background:#fafbfb;}
+  .footer-bar{
+    position:fixed; bottom:0; left:0; right:0; background:#fff; border-top:1px solid var(--border);
+    padding:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; z-index:40;
+    box-shadow:0 -2px 6px rgba(0,0,0,.08);
+  }
+  .signoff{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:640px){.signoff{grid-template-columns:1fr;}}
+  .signoff .box{text-align:center;}
+  .signoff .box .ttl{font-weight:700; font-size:12px; margin-bottom:36px;}
+  .companyfoot{font-size:11px; color:var(--muted); text-align:center; line-height:1.5; margin-top:6px;}
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center;
+    justify-content:center; z-index:100; padding:16px;
+  }
+  .modal{background:#fff; border-radius:10px; max-width:520px; width:100%; max-height:80vh; overflow:auto; padding:16px;}
+  .modal h3{margin-top:0; color:var(--primary); font-size:15px;}
+  .saved-item{
+    display:flex; justify-content:space-between; align-items:center; padding:8px;
+    border:1px solid var(--border); border-radius:7px; margin-bottom:6px; font-size:12.5px;
+  }
+  .saved-item .info{flex:1; cursor:pointer;}
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--accent);
+    color:#fff; padding:9px 16px; border-radius:20px; font-size:13px; z-index:200; opacity:0;
+    transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  .gammamax-row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .gammamax-row .field{flex:1; min-width:180px; margin-bottom:0;}
+  small.hint{display:block; color:var(--muted); font-size:10.5px; margin-top:3px;}
+
+  /* ---- Login / Auth screens ---- */
+  #loginScreen{
+    position:fixed; inset:0; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    display:flex; align-items:center; justify-content:center; z-index:500; padding:16px;
+  }
+  .login-box{
+    background:#fff; border-radius:14px; padding:26px 22px; max-width:380px; width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.25);
+  }
+  .login-box h2{color:var(--primary); font-size:16px; text-align:center; margin:0 0 4px;}
+  .login-box .sub{text-align:center; font-size:11.5px; color:var(--muted); margin-bottom:18px;}
+  .login-error{color:var(--danger); font-size:12.5px; margin:6px 0; min-height:16px; text-align:center;}
+  .login-box button.primary-btn{width:100%; padding:10px; font-size:14px; margin-top:6px;}
+  .bootstrap-link{
+    text-align:center; margin-top:14px; font-size:11.5px; color:var(--muted);
+  }
+  .bootstrap-link a{color:var(--primary); cursor:pointer; text-decoration:underline;}
+  #appShell{display:none;}
+  .accounts-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .accounts-table th,.accounts-table td{border:1px solid var(--border); padding:6px 8px; text-align:left;}
+  .accounts-table th{background:#eef1f3;}
+  .badge{display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700;}
+  .badge.admin{background:#eaf2e8; color:var(--accent);}
+  .badge.user{background:#eaf0f6; color:var(--primary);}
+  .badge.inactive{background:#fbeaea; color:var(--danger);}
+  .badge.pending{background:#fdf3e3; color:#b9770e;}
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN SCREEN ======================= -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>HAIC — Đăng nhập / Login</h2>
+    <div class="sub">F-03.HAIC-LAB-15MAT &middot; Field Density Test (Sand Cone)</div>
+    <div class="field">
+      <label>Tài khoản / Username</label>
+      <input id="loginUsername" type="text" autocomplete="username" placeholder="admin">
+    </div>
+    <div class="field">
+      <label>Mật khẩu / Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="primary-btn" onclick="login()">Đăng nhập / Login</button>
+    <div class="bootstrap-link">
+      Lần đầu sử dụng? <a onclick="bootstrapAdmin()">Khởi tạo tài khoản admin (admin / 1234)</a>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= FORCE CHANGE PASSWORD ======================= -->
+<div class="modal-bg" id="forceChangeModal">
+  <div class="modal">
+    <h3>Đổi mật khẩu lần đầu / Change Password Required</h3>
+    <p style="font-size:12.5px; color:var(--muted);">Đây là lần đăng nhập đầu tiên. Vui lòng đặt mật khẩu mới trước khi tiếp tục.<br>This is your first login. Please set a new password before continuing.</p>
+    <div class="field">
+      <label>Mật khẩu mới / New password (tối thiểu 4 ký tự)</label>
+      <input id="forceNewPass" type="password">
+    </div>
+    <div class="field">
+      <label>Nhập lại mật khẩu / Confirm new password</label>
+      <input id="forceNewPass2" type="password">
+    </div>
+    <div class="login-error" id="forceChangeError"></div>
+    <button onclick="submitForceChange()">Xác nhận / Confirm</button>
+  </div>
+</div>
+
+<!-- ======================= VOLUNTARY CHANGE PASSWORD ======================= -->
+<div class="modal-bg" id="changePassModal">
+  <div class="modal">
+    <h3>Đổi mật khẩu / Change Password</h3>
+    <div class="field">
+      <label>Mật khẩu mới / New password</label>
+      <input id="cpNewPass" type="password">
+    </div>
+    <div class="field">
+      <label>Nhập lại mật khẩu / Confirm new password</label>
+      <input id="cpNewPass2" type="password">
+    </div>
+    <div class="login-error" id="cpError"></div>
+    <div class="row-actions">
+      <button onclick="submitChangePassword()">Lưu / Save</button>
+      <button class="secondary" onclick="closeChangePassModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MAIN APP ======================= -->
+<div id="appShell">
+
+<header>
+  <h1>KẾT QUẢ THÍ NGHIỆM ĐỘ CHẶT K HIỆN TRƯỜNG BẰNG PHƯƠNG PHÁP RÓT CÁT<br>
+  <span style="font-weight:400">Field Density Test Results by the Sand-Cone Method</span></h1>
+  <div class="sub">22TCN 346-06, ASTM D1556/D1556M-15e1 · F-03.HAIC-LAB-15MAT</div>
+  <div class="userbar">
+    <div class="who" id="whoami">—</div>
+    <div class="actions">
+      <button class="ghost" onclick="openChangePassModal()">🔑 Đổi mật khẩu</button>
+      <button class="danger" onclick="logout()">Đăng xuất</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ADMIN: ACCOUNT MANAGEMENT -->
+  <div class="card" id="adminCard" style="display:none;">
+    <h2>Quản Lý Tài Khoản / Account Management (Admin)</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>Tài khoản mới / Username</label>
+        <input id="newUsername" type="text" placeholder="vd: lan.nv">
+      </div>
+      <div class="field">
+        <label>Họ tên / Display name</label>
+        <input id="newDisplayName" type="text" placeholder="Nguyễn Văn Lan">
+      </div>
+      <div class="field">
+        <label>Mật khẩu tạm / Temp password</label>
+        <input id="newTempPass" type="text" placeholder="vd: 1234">
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>Vai trò / Role</label>
+        <select id="newRole">
+          <option value="user">Nhân viên / Staff</option>
+        </select>
+        <small class="hint">Tài khoản tạo từ app luôn là Nhân viên. Để cấp quyền Admin, chỉnh trực tiếp trong Firebase Console (field "role").</small>
+      </div>
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="createAccount()">+ Tạo tài khoản / Create Account</button>
+      <button class="ghost" onclick="loadAccountsList()">↻ Làm mới / Refresh</button>
+    </div>
+    <div style="overflow-x:auto; margin-top:12px;">
+      <table class="accounts-table" id="accountsTable">
+        <thead><tr><th>Username</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
+        <tbody id="accountsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PROJECT INFO -->
+  <div class="card">
+    <h2>I. Thông Tin Liên Quan / Project Information</h2>
+    <div class="grid2">
+      <div class="field">
+        <label>Chủ đầu tư <span class="vi">/ Investor</span></label>
+        <input id="investor" type="text">
+      </div>
+      <div class="field">
+        <label>ĐV thi công <span class="vi">/ Contractor</span></label>
+        <input id="contractor" type="text">
+      </div>
+      <div class="field">
+        <label>Công trình <span class="vi">/ Project</span></label>
+        <input id="project" type="text">
+      </div>
+      <div class="field">
+        <label>ĐV TVGS <span class="vi">/ Supervisor</span></label>
+        <input id="supervisor" type="text">
+      </div>
+      <div class="field">
+        <label>Địa điểm XD <span class="vi">/ Location</span></label>
+        <input id="location" type="text">
+      </div>
+      <div class="field">
+        <label>Khu vực TN <span class="vi">/ Testing Area</span></label>
+        <input id="testingArea" type="text">
+      </div>
+      <div class="field">
+        <label>Mô tả <span class="vi">/ Description</span></label>
+        <input id="description" type="text" placeholder="Nền cấp phối đá dăm / Crushed stone macadam">
+      </div>
+      <div class="field">
+        <label>Ngày TN hiện trường <span class="vi">/ Testing Date</span></label>
+        <input id="testDate" type="date">
+      </div>
+    </div>
+  </div>
+
+  <!-- TEST PARAMETERS -->
+  <div class="card">
+    <h2>II. Kết Quả Thí Nghiệm / Testing Result — Parameters</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>Khối lượng cát làm đầy miệng phễu <span class="vi">/ Mass of sand to fill cone (g)</span></label>
+        <input id="sandFillMass" type="number" step="any" value="1450">
+      </div>
+      <div class="field">
+        <label>KL thể tích của cát <span class="vi">/ Bulk density of sand (g/cm³)</span></label>
+        <input id="sandBulkDensity" type="number" step="any" value="1.44">
+      </div>
+      <div class="field">
+        <label>γmax — KL thể tích khô lớn nhất <span class="vi">/ Maximum dry density (g/cm³)</span></label>
+        <input id="gammaMax" type="number" step="any" value="2.306">
+      </div>
+    </div>
+    <small class="hint">Các thông số này dùng chung cho tất cả các vị trí thí nghiệm bên dưới / These parameters apply to all test points below.</small>
+  </div>
+
+  <!-- TEST POINTS TABLE -->
+  <div class="card">
+    <h2>Bảng Kết Quả Thí Nghiệm / Test Points Results</h2>
+    <div class="table-scroll">
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th rowspan="2">STT<br>No.</th>
+            <th rowspan="2">Vị trí thí nghiệm<br>Testing Point</th>
+            <th colspan="3">Phễu cát / Sand-Cone</th>
+            <th colspan="4">Độ ẩm / Moisture Content</th>
+            <th colspan="3">Khối lượng thể tích / Density</th>
+            <th rowspan="2"></th>
+          </tr>
+          <tr>
+            <th>KL phễu cát trước khi rót<br>Before pouring</th>
+            <th>KL phễu cát sau khi rót<br>After pouring</th>
+            <th>KL vật liệu trong hố<br>Material in hole</th>
+            <th>Lon ẩm số<br>Can ID</th>
+            <th>KL lon ẩm<br>Mass of can</th>
+            <th>KL lon + vật liệu ướt<br>Can + wet material</th>
+            <th>KL lon + vật liệu khô<br>Can + dry material</th>
+            <th>Độ ẩm<br>Moisture (%)</th>
+            <th>KL TT tự nhiên<br>Wet density (g/cm³)</th>
+            <th>KL TT khô<br>Dry density (g/cm³)</th>
+            <th>Độ chặt K<br>Compaction (%)</th>
+          </tr>
+          <tr class="units">
+            <th></th><th></th>
+            <th>(g)</th><th>(g)</th><th>(g)</th>
+            <th></th><th>(g)</th><th>(g)</th><th>(g)</th>
+            <th>(%)</th><th>(g/cm³)</th><th>(g/cm³)</th><th>(%)</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="addRow()">+ Thêm dòng / Add Row</button>
+    </div>
+  </div>
+
+  <!-- SIGN OFF -->
+  <div class="card">
+    <h2>Xác Nhận / Sign-off</h2>
+    <div class="signoff">
+      <div class="box">
+        <div class="ttl">Thí nghiệm viên / Lab Technician</div>
+        <input id="labTech" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
+      </div>
+      <div class="box">
+        <div class="ttl">Người kiểm tra / Checked by</div>
+        <input id="checkedBy" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
+      </div>
+    </div>
+    <div class="companyfoot">
+      HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD<br>
+      Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia<br>
+      Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com<br>
+      Form: F-03.HAIC-LAB-15MAT
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-bar">
+  <button class="secondary" onclick="newReport()">+ Mới / New</button>
+  <button onclick="saveReport()">💾 Lưu / Save</button>
+  <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
+  <button class="accent" onclick="exportPDF()">📄 PDF</button>
+  <button class="accent" onclick="exportExcel()">📊 Excel</button>
+</div>
+
+</div><!-- /#appShell -->
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="loadModal">
+  <div class="modal">
+    <h3>Báo cáo đã lưu / Saved Reports</h3>
+    <div id="savedList"></div>
+    <div class="row-actions" style="margin-top:10px;">
+      <button class="secondary" onclick="closeLoadModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   FIREBASE CONFIG — Điền thông tin project Firebase của bạn vào đây.
+   Lấy tại: Firebase Console > Project Settings > General > Your apps > SDK setup and configuration
+   ==================================================================== */
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence().catch(()=>{});
+
+const PSEUDO_DOMAIN = "haic.local";
+function usernameToEmail(u){ return u.trim().toLowerCase().replace(/[^a-z0-9._-]/g,'') + "@" + PSEUDO_DOMAIN; }
+
+let currentUserData = null; // {uid, username, displayName, role, active, mustChangePassword}
+
+/* ---------------- BOOTSTRAP DEFAULT ADMIN ---------------- */
+async function bootstrapAdmin(){
+  try{
+    const email = usernameToEmail('admin');
+    const cred = await auth.createUserWithEmailAndPassword(email, '1234');
+    await db.collection('users').doc(cred.user.uid).set({
+      username: 'admin',
+      displayName: 'Administrator',
+      role: 'user', // nâng quyền admin thủ công trong Firebase Console sau khi khởi tạo
+      active: true,
+      mustChangePassword: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: 'system-bootstrap'
+    });
+    await auth.signOut();
+    showLoginMsg('Đã tạo tài khoản admin/1234. Vui lòng đăng nhập, sau đó vào Firebase Console đổi field "role" của tài khoản này thành "admin".', false);
+  }catch(e){
+    if(e.code === 'auth/email-already-in-use'){
+      showLoginMsg('Tài khoản admin đã được khởi tạo trước đó. Hãy đăng nhập.', true);
+    } else {
+      showLoginMsg('Lỗi: ' + e.message, true);
+    }
+  }
+}
+function showLoginMsg(msg, isError){
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
+}
+
+/* ---------------- LOGIN / LOGOUT ---------------- */
+async function login(){
+  const username = document.getElementById('loginUsername').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  showLoginMsg('', false);
+  if(!username || !password){ showLoginMsg('Nhập đầy đủ tài khoản và mật khẩu / Enter username and password', true); return; }
+  try{
+    const email = usernameToEmail(username);
+    const cred = await auth.signInWithEmailAndPassword(email, password);
+    const docSnap = await db.collection('users').doc(cred.user.uid).get();
+    if(!docSnap.exists){
+      showLoginMsg('Tài khoản chưa được cấp quyền sử dụng app này.', true);
+      await auth.signOut();
+      return;
+    }
+    const udata = docSnap.data();
+    if(udata.active === false){
+      showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+      await auth.signOut();
+      return;
+    }
+    currentUserData = { ...udata, uid: cred.user.uid };
+    if(udata.mustChangePassword){
+      document.getElementById('forceChangeModal').style.display = 'flex';
+    } else {
+      enterApp();
+    }
+  }catch(e){
+    showLoginMsg('Sai tài khoản hoặc mật khẩu / Wrong username or password', true);
+  }
+}
+
+function logout(){
+  auth.signOut();
+  currentUserData = null;
+  document.getElementById('appShell').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('loginUsername').value = '';
+  document.getElementById('loginPassword').value = '';
+  showLoginMsg('', false);
+}
+
+function enterApp(){
+  document.getElementById('forceChangeModal').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  document.getElementById('whoami').textContent =
+    `${currentUserData.displayName || currentUserData.username} (${currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên'})`;
+  document.getElementById('adminCard').style.display = currentUserData.role === 'admin' ? 'block' : 'none';
+  if(currentUserData.role === 'admin') loadAccountsList();
+  if(document.getElementById('tbody').children.length === 0) addRow();
+}
+
+/* ---------------- FORCE CHANGE PASSWORD (first login) ---------------- */
+async function submitForceChange(){
+  const p1 = document.getElementById('forceNewPass').value;
+  const p2 = document.getElementById('forceNewPass2').value;
+  const err = document.getElementById('forceChangeError');
+  err.textContent = '';
+  if(p1.length < 4){ err.textContent = 'Mật khẩu tối thiểu 4 ký tự'; return; }
+  if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
+  try{
+    await auth.currentUser.updatePassword(p1);
+    await db.collection('users').doc(currentUserData.uid).update({ mustChangePassword: false });
+    currentUserData.mustChangePassword = false;
+    document.getElementById('forceNewPass').value = '';
+    document.getElementById('forceNewPass2').value = '';
+    enterApp();
+  }catch(e){ err.textContent = 'Lỗi: ' + e.message; }
+}
+
+/* ---------------- VOLUNTARY CHANGE PASSWORD ---------------- */
+function openChangePassModal(){ document.getElementById('changePassModal').style.display = 'flex'; }
+function closeChangePassModal(){
+  document.getElementById('changePassModal').style.display = 'none';
+  document.getElementById('cpNewPass').value = '';
+  document.getElementById('cpNewPass2').value = '';
+  document.getElementById('cpError').textContent = '';
+}
+async function submitChangePassword(){
+  const p1 = document.getElementById('cpNewPass').value;
+  const p2 = document.getElementById('cpNewPass2').value;
+  const err = document.getElementById('cpError');
+  err.textContent = '';
+  if(p1.length < 4){ err.textContent = 'Mật khẩu tối thiểu 4 ký tự'; return; }
+  if(p1 !== p2){ err.textContent = 'Mật khẩu nhập lại không khớp'; return; }
+  try{
+    await auth.currentUser.updatePassword(p1);
+    showToast('Đã đổi mật khẩu / Password updated');
+    closeChangePassModal();
+  }catch(e){ err.textContent = 'Lỗi: ' + e.message; }
+}
+
+/* ---------------- ADMIN: ACCOUNT MANAGEMENT ---------------- */
+async function createAccount(){
+  const username = document.getElementById('newUsername').value.trim().toLowerCase();
+  const displayName = document.getElementById('newDisplayName').value.trim();
+  const tempPass = document.getElementById('newTempPass').value;
+  const role = document.getElementById('newRole').value;
+  if(!username || !tempPass){ alert('Nhập tài khoản và mật khẩu tạm / Enter username and temp password'); return; }
+  if(tempPass.length < 4){ alert('Mật khẩu tối thiểu 4 ký tự'); return; }
+  try{
+    const email = usernameToEmail(username);
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
+    await db.collection('users').doc(cred.user.uid).set({
+      username, displayName, role,
+      active: true,
+      mustChangePassword: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdBy: currentUserData.username
+    });
+    await secondaryApp.auth().signOut();
+    document.getElementById('newUsername').value = '';
+    document.getElementById('newDisplayName').value = '';
+    document.getElementById('newTempPass').value = '';
+    showToast('Đã tạo tài khoản: ' + username);
+    loadAccountsList();
+  }catch(e){
+    alert(e.code === 'auth/email-already-in-use' ? 'Tài khoản này đã tồn tại.' : ('Lỗi: ' + e.message));
+  }
+}
+
+async function loadAccountsList(){
+  const tbody = document.getElementById('accountsBody');
+  tbody.innerHTML = '<tr><td colspan="5">Đang tải...</td></tr>';
+  try{
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+    tbody.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${d.username || ''}</td>
+        <td>${d.displayName || ''}</td>
+        <td><span class="badge ${d.role==='admin'?'admin':'user'}">${d.role==='admin'?'Admin':'Nhân viên'}</span></td>
+        <td>
+          <span class="badge ${d.active===false?'inactive':'admin'}">${d.active===false?'Đã khóa':'Hoạt động'}</span>
+          ${d.mustChangePassword ? '<span class="badge pending">Chưa đổi MK</span>' : ''}
+        </td>
+        <td><button class="small ${d.active===false?'accent':'danger'}" onclick="toggleActive('${doc.id}', ${d.active===false})">${d.active===false?'Mở khóa':'Khóa'}</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+    if(snap.empty) tbody.innerHTML = '<tr><td colspan="5">Chưa có tài khoản.</td></tr>';
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="5">Lỗi tải danh sách: ${e.message}</td></tr>`;
+  }
+}
+
+async function toggleActive(uid, setActive){
+  await db.collection('users').doc(uid).update({ active: setActive });
+  loadAccountsList();
+}
+
+/* ====================================================================
+   FORM LOGIC (sand cone calculations, save/load, export)
+   ==================================================================== */
+const STORAGE_KEY = 'haic_sandcone_reports';
+let rowCount = 0;
+
+function fmt(n, d=3){
+  if(!isFinite(n)) return '';
+  return Number(n.toFixed(d));
+}
+
+function calcRow(tr){
+  const get = id => parseFloat(tr.querySelector('.'+id).value);
+  const sandFill = parseFloat(document.getElementById('sandFillMass').value)||0;
+  const sandDensity = parseFloat(document.getElementById('sandBulkDensity').value)||0;
+  const gammaMax = parseFloat(document.getElementById('gammaMax').value)||0;
+
+  const before = get('f-before')||0;
+  const after = get('f-after')||0;
+  const matMass = get('f-mat')||0;
+  const canMass = get('f-can')||0;
+  const canWet = get('f-canwet')||0;
+  const canDry = get('f-candry')||0;
+
+  const vHole = sandDensity ? (before - after - sandFill)/sandDensity : NaN;
+  const denomM = (canDry - canMass);
+  const moisture = denomM ? (canWet - canDry)/denomM*100 : NaN;
+  const wetDensity = vHole ? matMass/vHole : NaN;
+  const dryDensity = isFinite(wetDensity) && isFinite(moisture) ? wetDensity/(1+0.01*moisture) : NaN;
+  const compaction = gammaMax ? dryDensity/gammaMax*100 : NaN;
+
+  tr.querySelector('.calc-moist').textContent = isFinite(moisture)? fmt(moisture,2) : '-';
+  tr.querySelector('.calc-wet').textContent = isFinite(wetDensity)? fmt(wetDensity,3) : '-';
+  tr.querySelector('.calc-dry').textContent = isFinite(dryDensity)? fmt(dryDensity,3) : '-';
+  tr.querySelector('.calc-k').textContent = isFinite(compaction)? fmt(compaction,1) : '-';
+}
+
+function recalcAll(){
+  document.querySelectorAll('#tbody tr').forEach(calcRow);
+}
+
+function addRow(data){
+  rowCount++;
+  const tbody = document.getElementById('tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${rowCount}</td>
+    <td class="label-col"><input class="f-point" type="text" value="${data?.point||('Location '+rowCount)}"></td>
+    <td><input class="f-before" type="number" step="any" value="${data?.before??''}"></td>
+    <td><input class="f-after" type="number" step="any" value="${data?.after??''}"></td>
+    <td><input class="f-mat" type="number" step="any" value="${data?.mat??''}"></td>
+    <td><input class="f-canid" type="text" value="${data?.canid||''}"></td>
+    <td><input class="f-can" type="number" step="any" value="${data?.can??''}"></td>
+    <td><input class="f-canwet" type="number" step="any" value="${data?.canwet??''}"></td>
+    <td><input class="f-candry" type="number" step="any" value="${data?.candry??''}"></td>
+    <td class="calc calc-moist">-</td>
+    <td class="calc calc-wet">-</td>
+    <td class="calc calc-dry">-</td>
+    <td class="calc calc-k">-</td>
+    <td><button class="danger small" onclick="deleteRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => calcRow(tr)));
+  calcRow(tr);
+}
+
+function deleteRow(btn){
+  btn.closest('tr').remove();
+  renumberRows();
+}
+function renumberRows(){
+  document.querySelectorAll('#tbody tr').forEach((tr,i) => tr.children[0].textContent = i+1);
+  rowCount = document.querySelectorAll('#tbody tr').length;
+}
+
+document.getElementById('sandFillMass').addEventListener('input', recalcAll);
+document.getElementById('sandBulkDensity').addEventListener('input', recalcAll);
+document.getElementById('gammaMax').addEventListener('input', recalcAll);
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function collectData(){
+  const rows = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    rows.push({
+      point: tr.querySelector('.f-point').value,
+      before: tr.querySelector('.f-before').value,
+      after: tr.querySelector('.f-after').value,
+      mat: tr.querySelector('.f-mat').value,
+      canid: tr.querySelector('.f-canid').value,
+      can: tr.querySelector('.f-can').value,
+      canwet: tr.querySelector('.f-canwet').value,
+      candry: tr.querySelector('.f-candry').value,
+    });
+  });
+  return {
+    investor: val('investor'), contractor: val('contractor'), project: val('project'),
+    supervisor: val('supervisor'), location: val('location'), testingArea: val('testingArea'),
+    description: val('description'), testDate: val('testDate'),
+    sandFillMass: val('sandFillMass'), sandBulkDensity: val('sandBulkDensity'), gammaMax: val('gammaMax'),
+    labTech: val('labTech'), checkedBy: val('checkedBy'),
+    rows
+  };
+}
+function val(id){ return document.getElementById(id).value; }
+function setVal(id, v){ document.getElementById(id).value = v ?? ''; }
+
+function newReport(){
+  if(!confirm('Tạo báo cáo mới? Dữ liệu chưa lưu sẽ mất.\nCreate new report? Unsaved data will be lost.')) return;
+  ['investor','contractor','project','supervisor','location','testingArea','description','testDate','labTech','checkedBy']
+    .forEach(id => setVal(id, ''));
+  setVal('sandFillMass', 1450);
+  setVal('sandBulkDensity', 1.44);
+  setVal('gammaMax', 2.306);
+  document.getElementById('tbody').innerHTML = '';
+  rowCount = 0;
+  addRow();
+  showToast('Đã tạo báo cáo mới / New report created');
+}
+
+function saveReport(){
+  const data = collectData();
+  if(!data.project && !data.location){
+    if(!confirm('Chưa nhập tên công trình. Vẫn lưu?\nNo project name entered. Save anyway?')) return;
+  }
+  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const id = data.project || data.location || 'Report';
+  const date = data.testDate || new Date().toISOString().slice(0,10);
+  const key = id + ' — ' + date;
+  const existingIdx = all.findIndex(r => r._key === key);
+  const record = { _key: key, _savedAt: new Date().toISOString(), _savedBy: currentUserData?.username || '', ...data };
+  if(existingIdx >= 0){
+    if(!confirm('Báo cáo trùng tên đã tồn tại. Ghi đè?\nA report with this name/date exists. Overwrite?')) return;
+    all[existingIdx] = record;
+  } else {
+    all.push(record);
+  }
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  showToast('Đã lưu / Saved: ' + key);
+}
+
+function openLoadModal(){
+  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const list = document.getElementById('savedList');
+  list.innerHTML = '';
+  if(all.length === 0){
+    list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chưa có báo cáo nào / No saved reports yet.</p>';
+  }
+  all.slice().reverse().forEach((r) => {
+    const realIdx = all.indexOf(r);
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    div.innerHTML = `<div class="info" onclick="loadReport(${realIdx})"><strong>${r._key}</strong><br><small>${r._savedAt?.slice(0,16).replace('T',' ')||''} ${r._savedBy? '· '+r._savedBy : ''}</small></div>
+      <button class="danger small" onclick="deleteReport(${realIdx})">✕</button>`;
+    list.appendChild(div);
+  });
+  document.getElementById('loadModal').style.display = 'flex';
+}
+function closeLoadModal(){ document.getElementById('loadModal').style.display = 'none'; }
+
+function loadReport(idx){
+  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  const r = all[idx];
+  if(!r) return;
+  ['investor','contractor','project','supervisor','location','testingArea','description','testDate',
+   'sandFillMass','sandBulkDensity','gammaMax','labTech','checkedBy'].forEach(id => setVal(id, r[id]));
+  document.getElementById('tbody').innerHTML = '';
+  rowCount = 0;
+  (r.rows||[]).forEach(rowData => addRow(rowData));
+  if((r.rows||[]).length === 0) addRow();
+  closeLoadModal();
+  showToast('Đã mở / Loaded: ' + r._key);
+}
+
+function deleteReport(idx){
+  if(!confirm('Xóa báo cáo này?\nDelete this report?')) return;
+  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  all.splice(idx,1);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+  openLoadModal();
+}
+
+function exportExcel(){
+  const data = collectData();
+  const wb = XLSX.utils.book_new();
+  const aoa = [
+    ['KẾT QUẢ THÍ NGHIỆM ĐỘ CHẶT K HIỆN TRƯỜNG BẰNG PHƯƠNG PHÁP RÓT CÁT / FIELD DENSITY TEST RESULTS BY THE SAND-CONE METHOD'],
+    ['22TCN 346-06, ASTM D1556/D1556M-15e1'],
+    [],
+    ['Chủ đầu tư / Investor', data.investor, '', 'ĐV TVGS / Supervisor', data.supervisor],
+    ['ĐV thi công / Contractor', data.contractor],
+    ['Công trình / Project', data.project],
+    ['Địa điểm XD / Location', data.location],
+    ['Khu vực TN / Testing Area', data.testingArea],
+    ['Mô tả / Description', data.description, '', 'Ngày TN / Testing Date', data.testDate],
+    [],
+    ['Mass of sand to fill cone (g)', data.sandFillMass, '', 'Bulk density of sand (g/cm3)', data.sandBulkDensity, '', 'Max dry density γmax (g/cm3)', data.gammaMax],
+    [],
+    ['No.','Testing Point','Mass before pouring (g)','Mass after pouring (g)','Mass material in hole (g)',
+     'Can ID','Mass of can (g)','Mass can+wet (g)','Mass can+dry (g)',
+     'Moisture (%)','Wet density (g/cm3)','Dry density (g/cm3)','Compaction K (%)']
+  ];
+  document.querySelectorAll('#tbody tr').forEach((tr,i) => {
+    aoa.push([
+      i+1,
+      tr.querySelector('.f-point').value,
+      tr.querySelector('.f-before').value,
+      tr.querySelector('.f-after').value,
+      tr.querySelector('.f-mat').value,
+      tr.querySelector('.f-canid').value,
+      tr.querySelector('.f-can').value,
+      tr.querySelector('.f-canwet').value,
+      tr.querySelector('.f-candry').value,
+      tr.querySelector('.calc-moist').textContent,
+      tr.querySelector('.calc-wet').textContent,
+      tr.querySelector('.calc-dry').textContent,
+      tr.querySelector('.calc-k').textContent,
+    ]);
+  });
+  aoa.push([]);
+  aoa.push(['Lab Technician', data.labTech, '', 'Checked by', data.checkedBy]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:6},{wch:18},{wch:14},{wch:14},{wch:16},{wch:8},{wch:12},{wch:14},{wch:14},{wch:10},{wch:12},{wch:12},{wch:12}];
+  XLSX.utils.book_append_sheet(wb, ws, 'FDT Sand Cone');
+  const fname = `F03_SandCone_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function exportPDF(){
+  const data = collectData();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(11); doc.setFont(undefined,'bold');
+  doc.text('KẾT QUẢ THÍ NGHIỆM ĐỘ CHẶT K HIỆN TRƯỜNG BẰNG PHƯƠNG PHÁP RÓT CÁT', pageW/2, 10, {align:'center'});
+  doc.setFontSize(9); doc.setFont(undefined,'normal');
+  doc.text('Field Density Test Results by the Sand-Cone Method  (22TCN 346-06, ASTM D1556/D1556M-15e1)', pageW/2, 15, {align:'center'});
+
+  doc.setFontSize(9);
+  const infoLines = [
+    [`Chủ đầu tư / Investor: ${data.investor||''}`, `ĐV TVGS / Supervisor: ${data.supervisor||''}`],
+    [`ĐV thi công / Contractor: ${data.contractor||''}`, `Ngày TN / Testing Date: ${data.testDate||''}`],
+    [`Công trình / Project: ${data.project||''}`, `Mass sand fill cone (g): ${data.sandFillMass||''}`],
+    [`Địa điểm XD / Location: ${data.location||''}`, `Bulk density sand (g/cm3): ${data.sandBulkDensity||''}`],
+    [`Khu vực TN / Testing Area: ${data.testingArea||''}`, `Max dry density γmax (g/cm3): ${data.gammaMax||''}`],
+    [`Mô tả / Description: ${data.description||''}`, ``],
+  ];
+  let y = 22;
+  infoLines.forEach(([l, r]) => {
+    doc.text(l, 8, y);
+    doc.text(r, pageW/2+4, y);
+    y += 5;
+  });
+
+  const head = [[
+    'No.','Testing Point',
+    'Before pouring (g)','After pouring (g)','Material in hole (g)',
+    'Can ID','Mass of can (g)','Can+wet (g)','Can+dry (g)',
+    'Moisture (%)','Wet density (g/cm3)','Dry density (g/cm3)','Compaction K (%)'
+  ]];
+  const body = [];
+  document.querySelectorAll('#tbody tr').forEach((tr,i) => {
+    body.push([
+      i+1,
+      tr.querySelector('.f-point').value,
+      tr.querySelector('.f-before').value,
+      tr.querySelector('.f-after').value,
+      tr.querySelector('.f-mat').value,
+      tr.querySelector('.f-canid').value,
+      tr.querySelector('.f-can').value,
+      tr.querySelector('.f-canwet').value,
+      tr.querySelector('.f-candry').value,
+      tr.querySelector('.calc-moist').textContent,
+      tr.querySelector('.calc-wet').textContent,
+      tr.querySelector('.calc-dry').textContent,
+      tr.querySelector('.calc-k').textContent,
+    ]);
+  });
+
+  doc.autoTable({
+    head, body, startY: y+3, theme:'grid',
+    styles:{ fontSize:7.5, halign:'center', valign:'middle' },
+    headStyles:{ fillColor:[26,82,118], textColor:255, fontSize:7.5 },
+    columnStyles:{ 1:{halign:'left'} }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.text(`Lab Technician: ${data.labTech||'____________________'}`, 8, finalY);
+  doc.text(`Checked by: ${data.checkedBy||'____________________'}`, pageW/2+4, finalY);
+
+  finalY += 14;
+  doc.setFontSize(8);
+  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, finalY, {align:'center'});
+  doc.text('Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia', pageW/2, finalY+4, {align:'center'});
+  doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, finalY+8, {align:'center'});
+  doc.text('Form: F-03.HAIC-LAB-15MAT', pageW-8, finalY+8, {align:'right'});
+
+  const fname = `F03_SandCone_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.pdf`;
+  doc.save(fname);
+}
+
+/* ---------------- AUTH STATE WATCHER ---------------- */
+auth.onAuthStateChanged(async (user) => {
+  if(!user){
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    return;
+  }
+  // user signed in (e.g. page refresh while session persists)
+  if(currentUserData && currentUserData.uid === user.uid) return; // already handled by login()
+  try{
+    const docSnap = await db.collection('users').doc(user.uid).get();
+    if(!docSnap.exists || docSnap.data().active === false){
+      await auth.signOut();
+      return;
+    }
+    const udata = docSnap.data();
+    currentUserData = { ...udata, uid: user.uid };
+    if(udata.mustChangePassword){
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('forceChangeModal').style.display = 'flex';
+    } else {
+      enterApp();
+    }
+  }catch(e){ /* ignore */ }
+});
+</script>
+</body>
+</html>
