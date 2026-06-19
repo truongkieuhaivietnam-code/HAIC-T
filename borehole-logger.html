@@ -545,6 +545,7 @@ html, body {
     <header class="app-header">
       <button class="icon-btn" id="backToBoreholesBtn">←</button>
       <span class="title" id="boreholeDetailTitle"></span>
+      <button class="icon-btn" id="editBoreholeBtn" title="Edit">✏️</button>
     </header>
     <div class="content">
       <div class="export-row">
@@ -561,7 +562,7 @@ html, body {
   <section id="view-add-sample" class="view">
     <header class="app-header">
       <button class="icon-btn" id="backToDetailBtn">←</button>
-      <span class="title" data-i18n="boreholes.addSample"></span>
+      <span class="title" id="addSampleTitle" data-i18n="boreholes.addSample"></span>
     </header>
     <div class="tab-bar">
       <button id="tabRock" class="active" data-i18n="tabs.rockCore"></button>
@@ -716,7 +717,7 @@ html, body {
 
   <div class="modal-overlay" id="newBoreholeModal">
     <div class="modal-sheet">
-      <h2 data-i18n="boreholes.newBorehole"></h2>
+      <h2 id="newBoreholeModalTitle" data-i18n="boreholes.newBorehole"></h2>
       <div class="field">
         <label data-i18n="boreholes.boreholeName"></label>
         <input type="text" id="newBoreholeName" />
@@ -807,6 +808,7 @@ const dictionaries = {
     boreholes: {
       title: "Boreholes",
       newBorehole: "New Borehole",
+      editBorehole: "Edit Borehole",
       boreholeName: "Borehole name",
       coordinates: "Coordinates",
       groundElevation: "Ground elevation (m)",
@@ -849,7 +851,7 @@ const dictionaries = {
       VERY_STIFF: "Very stiff", HARD: "Hard", VERY_LOOSE: "Very loose", LOOSE: "Loose",
       MEDIUM_DENSE: "Medium dense", DENSE: "Dense", VERY_DENSE: "Very dense",
     },
-    sample: { rock: "Rock", soil: "Soil", depthRange: "{{from}} - {{to}} m" },
+    sample: { rock: "Rock", soil: "Soil", depthRange: "{{from}} - {{to}} m", editSample: "Edit Sample", addSample: "Add Sample" },
     errors: {
       required: "This field is required",
       depthRequired: "Depth from and depth to are required",
@@ -909,6 +911,7 @@ const dictionaries = {
     boreholes: {
       title: "Hố khoan",
       newBorehole: "Hố khoan mới",
+      editBorehole: "Sửa hố khoan",
       boreholeName: "Tên hố khoan",
       coordinates: "Tọa độ",
       groundElevation: "Cao độ mặt đất (m)",
@@ -951,7 +954,7 @@ const dictionaries = {
       VERY_STIFF: "Rất cứng", HARD: "Cứng chắc", VERY_LOOSE: "Rất rời rạc", LOOSE: "Rời rạc",
       MEDIUM_DENSE: "Chặt vừa", DENSE: "Chặt", VERY_DENSE: "Rất chặt",
     },
-    sample: { rock: "Đá", soil: "Đất", depthRange: "{{from}} - {{to}} m" },
+    sample: { rock: "Đá", soil: "Đất", depthRange: "{{from}} - {{to}} m", editSample: "Sửa mẫu", addSample: "Thêm mẫu" },
     errors: {
       required: "Vui lòng nhập trường này",
       depthRequired: "Vui lòng nhập độ sâu từ và đến",
@@ -1255,6 +1258,7 @@ import {
   collection,
   doc,
   addDoc,
+  updateDoc,
   deleteDoc,
   onSnapshot,
   orderBy,
@@ -1289,6 +1293,10 @@ function createBorehole(projectId, data) {
   return addDoc(boreholesCol(projectId), { ...data, createdAt: serverTimestamp() });
 }
 
+function updateBorehole(projectId, boreholeId, data) {
+  return updateDoc(doc(db, "projects", projectId, "boreholes", boreholeId), { ...data });
+}
+
 function listenBoreholes(projectId, onChange) {
   const q = query(boreholesCol(projectId), orderBy("createdAt", "desc"));
   return onSnapshot(q, (snap) => {
@@ -1306,6 +1314,10 @@ function deleteSample(projectId, boreholeId, sampleId) {
   return deleteDoc(doc(db, "projects", projectId, "boreholes", boreholeId, "samples", sampleId));
 }
 
+function updateSample(projectId, boreholeId, sampleId, data) {
+  return updateDoc(doc(db, "projects", projectId, "boreholes", boreholeId, "samples", sampleId), { ...data });
+}
+
 function listenSamples(projectId, boreholeId, onChange) {
   const q = query(samplesCol(projectId, boreholeId), orderBy("depthFrom", "asc"));
   return onSnapshot(q, (snap) => {
@@ -1313,7 +1325,7 @@ function listenSamples(projectId, boreholeId, onChange) {
   });
 }
 
-const fs = { projectsCol, boreholesCol, samplesCol, createProject, listenProjects, createBorehole, listenBoreholes, addSample, deleteSample, listenSamples };
+const fs = { projectsCol, boreholesCol, samplesCol, createProject, listenProjects, createBorehole, updateBorehole, listenBoreholes, addSample, deleteSample, updateSample, listenSamples };
 
 // ===== export (pdf/excel) =====
 // =========================================================
@@ -1434,6 +1446,8 @@ const state = {
   rockUnit: "cm",
   rockPieces: [""],  // string inputs
   unsub: { projects: null, boreholes: null, samples: null },
+  editingBoreholeId: null,
+  editingSampleId: null,
 };
 
 // ---------------------------------------------------------
@@ -1715,23 +1729,44 @@ document.getElementById("backToProjectsBtn").addEventListener("click", () => {
   showView("view-projects");
 });
 
-document.getElementById("newBoreholeFab").addEventListener("click", () => {
-  document.getElementById("newBoreholeName").value = "";
-  document.getElementById("newBoreholeCoordinates").value = "";
-  document.getElementById("newBoreholeElevation").value = "";
+function openBoreholeModal(borehole) {
+  state.editingBoreholeId = borehole ? borehole.id : null;
+  document.getElementById("newBoreholeName").value = borehole ? borehole.name || "" : "";
+  document.getElementById("newBoreholeCoordinates").value = borehole ? borehole.coordinates || "" : "";
+  document.getElementById("newBoreholeElevation").value =
+    borehole && borehole.groundElevation != null ? borehole.groundElevation : "";
+  document.getElementById("newBoreholeModalTitle").textContent = borehole
+    ? t("boreholes.editBorehole")
+    : t("boreholes.newBorehole");
   openModal("newBoreholeModal");
+}
+
+document.getElementById("newBoreholeFab").addEventListener("click", () => openBoreholeModal(null));
+document.getElementById("editBoreholeBtn").addEventListener("click", () => openBoreholeModal(state.borehole));
+document.getElementById("cancelNewBoreholeBtn").addEventListener("click", () => {
+  state.editingBoreholeId = null;
+  closeModal("newBoreholeModal");
 });
-document.getElementById("cancelNewBoreholeBtn").addEventListener("click", () => closeModal("newBoreholeModal"));
 document.getElementById("saveNewBoreholeBtn").addEventListener("click", async () => {
   const name = document.getElementById("newBoreholeName").value.trim();
   if (!name) { toast(t("errors.required")); return; }
-  await fs.createBorehole(state.project.id, {
+  const data = {
     name,
     coordinates: document.getElementById("newBoreholeCoordinates").value.trim(),
     groundElevation: document.getElementById("newBoreholeElevation").value
       ? Number(document.getElementById("newBoreholeElevation").value)
       : null,
-  });
+  };
+  if (state.editingBoreholeId) {
+    await fs.updateBorehole(state.project.id, state.editingBoreholeId, data);
+    if (state.borehole && state.borehole.id === state.editingBoreholeId) {
+      state.borehole = { ...state.borehole, ...data };
+      document.getElementById("boreholeDetailTitle").textContent = state.borehole.name;
+    }
+  } else {
+    await fs.createBorehole(state.project.id, data);
+  }
+  state.editingBoreholeId = null;
   closeModal("newBoreholeModal");
 });
 
@@ -1779,23 +1814,35 @@ function renderSamples() {
             <div class="li-sub">${escapeHtml(line1)}</div>
           </div>
           <span class="badge badge-${tone}">${escapeHtml(line2)}</span>
+          <span class="chevron" style="font-size:15px;">✏️</span>
         </div>`;
     })
     .join("");
 
   el.querySelectorAll(".list-item").forEach((row) => {
     let pressTimer = null;
-    const fire = () => {
-      askConfirm(t("common.deleteConfirm"), async () => {
-        await fs.deleteSample(state.project.id, state.borehole.id, row.dataset.id);
-        toast(t("common.delete"));
-      });
+    let longPressFired = false;
+    const startPress = () => {
+      longPressFired = false;
+      pressTimer = setTimeout(() => {
+        longPressFired = true;
+        askConfirm(t("common.deleteConfirm"), async () => {
+          await fs.deleteSample(state.project.id, state.borehole.id, row.dataset.id);
+          toast(t("common.delete"));
+        });
+      }, 550);
     };
-    row.addEventListener("touchstart", () => { pressTimer = setTimeout(fire, 550); });
-    row.addEventListener("touchend", () => clearTimeout(pressTimer));
-    row.addEventListener("mousedown", () => { pressTimer = setTimeout(fire, 550); });
-    row.addEventListener("mouseup", () => clearTimeout(pressTimer));
-    row.addEventListener("mouseleave", () => clearTimeout(pressTimer));
+    const cancelPress = () => clearTimeout(pressTimer);
+    row.addEventListener("touchstart", startPress);
+    row.addEventListener("touchend", cancelPress);
+    row.addEventListener("mousedown", startPress);
+    row.addEventListener("mouseup", cancelPress);
+    row.addEventListener("mouseleave", cancelPress);
+    row.addEventListener("click", () => {
+      if (longPressFired) return;
+      const sample = samples.find((s) => s.id === row.dataset.id);
+      if (sample) openEditSample(sample);
+    });
   });
 }
 
@@ -1825,12 +1872,53 @@ document.getElementById("exportExcelBtn").addEventListener("click", async () => 
 // ADD SAMPLE — tab switching
 // ---------------------------------------------------------
 document.getElementById("addSampleFab").addEventListener("click", () => {
+  state.editingSampleId = null;
   resetRockForm();
   resetSoilForm();
   switchAddSampleTab("rock");
+  document.getElementById("tabRock").style.display = "";
+  document.getElementById("tabSoil").style.display = "";
+  document.getElementById("addSampleTitle").textContent = t("sample.addSample");
   showView("view-add-sample");
 });
-document.getElementById("backToDetailBtn").addEventListener("click", () => showView("view-borehole-detail"));
+document.getElementById("backToDetailBtn").addEventListener("click", () => {
+  state.editingSampleId = null;
+  showView("view-borehole-detail");
+});
+
+function openEditSample(sample) {
+  state.editingSampleId = sample.id;
+  document.getElementById("addSampleTitle").textContent = t("sample.editSample");
+  if (sample.type === "ROCK") {
+    document.getElementById("tabRock").style.display = "";
+    document.getElementById("tabSoil").style.display = "none";
+    switchAddSampleTab("rock");
+    document.getElementById("rockDepthFrom").value = sample.depthFrom;
+    document.getElementById("rockDepthTo").value = sample.depthTo;
+    document.getElementById("rockDepthError").style.display = "none";
+    document.getElementById("piecesError").style.display = "none";
+    state.rockUnit = "cm";
+    document.querySelectorAll("#rockUnitToggle button").forEach((b) => b.classList.toggle("active", b.dataset.unit === "cm"));
+    const pieces = (sample.corePieces || []).map((p) => String(p));
+    state.rockPieces = pieces.length ? pieces : [""];
+    renderPieces();
+    recalcRock();
+  } else {
+    document.getElementById("tabRock").style.display = "none";
+    document.getElementById("tabSoil").style.display = "";
+    switchAddSampleTab("soil");
+    document.getElementById("soilDepthFrom").value = sample.depthFrom;
+    document.getElementById("soilDepthTo").value = sample.depthTo;
+    document.getElementById("soilN1").value = sample.n1;
+    document.getElementById("soilN2").value = sample.n2;
+    document.getElementById("soilN3").value = sample.n3;
+    document.getElementById("soilType").value = sample.soilType;
+    document.getElementById("soilDepthError").style.display = "none";
+    document.getElementById("sptError").style.display = "none";
+    recalcSoil();
+  }
+  showView("view-add-sample");
+}
 
 function switchAddSampleTab(tab) {
   document.getElementById("tabRock").classList.toggle("active", tab === "rock");
@@ -1950,14 +2038,20 @@ document.getElementById("saveRockBtn").addEventListener("click", async () => {
   const tcr = calc.calcTCR(piecesCm, runLengthCm);
   const rqd = calc.calcRQD(piecesCm, runLengthCm);
   const rockQuality = calc.classifyRockQuality(rqd);
-
-  await fs.addSample(state.project.id, state.borehole.id, {
+  const payload = {
     type: "ROCK",
     depthFrom: from,
     depthTo: to,
     corePieces: piecesCm,
     tcr, rqd, rockQuality,
-  });
+  };
+
+  if (state.editingSampleId) {
+    await fs.updateSample(state.project.id, state.borehole.id, state.editingSampleId, payload);
+  } else {
+    await fs.addSample(state.project.id, state.borehole.id, payload);
+  }
+  state.editingSampleId = null;
   toast(t("common.save"));
   showView("view-borehole-detail");
 });
@@ -2021,14 +2115,20 @@ document.getElementById("saveSoilBtn").addEventListener("click", async () => {
 
   const nspt = calc.calcNSPT(Number(n2), Number(n3));
   const soilState = calc.classifySoilState(nspt, soilType);
-
-  await fs.addSample(state.project.id, state.borehole.id, {
+  const payload = {
     type: "SOIL",
     depthFrom: Number(fromStr),
     depthTo: Number(toStr),
     n1: Number(n1), n2: Number(n2), n3: Number(n3),
     nspt, soilType, soilState,
-  });
+  };
+
+  if (state.editingSampleId) {
+    await fs.updateSample(state.project.id, state.borehole.id, state.editingSampleId, payload);
+  } else {
+    await fs.addSample(state.project.id, state.borehole.id, payload);
+  }
+  state.editingSampleId = null;
   toast(t("common.save"));
   showView("view-borehole-detail");
 });
