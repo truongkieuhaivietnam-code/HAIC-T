@@ -50,6 +50,7 @@
     font-size:13px; color:var(--primary); margin:0 0 10px; padding-bottom:6px;
     border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px;
   }
+  .card .card-desc{font-size:11.5px; color:var(--muted); margin:-6px 0 12px;}
   .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
   .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
   @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
@@ -95,7 +96,7 @@
     position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center;
     justify-content:center; z-index:100; padding:16px;
   }
-  .modal{background:#fff; border-radius:10px; max-width:520px; width:100%; max-height:80vh; overflow:auto; padding:16px;}
+  .modal{background:#fff; border-radius:10px; max-width:480px; width:100%; max-height:85vh; overflow:auto; padding:16px;}
   .modal h3{margin-top:0; color:var(--primary); font-size:15px;}
   .saved-item{
     display:flex; justify-content:space-between; align-items:center; padding:8px;
@@ -113,28 +114,29 @@
   /* ---- Login screen ---- */
   #loginScreen{
     position:fixed; inset:0; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
-    display:flex; align-items:center; justify-content:center; z-index:500; padding:16px;
+    display:flex; align-items:center; justify-content:center; z-index:500; padding:16px; overflow-y:auto;
   }
   .login-box{
-    background:#fff; border-radius:14px; padding:30px 24px; max-width:380px; width:100%;
-    box-shadow:0 10px 30px rgba(0,0,0,.25); text-align:center;
+    background:#fff; border-radius:14px; padding:30px 26px; max-width:400px; width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); margin:auto;
   }
-  .login-box h2{color:var(--primary); font-size:16px; margin:0 0 4px;}
-  .login-box .sub{font-size:11.5px; color:var(--muted); margin-bottom:22px;}
-  .login-error{color:var(--danger); font-size:12.5px; margin-top:12px; min-height:16px;}
-  .google-btn{
-    display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
-    padding:11px; font-size:14px; background:#fff; color:#3c4043; border:1px solid #d5dbdb;
+  .login-box h2{color:var(--primary); font-size:17px; margin:0 0 4px; text-align:center;}
+  .login-box .sub{font-size:11.5px; color:var(--muted); margin-bottom:20px; text-align:center;}
+  .login-error{color:var(--danger); font-size:12.5px; margin-top:10px; min-height:16px; text-align:center;}
+  .login-box button.primary-btn{width:100%; padding:11px; font-size:14px; margin-top:6px;}
+  .firstrun-box{
+    margin-top:18px; padding-top:14px; border-top:1px solid var(--border);
+    font-size:11px; color:var(--muted); line-height:1.5;
   }
-  .google-btn:hover{ background:#f7f8f8; }
+  .firstrun-box strong{color:var(--text);}
   #appShell{display:none;}
   .accounts-table{width:100%; border-collapse:collapse; font-size:12.5px;}
-  .accounts-table th,.accounts-table td{border:1px solid var(--border); padding:6px 8px; text-align:left;}
+  .accounts-table th,.accounts-table td{border:1px solid var(--border); padding:7px 8px; text-align:left;}
   .accounts-table th{background:#eef1f3;}
-  .badge{display:inline-block; padding:2px 8px; border-radius:10px; font-size:10.5px; font-weight:700;}
+  .badge{display:inline-block; padding:2px 9px; border-radius:10px; font-size:10.5px; font-weight:700;}
+  .badge.superadmin{background:#f1e8fa; color:#6c3483;}
   .badge.admin{background:#eaf2e8; color:var(--accent);}
   .badge.user{background:#eaf0f6; color:var(--primary);}
-  .badge.inactive{background:#fbeaea; color:var(--danger);}
 </style>
 </head>
 <body>
@@ -142,25 +144,22 @@
 <!-- ======================= LOGIN SCREEN ======================= -->
 <div id="loginScreen">
   <div class="login-box">
-    <h2>HAIC — Đăng nhập / Login</h2>
+    <h2>HAIC Lab — Đăng nhập / Login</h2>
     <div class="sub">F-03.HAIC-LAB-15MAT &middot; Field Density Test (Sand Cone)</div>
-    <button class="google-btn" onclick="signInGoogle()">
-      <svg width="18" height="18" viewBox="0 0 48 48">
-        <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.9 32.5 29.4 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.9 1.1 8.1 3l6-6C34.6 6.1 29.6 4 24 4 13 4 4 13 4 24s9 20 20 20 20-9 20-20c0-1.3-.1-2.6-.4-3.5z"/>
-        <path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.6 16 19 13 24 13c3.1 0 5.9 1.1 8.1 3l6-6C34.6 6.1 29.6 4 24 4 16 4 9 8.5 6.3 14.7z"/>
-        <path fill="#4CAF50" d="M24 44c5.4 0 10.3-1.8 14.1-5.1l-6.5-5.4C29.5 35.4 26.9 36 24 36c-5.4 0-9.9-3.5-11.4-8.4l-6.6 5C8.9 39.5 15.9 44 24 44z"/>
-        <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-1 3-3 5.5-5.7 7.1l6.5 5.4C39.9 37 44 31.1 44 24c0-1.3-.1-2.6-.4-3.5z"/>
-      </svg>
-      Đăng nhập bằng Google
-    </button>
+    <div class="field">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="ten@gmail.com">
+    </div>
+    <div class="field">
+      <label>Mật khẩu / Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+    </div>
+    <button class="primary-btn" onclick="login()">Đăng nhập / Sign In</button>
     <div class="login-error" id="loginError"></div>
-    <div id="inAppWarning" style="display:none; background:#fdf3e3; border:1px solid #f0d8a0; border-radius:8px; padding:10px; margin-top:12px; font-size:12px; color:#7a5c00; text-align:left;">
-      <strong>⚠️ Đang mở trong trình duyệt của <span id="inAppName"></span></strong><br>
-      Google chặn đăng nhập trong trình duyệt ứng dụng này. Hãy mở bằng Safari/Chrome.
-      <div style="margin-top:8px; display:flex; gap:6px; flex-wrap:wrap;">
-        <button class="small" onclick="openExternal()" style="flex:1;">📤 Mở trình duyệt ngoài</button>
-        <button class="small ghost" onclick="copyLink()" style="flex:1;">🔗 Copy link</button>
-      </div>
+    <div class="firstrun-box">
+      <strong>Lần đầu sử dụng / First-time setup:</strong><br>
+      Tài khoản Super Admin được tạo tự động ở lần đăng nhập đầu tiên với email đã cấu hình sẵn (<span id="superAdminEmailDisplay"></span>). Đặt mật khẩu bất kỳ (tối thiểu 6 ký tự) — hệ thống sẽ ghi nhận đó là mật khẩu chính thức.<br><br>
+      Các tài khoản khác (Admin, Nhân viên) do Admin tạo trực tiếp trong app, mục "Quản Lý Tài Khoản", dùng địa chỉ Gmail.
     </div>
   </div>
 </div>
@@ -182,28 +181,19 @@
 
 <div class="wrap">
 
-  <!-- ADMIN: ACCESS MANAGEMENT -->
+  <!-- ADMIN: STAFF & ACCOUNTS -->
   <div class="card" id="adminCard" style="display:none;">
-    <h2>Quản Lý Truy Cập / Access Management (Admin)</h2>
-    <div class="grid2">
-      <div class="field">
-        <label>Email Gmail nhân viên</label>
-        <input id="newEmail" type="email" placeholder="nhanvien@gmail.com">
-      </div>
-      <div class="field">
-        <label>Họ tên / Display name</label>
-        <input id="newDisplayName" type="text" placeholder="Nguyễn Văn A">
-      </div>
-    </div>
-    <small class="hint">Dùng đúng địa chỉ Gmail nhân viên đã/sẽ dùng để đăng nhập (Google Sign-In). Tài khoản thêm từ app luôn là vai trò Nhân viên. Để cấp quyền Admin, chỉnh trực tiếp trong Firebase Console (field "role" trong collection "allowlist").</small>
-    <div class="row-actions">
-      <button class="accent" onclick="addAllowlist()">+ Thêm quyền truy cập / Grant Access</button>
-      <button class="ghost" onclick="loadAllowlist()">↻ Làm mới / Refresh</button>
+    <h2>Quản Lý Tài Khoản / Staff &amp; Accounts</h2>
+    <div class="card-desc">Tạo tài khoản, gán vai trò, bổ nhiệm/hạ cấp Admin.</div>
+
+    <div class="row-actions" style="margin-top:0;">
+      <button class="accent" onclick="openAddStaffModal()">+ Thêm nhân viên / Add Staff</button>
+      <button class="ghost" onclick="loadStaffList()">↻ Làm mới / Refresh</button>
     </div>
     <div style="overflow-x:auto; margin-top:12px;">
-      <table class="accounts-table" id="accountsTable">
-        <thead><tr><th>Email</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th></th></tr></thead>
-        <tbody id="accountsBody"></tbody>
+      <table class="accounts-table" id="staffTable">
+        <thead><tr><th>Tên / Name</th><th>Email</th><th>Vai trò / Role</th><th>Hành động / Actions</th></tr></thead>
+        <tbody id="staffBody"></tbody>
       </table>
     </div>
   </div>
@@ -354,6 +344,29 @@
   </div>
 </div>
 
+<div class="modal-bg" id="addStaffModal">
+  <div class="modal">
+    <h3>Thêm nhân viên / Add Staff</h3>
+    <div class="field">
+      <label>Họ tên / Name</label>
+      <input id="staffName" type="text" placeholder="Nguyễn Văn A">
+    </div>
+    <div class="field">
+      <label>Email (Gmail)</label>
+      <input id="staffEmail" type="email" placeholder="nhanvien@gmail.com">
+    </div>
+    <div class="field">
+      <label>Mật khẩu tạm / Temp password (tối thiểu 6 ký tự)</label>
+      <input id="staffPassword" type="text" placeholder="vd: 123456">
+    </div>
+    <div class="login-error" id="addStaffError"></div>
+    <div class="row-actions">
+      <button class="accent" onclick="addStaff()">Tạo tài khoản / Create</button>
+      <button class="secondary" onclick="closeAddStaffModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ====================================================================
    FIREBASE CONFIG
@@ -367,12 +380,17 @@ const firebaseConfig = {
   appId: "1:871120167007:web:77722df64638605476fbea"
 };
 
+/* Email Super Admin cố định — đăng nhập lần đầu bằng email này (mật khẩu tự chọn) sẽ tự tạo tài khoản Super Admin */
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
 firebase.initializeApp(firebaseConfig);
+const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const auth = firebase.auth();
 const db = firebase.firestore();
 db.enablePersistence().catch(()=>{});
 
-const googleProvider = new firebase.auth.GoogleAuthProvider();
+document.getElementById('superAdminEmailDisplay').textContent = SUPER_ADMIN_EMAIL;
+
 let currentUserData = null; // {email, displayName, role, uid}
 
 function showLoginMsg(msg, isError){
@@ -381,75 +399,33 @@ function showLoginMsg(msg, isError){
   el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
 }
 
-function isLikelyMobileOrPWA(){
-  return window.matchMedia('(display-mode: standalone)').matches ||
-         /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-}
-
-function detectInAppBrowser(){
-  const ua = navigator.userAgent || '';
-  if(/Zalo/i.test(ua)) return 'Zalo';
-  if(/FBAN|FBAV|FB_IAB/i.test(ua)) return 'Facebook/Messenger';
-  if(/Instagram/i.test(ua)) return 'Instagram';
-  if(/Line\//i.test(ua)) return 'LINE';
-  if(/MicroMessenger/i.test(ua)) return 'WeChat';
-  return null;
-}
-
-(function warnInAppBrowser(){
-  const app = detectInAppBrowser();
-  if(app){
-    document.getElementById('inAppName').textContent = app;
-    document.getElementById('inAppWarning').style.display = 'block';
-    document.querySelector('.google-btn').style.display = 'none';
-  }
-})();
-
-function openExternal(){
-  const url = window.location.href;
-  const ua = navigator.userAgent || '';
-  if(/iPhone|iPad|iPod/i.test(ua)){
-    window.location.href = 'x-safari-' + url;
-  } else if(/Android/i.test(ua)){
-    const stripped = url.replace(/^https?:\/\//, '');
-    window.location.href = 'intent://' + stripped + '#Intent;scheme=https;package=com.android.chrome;end';
-  } else {
-    copyLink();
-  }
-}
-
-function copyLink(){
-  const url = window.location.href;
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(url).then(() => {
-      alert('Đã copy link. Dán vào Safari/Chrome để mở.');
-    }).catch(() => {
-      prompt('Copy link này và dán vào Safari/Chrome:', url);
-    });
-  } else {
-    prompt('Copy link này và dán vào Safari/Chrome:', url);
-  }
-}
-
-// Surface any error from a completed redirect sign-in (e.g. lost session in restrictive webviews)
-auth.getRedirectResult().catch((e) => {
-  if(e && e.code && e.code !== 'auth/no-auth-event'){
-    showLoginMsg('Lỗi đăng nhập (redirect): ' + e.message, true);
-  }
-});
-
-/* ---------------- GOOGLE SIGN-IN / SIGN-OUT ---------------- */
-async function signInGoogle(){
+/* ---------------- LOGIN ---------------- */
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
   showLoginMsg('', false);
+  if(!email || !password){ showLoginMsg('Nhập đầy đủ email và mật khẩu / Enter email and password', true); return; }
+  if(password.length < 6){ showLoginMsg('Mật khẩu tối thiểu 6 ký tự / Password must be at least 6 characters', true); return; }
   try{
-    await auth.signInWithPopup(googleProvider);
+    await auth.signInWithEmailAndPassword(email, password);
+    // onAuthStateChanged handles the rest
   }catch(e){
-    const fallbackCodes = ['auth/popup-blocked','auth/cancelled-popup-request','auth/operation-not-supported-in-this-environment'];
-    if(fallbackCodes.includes(e.code) || isLikelyMobileOrPWA()){
-      try{ await auth.signInWithRedirect(googleProvider); }
-      catch(e2){ showLoginMsg('Lỗi đăng nhập: ' + e2.message, true); }
+    if(e.code === 'auth/user-not-found' && email === SUPER_ADMIN_EMAIL.toLowerCase()){
+      // first-time bootstrap of the configured Super Admin account
+      try{
+        await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(email).set({
+          email, displayName: 'Super Admin', role: 'superadmin', active: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: 'system-bootstrap'
+        });
+        showToast('Đã tạo tài khoản Super Admin.');
+      }catch(e2){
+        showLoginMsg('Lỗi tạo tài khoản Super Admin: ' + e2.message, true);
+      }
+    } else if(e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'){
+      showLoginMsg('Sai email hoặc mật khẩu / Wrong email or password', true);
     } else {
-      showLoginMsg('Lỗi đăng nhập: ' + e.message, true);
+      showLoginMsg('Lỗi: ' + e.message, true);
     }
   }
 }
@@ -458,7 +434,7 @@ function logout(){
   auth.signOut();
 }
 
-/* ---------------- AUTH STATE / ALLOWLIST CHECK ---------------- */
+/* ---------------- AUTH STATE ---------------- */
 auth.onAuthStateChanged(async (user) => {
   if(!user){
     currentUserData = null;
@@ -467,50 +443,30 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
   const email = (user.email || '').toLowerCase();
-  if(!email){
-    showLoginMsg('Tài khoản Google không có email khả dụng.', true);
-    await auth.signOut();
-    return;
-  }
   try{
-    const docRef = db.collection('allowlist').doc(email);
-    const docSnap = await docRef.get();
-
-    if(docSnap.exists){
-      const d = docSnap.data();
-      if(d.active === false){
-        showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+    const docRef = db.collection('users').doc(email);
+    let docSnap = await docRef.get();
+    if(!docSnap.exists){
+      if(email === SUPER_ADMIN_EMAIL.toLowerCase()){
+        await docRef.set({
+          email, displayName: 'Super Admin', role: 'superadmin', active: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: 'system-bootstrap'
+        });
+        docSnap = await docRef.get();
+      } else {
+        showLoginMsg('Tài khoản chưa được cấp quyền sử dụng app. Liên hệ Admin.', true);
         await auth.signOut();
         return;
       }
-      currentUserData = { email, displayName: d.displayName || user.displayName || email, role: d.role || 'user', uid: user.uid };
-      enterApp();
+    }
+    const d = docSnap.data();
+    if(d.active === false){
+      showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+      await auth.signOut();
       return;
     }
-
-    // not in allowlist yet — check if this is the very first user ever (bootstrap admin)
-    const metaSnap = await db.collection('allowlist').doc('_meta').get();
-    if(!metaSnap.exists){
-      await docRef.set({
-        email,
-        displayName: user.displayName || email,
-        role: 'admin',
-        active: true,
-        addedBy: 'system-bootstrap',
-        addedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      await db.collection('allowlist').doc('_meta').set({
-        bootstrapped: true,
-        bootstrappedBy: email,
-        bootstrappedAt: firebase.firestore.FieldValue.serverTimestamp()
-      });
-      currentUserData = { email, displayName: user.displayName || email, role: 'admin', uid: user.uid };
-      showToast('Tài khoản đầu tiên — đã tự động cấp quyền Admin.');
-      enterApp();
-    } else {
-      showLoginMsg(`Email ${email} chưa được cấp quyền truy cập. Liên hệ Admin để được thêm vào danh sách.`, true);
-      await auth.signOut();
-    }
+    currentUserData = { email, displayName: d.displayName || email, role: d.role, uid: user.uid };
+    enterApp();
   }catch(e){
     showLoginMsg('Lỗi: ' + e.message, true);
     await auth.signOut();
@@ -520,67 +476,92 @@ auth.onAuthStateChanged(async (user) => {
 function enterApp(){
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('appShell').style.display = 'block';
-  document.getElementById('whoami').textContent =
-    `${currentUserData.displayName} (${currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên'})`;
-  document.getElementById('adminCard').style.display = currentUserData.role === 'admin' ? 'block' : 'none';
-  if(currentUserData.role === 'admin') loadAllowlist();
+  const roleLabel = currentUserData.role === 'superadmin' ? 'Super Admin' : (currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên');
+  document.getElementById('whoami').textContent = `${currentUserData.displayName} (${roleLabel})`;
+  const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
+  document.getElementById('adminCard').style.display = isAdminLike ? 'block' : 'none';
+  if(isAdminLike) loadStaffList();
   if(document.getElementById('tbody').children.length === 0) addRow();
 }
 
-/* ---------------- ADMIN: ALLOWLIST MANAGEMENT ---------------- */
-async function addAllowlist(){
-  const email = document.getElementById('newEmail').value.trim().toLowerCase();
-  const displayName = document.getElementById('newDisplayName').value.trim();
-  if(!email || !email.includes('@')){ alert('Nhập email Gmail hợp lệ'); return; }
-  try{
-    await db.collection('allowlist').doc(email).set({
-      email, displayName, role: 'user', active: true,
-      addedBy: currentUserData.email,
-      addedAt: firebase.firestore.FieldValue.serverTimestamp()
-    });
-    document.getElementById('newEmail').value = '';
-    document.getElementById('newDisplayName').value = '';
-    showToast('Đã cấp quyền truy cập: ' + email);
-    loadAllowlist();
-  }catch(e){ alert('Lỗi: ' + e.message); }
+/* ---------------- ADMIN: STAFF MANAGEMENT ---------------- */
+function openAddStaffModal(){
+  document.getElementById('addStaffError').textContent = '';
+  document.getElementById('addStaffModal').style.display = 'flex';
+}
+function closeAddStaffModal(){
+  document.getElementById('addStaffModal').style.display = 'none';
+  document.getElementById('staffName').value = '';
+  document.getElementById('staffEmail').value = '';
+  document.getElementById('staffPassword').value = '';
 }
 
-async function loadAllowlist(){
-  const tbody = document.getElementById('accountsBody');
-  tbody.innerHTML = '<tr><td colspan="5">Đang tải...</td></tr>';
+async function addStaff(){
+  const name = document.getElementById('staffName').value.trim();
+  const email = document.getElementById('staffEmail').value.trim().toLowerCase();
+  const tempPass = document.getElementById('staffPassword').value;
+  const err = document.getElementById('addStaffError');
+  err.textContent = '';
+  if(!name || !email || !tempPass){ err.textContent = 'Nhập đầy đủ thông tin'; return; }
+  if(tempPass.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
   try{
-    const snap = await db.collection('allowlist').orderBy('addedAt', 'desc').get();
-    tbody.innerHTML = '';
-    snap.forEach(doc => {
-      if(doc.id === '_meta') return;
-      const d = doc.data();
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td>${d.email}</td>
-        <td>${d.displayName || ''}</td>
-        <td><span class="badge ${d.role==='admin'?'admin':'user'}">${d.role==='admin'?'Admin':'Nhân viên'}</span></td>
-        <td><span class="badge ${d.active===false?'inactive':'admin'}">${d.active===false?'Đã khóa':'Hoạt động'}</span></td>
-        <td>
-          <button class="small ${d.active===false?'accent':'danger'}" onclick="toggleAllowlistActive('${doc.id}', ${d.active===false})">${d.active===false?'Mở khóa':'Khóa'}</button>
-          ${d.role!=='admin' ? `<button class="small danger" onclick="removeAllowlist('${doc.id}')">Xóa</button>` : ''}
-        </td>`;
-      tbody.appendChild(tr);
+    await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
+    await db.collection('users').doc(email).set({
+      email, displayName: name, role: 'user', active: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentUserData.email
     });
-    if(tbody.innerHTML.trim() === '') tbody.innerHTML = '<tr><td colspan="5">Chưa có tài khoản.</td></tr>';
+    await secondaryApp.auth().signOut();
+    showToast('Đã tạo tài khoản: ' + email);
+    closeAddStaffModal();
+    loadStaffList();
   }catch(e){
-    tbody.innerHTML = `<tr><td colspan="5">Lỗi tải danh sách: ${e.message}</td></tr>`;
+    err.textContent = e.code === 'auth/email-already-in-use' ? 'Email này đã có tài khoản.' : ('Lỗi: ' + e.message);
   }
 }
 
-async function toggleAllowlistActive(email, setActive){
-  await db.collection('allowlist').doc(email).update({ active: setActive });
-  loadAllowlist();
+async function loadStaffList(){
+  const tbody = document.getElementById('staffBody');
+  tbody.innerHTML = '<tr><td colspan="4">Đang tải...</td></tr>';
+  try{
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+    tbody.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const roleLabel = d.role === 'superadmin' ? 'SUPER ADMIN' : (d.role === 'admin' ? 'ADMIN / QUẢN TRỊ' : 'NHÂN VIÊN / STAFF');
+      const roleClass = d.role === 'superadmin' ? 'superadmin' : (d.role === 'admin' ? 'admin' : 'user');
+      const tr = document.createElement('tr');
+      let actions;
+      if(d.role === 'superadmin'){
+        actions = '<em style="color:var(--muted); font-size:11.5px;">Super Admin — cố định</em>';
+      } else {
+        const toggleLabel = d.role === 'admin' ? 'HẠ CẤP / DEMOTE' : 'BỔ NHIỆM ADMIN / MAKE ADMIN';
+        actions = `
+          <button class="small ghost" onclick="toggleStaffRole('${doc.id}', '${d.role}')">${toggleLabel}</button>
+          <button class="small danger" onclick="deleteStaff('${doc.id}')">XÓA / DELETE</button>`;
+      }
+      tr.innerHTML = `
+        <td>${d.displayName || ''}</td>
+        <td>${d.email}</td>
+        <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+        <td>${actions}</td>`;
+      tbody.appendChild(tr);
+    });
+    if(tbody.innerHTML.trim() === '') tbody.innerHTML = '<tr><td colspan="4">Chưa có tài khoản.</td></tr>';
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="4">Lỗi tải danh sách: ${e.message}</td></tr>`;
+  }
 }
 
-async function removeAllowlist(email){
-  if(!confirm('Xóa quyền truy cập của ' + email + '?')) return;
-  await db.collection('allowlist').doc(email).delete();
-  loadAllowlist();
+async function toggleStaffRole(email, currentRole){
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  await db.collection('users').doc(email).update({ role: newRole });
+  loadStaffList();
+}
+
+async function deleteStaff(email){
+  if(!confirm('Xóa tài khoản ' + email + '? (Tài khoản đăng nhập Firebase Auth vẫn còn, chỉ mất quyền truy cập app — xóa hẳn trong Firebase Console > Authentication nếu cần.)')) return;
+  await db.collection('users').doc(email).delete();
+  loadStaffList();
 }
 
 /* ====================================================================
