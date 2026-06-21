@@ -1689,21 +1689,6 @@ function ensureStructure() {
   STORE.customers.forEach(c => { if (!c.branch) c.branch = "cambodia"; });
   STORE.projects.forEach(p => { if (!p.branch) p.branch = "cambodia"; });
 
-  // One-time migration: remove old auto-generated "Nhận tạm ứng" income transactions
-  // (old logic was incorrect — advance cash should NOT appear as personal income)
-  // Flag ensures this only runs once, not on every page load
-  if (!STORE._migrated_v2) {
-    const advanceIds = new Set(STORE.advances.map(a => a.id));
-    STORE.transactions = STORE.transactions.filter(tx => {
-      if (!tx.fromAdvanceId) return true;
-      if (!advanceIds.has(tx.fromAdvanceId)) return true;
-      // Remove income transactions linked to advances (these were incorrectly created)
-      if (tx.type === "income" && tx.fromAdvanceId) return false;
-      return true;
-    });
-    STORE._migrated_v2 = true;
-  }
-
   // Migrate old per-customer "payments" (flat) into invoices structure
   STORE.customers.forEach(c => {
     if (!c.invoices) c.invoices = [];
@@ -2927,8 +2912,23 @@ function markAdvancePaid(advanceId) {
     detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
   });
 
-  // Remove any previously auto-created income tx from this advance (idempotent cleanup)
+  // Remove any previously auto-created transactions from this advance (idempotent — avoid duplicates on re-click)
   STORE.transactions = STORE.transactions.filter(tx => tx.fromAdvanceId !== adv.id);
+
+  // Record the cash received by staff — this is real money they received to spend
+  STORE.transactions.push({
+    id: genId("tx"),
+    type: "income",
+    categoryId: "c_reimbursement",
+    date: todayStr(),
+    amount: adv.amount,
+    projectId: adv.projectId,
+    note: (currentLang === "vi" ? "Nhận tạm ứng: " : "Received advance: ") + (adv.reason || ""),
+    userId: adv.userId,
+    timestamp: new Date().toTimeString().substring(0, 5),
+    createdAt: nowISO(),
+    fromAdvanceId: adv.id,
+  });
 
   persistNow();
   showToast(t("toastSaved"), "success");
@@ -3143,19 +3143,19 @@ function confirmSettlement() {
   const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
   if (!adv || !adv.settlement) return;
 
-  // Remove any previously auto-created transactions from this advance (avoid duplicates)
-  STORE.transactions = STORE.transactions.filter(tx => tx.fromAdvanceId !== adv.id);
+  // Remove old settlement expense txs (avoid duplicates if re-confirmed)
+  STORE.transactions = STORE.transactions.filter(tx =>
+    tx.fromAdvanceId !== adv.id || tx.type === "income" // keep the "received advance" income tx
+  );
 
-  // Record each itemized expense in the staff member's personal ledger only
-  // Advance cash is company money — NOT recorded as personal income/expense
-  // Only the actual spending items are recorded
+  // Record each itemized expense in the staff member's personal ledger
   adv.settlement.items.forEach(it => {
     STORE.transactions.push({
       id: genId("tx"),
       type: "expense",
       categoryId: it.categoryId === "__custom__" ? "c_other" : it.categoryId,
       customCategory: it.customCategory || null,
-      date: todayStr(), // use confirmation date so expenses appear in current month dashboard
+      date: todayStr(),
       amount: it.amount,
       projectId: adv.projectId,
       note: it.note || (currentLang === "vi" ? "Chi từ tạm ứng" : "Settled from advance"),
@@ -3166,6 +3166,42 @@ function confirmSettlement() {
       receipt: it.receipt || undefined,
     });
   });
+
+  // Balance adjustment: surplus → staff returns cash (expense); shortfall → company pays more (income)
+  const balance = adv.settlement.balance; // advance - totalSpent
+  if (Math.abs(balance) > 0.005) {
+    if (balance > 0) {
+      // Staff has surplus → expense (they return the cash to company)
+      STORE.transactions.push({
+        id: genId("tx"),
+        type: "expense",
+        categoryId: "c_reimbursement",
+        date: todayStr(),
+        amount: balance,
+        projectId: adv.projectId,
+        note: currentLang === "vi" ? `Hoàn lại ${formatCurrency(balance)} (dư tạm ứng)` : `Return surplus ${formatCurrency(balance)}`,
+        userId: adv.userId,
+        timestamp: new Date().toTimeString().substring(0, 5),
+        createdAt: nowISO(),
+        fromAdvanceId: adv.id,
+      });
+    } else {
+      // Staff spent more than advance → income (company reimburses the shortfall)
+      STORE.transactions.push({
+        id: genId("tx"),
+        type: "income",
+        categoryId: "c_reimbursement",
+        date: todayStr(),
+        amount: Math.abs(balance),
+        projectId: adv.projectId,
+        note: currentLang === "vi" ? `Bù thiếu ${formatCurrency(Math.abs(balance))} (chi vượt tạm ứng)` : `Shortfall reimbursement ${formatCurrency(Math.abs(balance))}`,
+        userId: adv.userId,
+        timestamp: new Date().toTimeString().substring(0, 5),
+        createdAt: nowISO(),
+        fromAdvanceId: adv.id,
+      });
+    }
+  }
 
   adv.status = "settled";
   adv.settlement.confirmedBy = currentUser.id;
