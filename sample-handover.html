@@ -277,36 +277,44 @@ function doLogin(){
 function doLogout(){ auth.signOut(); }
 
 auth.onAuthStateChanged(async (user)=>{
-  if(!user){
-    CURRENT_USER = null;
-    document.getElementById('view-app').classList.add('hidden');
-    document.getElementById('view-login').classList.remove('hidden');
-    applyI18n();
-    return;
-  }
-  const email = user.email.toLowerCase();
-  const userRef = db.collection('users').doc(email);
-  let snap = await userRef.get();
-  if(!snap.exists){
-    if(email === SUPER_ADMIN_EMAIL){
-      await userRef.set({ email, role:'superadmin', country:'KH', displayName:'Super Admin', active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      snap = await userRef.get();
-    } else {
-      toast(t('permissionDenied'));
-      auth.signOut();
+  try{
+    if(!user){
+      CURRENT_USER = null;
+      document.getElementById('view-app').classList.add('hidden');
+      document.getElementById('view-login').classList.remove('hidden');
+      applyI18n();
       return;
     }
+    const email = user.email.toLowerCase();
+    const userRef = db.collection('users').doc(email);
+    let snap = await userRef.get();
+    if(!snap.exists){
+      if(email === SUPER_ADMIN_EMAIL){
+        await userRef.set({ email, role:'superadmin', country:'KH', displayName:'Super Admin', active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+        snap = await userRef.get();
+      } else {
+        toast(t('permissionDenied'));
+        await auth.signOut();
+        return;
+      }
+    }
+    const data = snap.data();
+    if(data.active === false){ toast(t('permissionDenied')); await auth.signOut(); return; }
+    CURRENT_USER = { email, role:data.role, country:data.country, displayName:data.displayName || email };
+    document.getElementById('view-login').classList.add('hidden');
+    document.getElementById('view-app').classList.remove('hidden');
+    document.getElementById('user-meta').textContent = `${CURRENT_USER.displayName} · ${CURRENT_USER.role} · ${CURRENT_USER.country}`;
+    document.getElementById('tab-admin-btn').classList.toggle('hidden', CURRENT_USER.role==='user');
+    await loadCompanyNames();
+    await loadProjects();
+    applyI18n();
+  }catch(err){
+    console.error('Auth/load error:', err);
+    document.getElementById('view-app').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('hidden');
+    document.getElementById('login-error').textContent = 'Lỗi / Error: ' + err.message;
+    applyI18n();
   }
-  const data = snap.data();
-  if(data.active === false){ toast(t('permissionDenied')); auth.signOut(); return; }
-  CURRENT_USER = { email, role:data.role, country:data.country, displayName:data.displayName || email };
-  document.getElementById('view-login').classList.add('hidden');
-  document.getElementById('view-app').classList.remove('hidden');
-  document.getElementById('user-meta').textContent = `${CURRENT_USER.displayName} · ${CURRENT_USER.role} · ${CURRENT_USER.country}`;
-  document.getElementById('tab-admin-btn').classList.toggle('hidden', CURRENT_USER.role==='user');
-  await loadCompanyNames();
-  await loadProjects();
-  applyI18n();
 });
 
 async function loadCompanyNames(){
