@@ -1729,23 +1729,29 @@ function ensureStructure() {
 ensureStructure();
 
 let persistTimer = null;
+
+let ignoreSyncUntil = 0;
+let _localSaveTime = 0;
+
 function persistDebounced() {
   lsSaveAll(STORE);
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
     if (firebaseReady && db) {
+      STORE._savedBy = currentUser ? currentUser.id : "system";
+      STORE._savedAt = nowISO();
       db.collection(COLLECTION_NAME).doc("main").set(STORE, { merge: false })
         .catch(err => console.warn("Firestore save failed:", err));
     }
   }, 600);
 }
 
-let ignoreSyncUntil = 0; // timestamp — ignore Firestore snapshots until this time
-
 function persistNow() {
+  _localSaveTime = Date.now();
+  STORE._savedBy = currentUser ? currentUser.id : "system";
+  STORE._savedAt = nowISO();
   lsSaveAll(STORE);
   if (persistTimer) clearTimeout(persistTimer);
-  ignoreSyncUntil = Date.now() + 3000; // ignore incoming snapshots for 3s while save propagates
   if (firebaseReady && db) {
     return db.collection(COLLECTION_NAME).doc("main").set(STORE, { merge: false })
       .catch(err => console.warn("Firestore save failed:", err));
@@ -1773,10 +1779,13 @@ function initRealtimeSync(onUpdate) {
     if (onUpdate) onUpdate();
 
     const unsub = docRef.onSnapshot(snap => {
-      if (Date.now() < ignoreSyncUntil) return; // skip — we just saved, don't overwrite with stale data
+      // Ignore snapshots for 5 seconds after we saved (covers Firestore's own echo back to us)
+      if (Date.now() - _localSaveTime < 5000) return;
       if (snap.exists) {
         const remote = snap.data();
         if (remote) {
+          // Only accept if remote data is from another device (has different _savedBy)
+          if (remote._savedBy && remote._savedBy === currentUser?.id) return; // our own save echo
           STORE = remote;
           ensureStructure();
           lsSaveAll(STORE);
@@ -3141,7 +3150,7 @@ function confirmSettlement() {
       type: "expense",
       categoryId: it.categoryId === "__custom__" ? "c_other" : it.categoryId,
       customCategory: it.customCategory || null,
-      date: adv.paidAt ? adv.paidAt.substring(0, 10) : todayStr(),
+      date: todayStr(), // use confirmation date so expenses appear in current month dashboard
       amount: it.amount,
       projectId: adv.projectId,
       note: it.note || (currentLang === "vi" ? "Chi từ tạm ứng" : "Settled from advance"),
