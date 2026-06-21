@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
+<title>HAIC Sample Handover</title>
+<link rel="manifest" href="data:application/json,{}">
+<style>
+:root{
+  --bg:#f4f6f8; --card:#ffffff; --text:#1c2530; --muted:#677483; --border:#e1e6eb;
+  --primary:#1565c0; --primary-dark:#0d47a1; --accent:#2e7d32; --danger:#c62828;
+  --warn:#b8860b; --header-bg:#0d47a1; --header-text:#ffffff; --input-bg:#ffffff;
+  --table-head:#eef3fa; --shadow:0 1px 3px rgba(0,0,0,.08);
+}
+body.dark{
+  --bg:#10151b; --card:#1a212b; --text:#e7ecf1; --muted:#9aa7b4; --border:#2b3543;
+  --primary:#4a90e2; --primary-dark:#3a76c2; --accent:#43a047; --danger:#e57373;
+  --warn:#d7a23a; --header-bg:#0b1118; --header-text:#e7ecf1; --input-bg:#222b36;
+  --table-head:#202a36; --shadow:0 1px 3px rgba(0,0,0,.4);
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);transition:background .2s,color .2s}
+header.topbar{position:sticky;top:0;z-index:50;background:var(--header-bg);color:var(--header-text);display:flex;align-items:center;justify-content:space-between;padding:10px 14px;box-shadow:var(--shadow)}
+header.topbar .title{font-weight:700;font-size:15px}
+header.topbar .title small{display:block;font-weight:400;font-size:11px;opacity:.8}
+.topbar-actions{display:flex;align-items:center;gap:8px}
+.iconbtn{background:rgba(255,255,255,.15);border:none;color:inherit;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer}
+.iconbtn:hover{background:rgba(255,255,255,.28)}
+nav.tabs{display:flex;overflow-x:auto;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:48px;z-index:40}
+nav.tabs button{flex:0 0 auto;padding:10px 14px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button.active{color:var(--primary);border-bottom-color:var(--primary)}
+main{padding:12px;max-width:980px;margin:0 auto;padding-bottom:60px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card h2,.card h3{margin-top:0}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.field{flex:1;min-width:140px;margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+input,select,textarea{width:100%;padding:9px 10px;border:1px solid var(--border);border-radius:8px;background:var(--input-bg);color:var(--text);font-size:14px}
+textarea{resize:vertical;min-height:50px}
+button.btn{background:var(--primary);color:#fff;border:none;padding:10px 16px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+button.btn.secondary{background:var(--border);color:var(--text)}
+button.btn.danger{background:var(--danger);color:#fff}
+button.btn.small{padding:6px 10px;font-size:12px}
+button.btn:disabled{opacity:.5}
+table.grid{width:100%;border-collapse:collapse;font-size:12px}
+table.grid th,table.grid td{border:1px solid var(--border);padding:5px;text-align:center}
+table.grid th{background:var(--table-head);font-size:11px}
+table.grid input{padding:4px;font-size:12px;text-align:center}
+table.grid td.txt input{text-align:left}
+.tablewrap{overflow-x:auto}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.badge.VN{background:#fdecea;color:#c62828}
+.badge.LA{background:#fff3e0;color:#b8860b}
+.badge.KH{background:#e3f2fd;color:#1565c0}
+body.dark .badge.VN{background:#3a2020;color:#ef9a9a}
+body.dark .badge.LA{background:#3a3020;color:#e0c285}
+body.dark .badge.KH{background:#1c2c3a;color:#90caf9}
+.listrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.listrow:last-child{border-bottom:none}
+.listrow .meta{font-size:12px;color:var(--muted)}
+.toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:200;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+.hidden{display:none!important}
+.center{text-align:center}
+.login-wrap{max-width:380px;margin:60px auto;padding:0 16px}
+.login-wrap .logo{text-align:center;margin-bottom:18px;font-size:20px;font-weight:800;color:var(--primary)}
+.muted{color:var(--muted);font-size:12px}
+select.role-select{font-weight:600}
+.signrow{display:flex;justify-content:space-between;text-align:center;margin-top:18px}
+.signrow div{flex:1}
+.signrow .line{margin-top:50px;border-top:1px solid var(--text);padding-top:4px;font-size:12px}
+.totalrow{font-weight:700;background:var(--table-head)}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:var(--card);border-radius:12px;padding:18px;max-width:420px;width:100%;max-height:85vh;overflow-y:auto}
+.lang-toggle{display:flex;background:rgba(255,255,255,.15);border-radius:8px;overflow:hidden}
+.lang-toggle button{border:none;background:none;color:inherit;padding:6px 9px;font-size:12px;font-weight:700;cursor:pointer}
+.lang-toggle button.active{background:rgba(255,255,255,.3)}
+.section-title{font-size:13px;font-weight:700;color:var(--primary);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.4px}
+</style>
+</head>
+<body>
+
+<div id="toast" class="toast"></div>
+
+<!-- LOGIN -->
+<div id="view-login" class="login-wrap hidden">
+  <div class="logo">HAIC &middot; Sample Handover</div>
+  <div class="card">
+    <div class="field"><label data-i18n="email">Email</label><input id="login-email" type="email" autocomplete="username"></div>
+    <div class="field"><label data-i18n="password">Mật khẩu / Password</label><input id="login-pass" type="password" autocomplete="current-password"></div>
+    <button class="btn" style="width:100%" onclick="doLogin()" data-i18n="loginBtn">Đăng nhập / Login</button>
+    <p id="login-error" class="muted" style="color:var(--danger)"></p>
+  </div>
+  <div class="center">
+    <button class="iconbtn" style="color:var(--muted);background:none" onclick="toggleLang()"><span id="login-lang-label">EN / VI</span></button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="view-app" class="hidden">
+  <header class="topbar">
+    <div class="title">HAIC Sample Handover<small id="user-meta"></small></div>
+    <div class="topbar-actions">
+      <div class="lang-toggle">
+        <button id="btn-lang-vi" onclick="setLang('vi')">VI</button>
+        <button id="btn-lang-en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="iconbtn" onclick="toggleDark()">🌓</button>
+      <button class="iconbtn" onclick="doLogout()" data-i18n="logout">Đăng xuất</button>
+    </div>
+  </header>
+  <nav class="tabs" id="tabs">
+    <button data-tab="dashboard" class="active" data-i18n="tabDashboard">Tổng quan</button>
+    <button data-tab="projects" data-i18n="tabProjects">Dự án</button>
+    <button data-tab="forms" data-i18n="tabForms">Phiếu giao nhận</button>
+    <button data-tab="admin" id="tab-admin-btn" data-i18n="tabAdmin">Quản trị</button>
+  </nav>
+  <main>
+    <div id="tab-dashboard"></div>
+    <div id="tab-projects" class="hidden"></div>
+    <div id="tab-forms" class="hidden"></div>
+    <div id="tab-admin" class="hidden"></div>
+  </main>
+</div>
+
+<div id="modal-root"></div>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- Export libs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<script>
+/* =========================================================
+   FIREBASE CONFIG - project "hai-sample-handover"
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAWi-blH1U1UZkBdAhLqRoFntQ6UwqJhYU",
+  authDomain: "hai-sample-handover.firebaseapp.com",
+  projectId: "hai-sample-handover",
+  storageBucket: "hai-sample-handover.firebasestorage.app",
+  messagingSenderId: "84791737732",
+  appId: "1:84791737732:web:1c8ffbfb297659c233f1d1"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+db.enablePersistence({synchronizeTabs:true}).catch(e=>console.warn('persistence', e.code));
+
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
+// ---------- Countries ----------
+const COUNTRIES = {
+  VN:{ en:"Vietnam", vi:"Việt Nam", defaultPartyB:"HAI Vietnam Survey & Construction Co., Ltd" },
+  LA:{ en:"Laos", vi:"Lào", defaultPartyB:"HAI Laos Survey & Construction Co., Ltd" },
+  KH:{ en:"Cambodia", vi:"Campuchia", defaultPartyB:"HAI (Cambodia) Survey & Construction Co., Ltd" }
+};
+
+// ---------- i18n ----------
+const I18N = {
+  email:{vi:"Email",en:"Email"},
+  password:{vi:"Mật khẩu",en:"Password"},
+  loginBtn:{vi:"Đăng nhập",en:"Login"},
+  logout:{vi:"Đăng xuất",en:"Logout"},
+  tabDashboard:{vi:"Tổng quan",en:"Dashboard"},
+  tabProjects:{vi:"Dự án",en:"Projects"},
+  tabForms:{vi:"Phiếu giao nhận",en:"Handover Forms"},
+  tabAdmin:{vi:"Quản trị",en:"Admin"},
+  newProject:{vi:"+ Dự án mới",en:"+ New Project"},
+  newForm:{vi:"+ Phiếu mới",en:"+ New Form"},
+  projectName:{vi:"Tên dự án",en:"Project Name"},
+  location:{vi:"Địa điểm",en:"Location"},
+  country:{vi:"Quốc gia",en:"Country"},
+  save:{vi:"Lưu",en:"Save"},
+  cancel:{vi:"Hủy",en:"Cancel"},
+  edit:{vi:"Sửa",en:"Edit"},
+  delete:{vi:"Xóa",en:"Delete"},
+  close:{vi:"Đóng",en:"Close"},
+  createUser:{vi:"+ Tạo tài khoản",en:"+ Create Account"},
+  staffName:{vi:"Họ tên nhân viên",en:"Staff Name"},
+  role:{vi:"Vai trò",en:"Role"},
+  roleSuperadmin:{vi:"Super Admin",en:"Super Admin"},
+  roleAdmin:{vi:"Quản trị viên",en:"Admin"},
+  roleUser:{vi:"Nhân viên",en:"Staff"},
+  users:{vi:"Tài khoản nhân viên",en:"Staff Accounts"},
+  companyNames:{vi:"Tên công ty theo quốc gia (Party B)",en:"Company Names by Country (Party B)"},
+  project:{vi:"Dự án",en:"Project"},
+  partyA:{vi:"Bên A (đơn vị giao mẫu)",en:"Party A (Sample Provider)"},
+  partyB:{vi:"Bên B",en:"Party B"},
+  mrMs:{vi:"Ông/Bà",en:"Mr/Ms"},
+  place:{vi:"Lập tại",en:"Prepared at"},
+  date:{vi:"Ngày",en:"Date"},
+  docNo:{vi:"Số phiếu",en:"Doc No"},
+  comment:{vi:"Ghi chú",en:"Comment"},
+  total:{vi:"Tổng",en:"Total"},
+  addRow:{vi:"+ Thêm dòng",en:"+ Add Row"},
+  exportPdf:{vi:"Xuất PDF",en:"Export PDF"},
+  exportExcel:{vi:"Xuất Excel",en:"Export Excel"},
+  signPartyA:{vi:"Bên A",en:"Party A"},
+  signPartyB:{vi:"HAIC Lab",en:"HAIC Lab"},
+  status:{vi:"Trạng thái",en:"Status"},
+  draft:{vi:"Nháp",en:"Draft"},
+  completed:{vi:"Hoàn tất",en:"Completed"},
+  formTitle:{vi:"PHIẾU GIAO NHẬN MẪU",en:"SAMPLE HANDOVER FORM"},
+  noProjects:{vi:"Chưa có dự án nào.",en:"No projects yet."},
+  noForms:{vi:"Chưa có phiếu nào.",en:"No forms yet."},
+  noUsers:{vi:"Chưa có tài khoản nào.",en:"No accounts yet."},
+  confirmDelete:{vi:"Bạn chắc chắn muốn xóa?",en:"Are you sure you want to delete?"},
+  active:{vi:"Hoạt động",en:"Active"},
+  inactive:{vi:"Ngừng",en:"Inactive"},
+  filterCountry:{vi:"Lọc theo quốc gia",en:"Filter by country"},
+  all:{vi:"Tất cả",en:"All"},
+  borehole:{vi:"Hố khoan",en:"Borehole"},
+  depth:{vi:"Độ sâu (m)",en:"Depth (m)"},
+  soil:{vi:"Mẫu đất",en:"Soil sample"},
+  rock:{vi:"Mẫu đá",en:"Rock sample"},
+  spt:{vi:"Mẫu SPT",en:"SPT sample"},
+  water:{vi:"Mẫu nước",en:"Water sample"},
+  stainless:{vi:"Ống Stainless",en:"Stainless Pipe"},
+  pvc:{vi:"Ống PVC",en:"PVC Pipe"},
+  remarks:{vi:"Ghi chú dòng",en:"Remarks"},
+  no:{vi:"STT",en:"No"},
+  signedReportText:{vi:"Biên bản giao nhận mẫu được lập và ký bởi hai bên tại Phòng thí nghiệm HAIC tại",en:"The Sample Handover Report was jointly prepared and signed by both parties at HAIC Laboratory at"},
+  onDate:{vi:"vào ngày",en:"on"},
+  newAccount:{vi:"Tạo tài khoản mới",en:"Create New Account"},
+  password6:{vi:"Mật khẩu (tối thiểu 6 ký tự)",en:"Password (min 6 chars)"},
+  tempPasswordNote:{vi:"Tài khoản sẽ dùng email + mật khẩu này để đăng nhập.",en:"Account will log in using this email + password."},
+  newProjectTitle:{vi:"Tạo dự án mới",en:"Create New Project"},
+  projectCode:{vi:"Mã dự án",en:"Project Code"},
+  yourCountry:{vi:"Quốc gia của bạn",en:"Your Country"},
+  loadingForms:{vi:"Đang tải...",en:"Loading..."},
+  selectProjectFirst:{vi:"Vui lòng chọn dự án",en:"Please select a project"},
+  formSaved:{vi:"Đã lưu phiếu",en:"Form saved"},
+  invalidLogin:{vi:"Sai email hoặc mật khẩu",en:"Invalid email or password"},
+  permissionDenied:{vi:"Không có quyền",en:"Permission denied"}
+};
+let LANG = localStorage.getItem('shp_lang') || 'vi';
+function t(key){ return (I18N[key] && I18N[key][LANG]) || key; }
+function applyI18n(){
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.getAttribute('data-i18n')); });
+  document.getElementById('btn-lang-vi').classList.toggle('active', LANG==='vi');
+  document.getElementById('btn-lang-en').classList.toggle('active', LANG==='en');
+  document.getElementById('login-lang-label').textContent = LANG==='vi' ? 'VI / EN' : 'EN / VI';
+  renderActiveTab();
+}
+function setLang(l){ LANG=l; localStorage.setItem('shp_lang', l); applyI18n(); }
+function toggleLang(){ setLang(LANG==='vi'?'en':'vi'); }
+function cName(code){ return COUNTRIES[code] ? COUNTRIES[code][LANG] : code; }
+
+// ---------- Dark mode ----------
+function toggleDark(){ document.body.classList.toggle('dark'); localStorage.setItem('shp_dark', document.body.classList.contains('dark')?'1':'0'); }
+if(localStorage.getItem('shp_dark')==='1') document.body.classList.add('dark');
+
+// ---------- Toast ----------
+function toast(msg){ const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 2400); }
+
+// ---------- State ----------
+let CURRENT_USER = null; // {email, role, country, displayName}
+let ACTIVE_TAB = 'dashboard';
+let PROJECTS_CACHE = [];
+let COMPANY_NAMES = {}; // country -> partyB name, loaded from settings/companyNames
+
+// ---------- Auth ----------
+function doLogin(){
+  const email = document.getElementById('login-email').value.trim().toLowerCase();
+  const pass = document.getElementById('login-pass').value;
+  document.getElementById('login-error').textContent = '';
+  if(!email || !pass){ document.getElementById('login-error').textContent = t('invalidLogin'); return; }
+  auth.signInWithEmailAndPassword(email, pass).catch(err=>{
+    document.getElementById('login-error').textContent = t('invalidLogin') + ' (' + err.code + ')';
+  });
+}
+function doLogout(){ auth.signOut(); }
+
+auth.onAuthStateChanged(async (user)=>{
+  if(!user){
+    CURRENT_USER = null;
+    document.getElementById('view-app').classList.add('hidden');
+    document.getElementById('view-login').classList.remove('hidden');
+    applyI18n();
+    return;
+  }
+  const email = user.email.toLowerCase();
+  const userRef = db.collection('users').doc(email);
+  let snap = await userRef.get();
+  if(!snap.exists){
+    if(email === SUPER_ADMIN_EMAIL){
+      await userRef.set({ email, role:'superadmin', country:'KH', displayName:'Super Admin', active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      snap = await userRef.get();
+    } else {
+      toast(t('permissionDenied'));
+      auth.signOut();
+      return;
+    }
+  }
+  const data = snap.data();
+  if(data.active === false){ toast(t('permissionDenied')); auth.signOut(); return; }
+  CURRENT_USER = { email, role:data.role, country:data.country, displayName:data.displayName || email };
+  document.getElementById('view-login').classList.add('hidden');
+  document.getElementById('view-app').classList.remove('hidden');
+  document.getElementById('user-meta').textContent = `${CURRENT_USER.displayName} · ${CURRENT_USER.role} · ${CURRENT_USER.country}`;
+  document.getElementById('tab-admin-btn').classList.toggle('hidden', CURRENT_USER.role==='user');
+  await loadCompanyNames();
+  await loadProjects();
+  applyI18n();
+});
+
+async function loadCompanyNames(){
+  const docRef = db.collection('settings').doc('companyNames');
+  const snap = await docRef.get();
+  if(snap.exists){ COMPANY_NAMES = snap.data(); }
+  else {
+    COMPANY_NAMES = { VN: COUNTRIES.VN.defaultPartyB, LA: COUNTRIES.LA.defaultPartyB, KH: COUNTRIES.KH.defaultPartyB };
+    if(CURRENT_USER && CURRENT_USER.role==='superadmin') docRef.set(COMPANY_NAMES);
+  }
+}
+
+async function loadProjects(){
+  let q = db.collection('projects');
+  if(CURRENT_USER.role !== 'superadmin') q = q.where('country','==',CURRENT_USER.country);
+  const snap = await q.get();
+  PROJECTS_CACHE = snap.docs.map(d=>({id:d.id, ...d.data()}));
+}
+
+// ---------- Tabs ----------
+document.getElementById('tabs').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  if(btn.classList.contains('hidden')) return;
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ACTIVE_TAB = btn.dataset.tab;
+  document.querySelectorAll('main > div').forEach(d=>d.classList.add('hidden'));
+  document.getElementById('tab-'+ACTIVE_TAB).classList.remove('hidden');
+  renderActiveTab();
+});
+function renderActiveTab(){
+  if(!CURRENT_USER) return;
+  if(ACTIVE_TAB==='dashboard') renderDashboard();
+  if(ACTIVE_TAB==='projects') renderProjects();
+  if(ACTIVE_TAB==='forms') renderForms();
+  if(ACTIVE_TAB==='admin') renderAdmin();
+}
+
+// ---------- Modal helper ----------
+function openModal(html){
+  document.getElementById('modal-root').innerHTML = `<div class="modal-bg" onclick="if(event.target===this) closeModal()"><div class="modal">${html}</div></div>`;
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML=''; }
+
+// ============ DASHBOARD ============
+function renderDashboard(){
+  const el = document.getElementById('tab-dashboard');
+  const scopeNote = CURRENT_USER.role==='superadmin' ? t('all') : cName(CURRENT_USER.country);
+  el.innerHTML = `
+    <div class="card">
+      <h2>${t('tabDashboard')}</h2>
+      <p class="muted">${CURRENT_USER.displayName} — ${CURRENT_USER.role} — ${scopeNote}</p>
+      <div class="row">
+        <div class="card" style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--primary)" id="dash-projects">…</div><div class="muted">${t('tabProjects')}</div></div>
+        <div class="card" style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--accent)" id="dash-forms">…</div><div class="muted">${t('tabForms')}</div></div>
+      </div>
+    </div>`;
+  document.getElementById('dash-projects').textContent = PROJECTS_CACHE.length;
+  let q = db.collection('handovers');
+  if(CURRENT_USER.role !== 'superadmin') q = q.where('country','==',CURRENT_USER.country);
+  q.get().then(s=>{ document.getElementById('dash-forms').textContent = s.size; });
+}
+
+// ============ PROJECTS ============
+function renderProjects(){
+  const el = document.getElementById('tab-projects');
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}">${cName(c)}</option>`).join('');
+  el.innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">${t('tabProjects')}</h3>
+        <button class="btn small" onclick="openNewProjectModal()">${t('newProject')}</button>
+      </div>
+      ${CURRENT_USER.role==='superadmin' ? `<div class="field" style="max-width:220px"><label>${t('filterCountry')}</label>
+      <select id="proj-filter" onchange="renderProjects()"><option value="ALL">${t('all')}</option>${countryOptions}</select></div>` : ''}
+      <div id="projects-list">${t('loadingForms')}</div>
+    </div>`;
+  if(CURRENT_USER.role==='superadmin'){
+    const sel = document.getElementById('proj-filter');
+    if(sel) sel.value = window._projFilter || 'ALL';
+  }
+  loadProjects().then(()=>{
+    let list = PROJECTS_CACHE;
+    const filter = document.getElementById('proj-filter');
+    if(filter){ window._projFilter = filter.value; if(filter.value!=='ALL') list = list.filter(p=>p.country===filter.value); }
+    const listEl = document.getElementById('projects-list');
+    if(!list.length){ listEl.innerHTML = `<p class="muted">${t('noProjects')}</p>`; return; }
+    listEl.innerHTML = list.map(p=>`
+      <div class="listrow">
+        <div>
+          <div><strong>${p.name}</strong> <span class="badge ${p.country}">${p.country}</span></div>
+          <div class="meta">${p.location||''} ${p.code? '· '+p.code : ''}</div>
+        </div>
+        ${(CURRENT_USER.role!=='user') ? `<div><button class="btn small secondary" onclick="deleteProject('${p.id}')">${t('delete')}</button></div>` : ''}
+      </div>`).join('');
+  });
+}
+function openNewProjectModal(){
+  const isSuper = CURRENT_USER.role==='superadmin';
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===CURRENT_USER.country?'selected':''}>${cName(c)}</option>`).join('');
+  openModal(`
+    <h3>${t('newProjectTitle')}</h3>
+    <div class="field"><label>${t('projectName')}</label><input id="np-name"></div>
+    <div class="field"><label>${t('projectCode')}</label><input id="np-code"></div>
+    <div class="field"><label>${t('location')}</label><input id="np-location"></div>
+    <div class="field"><label>${t('country')}</label>
+      <select id="np-country" ${isSuper?'':'disabled'}>${countryOptions}</select>
+    </div>
+    <div class="row">
+      <button class="btn" onclick="saveNewProject()">${t('save')}</button>
+      <button class="btn secondary" onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+}
+async function saveNewProject(){
+  const name = document.getElementById('np-name').value.trim();
+  const code = document.getElementById('np-code').value.trim();
+  const location = document.getElementById('np-location').value.trim();
+  const country = document.getElementById('np-country').value;
+  if(!name){ toast('...'); return; }
+  await db.collection('projects').add({ name, code, location, country, createdBy:CURRENT_USER.email, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+  closeModal(); toast(t('save')+' ✓'); renderProjects();
+}
+async function deleteProject(id){
+  if(!confirm(t('confirmDelete'))) return;
+  await db.collection('projects').doc(id).delete();
+  renderProjects();
+}
+
+// ============ HANDOVER FORMS ============
+function renderForms(){
+  const el = document.getElementById('tab-forms');
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}">${cName(c)}</option>`).join('');
+  el.innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">${t('tabForms')}</h3>
+        <button class="btn small" onclick="openFormEditor(null)">${t('newForm')}</button>
+      </div>
+      ${CURRENT_USER.role==='superadmin' ? `<div class="field" style="max-width:220px"><label>${t('filterCountry')}</label>
+      <select id="form-filter" onchange="renderForms()"><option value="ALL">${t('all')}</option>${countryOptions}</select></div>` : ''}
+      <div id="forms-list">${t('loadingForms')}</div>
+    </div>`;
+  let q = db.collection('handovers').orderBy('createdAt','desc');
+  if(CURRENT_USER.role!=='superadmin') q = q.where('country','==',CURRENT_USER.country);
+  q.get().then(snap=>{
+    let list = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const filter = document.getElementById('form-filter');
+    if(filter && filter.value!=='ALL') list = list.filter(f=>f.country===filter.value);
+    const listEl = document.getElementById('forms-list');
+    if(!list.length){ listEl.innerHTML = `<p class="muted">${t('noForms')}</p>`; return; }
+    listEl.innerHTML = list.map(f=>`
+      <div class="listrow" onclick="openFormEditor('${f.id}')">
+        <div>
+          <div><strong>${f.docNo}</strong> <span class="badge ${f.country}">${f.country}</span></div>
+          <div class="meta">${f.projectName||''} · ${f.date||''}</div>
+        </div>
+        <div class="meta">${t(f.status==='completed'?'completed':'draft')}</div>
+      </div>`).join('');
+  }).catch(err=>{
+    document.getElementById('forms-list').innerHTML = `<p class="muted">${err.message}</p>`;
+  });
+}
+
+function blankRow(no){ return {no, borehole:'', depth:'', soil:0, rock:0, spt:0, water:0, stainless:0, pvc:0, remarks:''}; }
+
+async function openFormEditor(formId){
+  let form;
+  if(formId){
+    const snap = await db.collection('handovers').doc(formId).get();
+    form = {id:formId, ...snap.data()};
+  } else {
+    form = {
+      country: CURRENT_USER.country, projectId:'', projectName:'', location:'',
+      partyA_name:'', partyA_person:'', partyB_name: COMPANY_NAMES[CURRENT_USER.country] || '', partyB_person:'',
+      place:'', date: new Date().toISOString().slice(0,10),
+      rows:[blankRow(1)], comment:'', signPartyA:'', signPartyB:'', status:'draft'
+    };
+  }
+  window._editingForm = form;
+  renderFormEditorView();
+}
+
+function renderFormEditorView(){
+  const form = window._editingForm;
+  const isSuper = CURRENT_USER.role==='superadmin';
+  const projOptions = PROJECTS_CACHE.filter(p=> isSuper ? p.country===form.country : true)
+    .map(p=>`<option value="${p.id}" ${p.id===form.projectId?'selected':''}>${p.name}</option>`).join('');
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===form.country?'selected':''}>${cName(c)}</option>`).join('');
+  document.getElementById('tab-forms').innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">${t('formTitle')} ${form.docNo? '· '+form.docNo : ''}</h3>
+        <button class="btn small secondary" onclick="renderForms()">← ${t('close')}</button>
+      </div>
+
+      <div class="section-title">${t('project')}</div>
+      <div class="row">
+        ${isSuper ? `<div class="field"><label>${t('country')}</label><select id="f-country" onchange="changeFormCountry()">${countryOptions}</select></div>` : ''}
+        <div class="field"><label>${t('project')}</label><select id="f-project" onchange="onProjectChange()"><option value="">--</option>${projOptions}</select></div>
+        <div class="field"><label>${t('location')}</label><input id="f-location" value="${form.location||''}"></div>
+      </div>
+
+      <div class="section-title">${t('partyA')}</div>
+      <div class="row">
+        <div class="field"><label>${t('partyA')}</label><input id="f-partyA-name" value="${form.partyA_name||''}"></div>
+        <div class="field"><label>${t('mrMs')}</label><input id="f-partyA-person" value="${form.partyA_person||''}"></div>
+      </div>
+      <div class="section-title">${t('partyB')}</div>
+      <div class="row">
+        <div class="field"><label>${t('partyB')}</label><input id="f-partyB-name" value="${form.partyB_name||''}"></div>
+        <div class="field"><label>${t('mrMs')}</label><input id="f-partyB-person" value="${form.partyB_person||''}"></div>
+      </div>
+
+      <div class="section-title">${t('docNo')}</div>
+      <div class="row">
+        <div class="field"><label>${t('place')}</label><input id="f-place" value="${form.place||''}"></div>
+        <div class="field"><label>${t('date')}</label><input id="f-date" type="date" value="${form.date||''}"></div>
+      </div>
+
+      <div class="section-title">${t('tabForms')}</div>
+      <div class="tablewrap">
+        <table class="grid" id="rows-table">
+          <thead><tr>
+            <th>${t('no')}</th><th>${t('borehole')}</th><th>${t('depth')}</th>
+            <th>${t('soil')}</th><th>${t('rock')}</th><th>${t('spt')}</th><th>${t('water')}</th>
+            <th>${t('stainless')}</th><th>${t('pvc')}</th><th>${t('remarks')}</th><th></th>
+          </tr></thead>
+          <tbody id="rows-tbody"></tbody>
+        </table>
+      </div>
+      <button class="btn small secondary" style="margin-top:8px" onclick="addRow()">${t('addRow')}</button>
+
+      <div class="section-title">${t('comment')}</div>
+      <textarea id="f-comment">${form.comment||''}</textarea>
+
+      <div class="row" style="margin-top:14px">
+        <button class="btn" onclick="saveForm('draft')">${t('save')} (${t('draft')})</button>
+        <button class="btn" style="background:var(--accent)" onclick="saveForm('completed')">${t('save')} (${t('completed')})</button>
+        ${form.id ? `<button class="btn secondary" onclick="exportPdf()">${t('exportPdf')}</button>
+        <button class="btn secondary" onclick="exportExcel()">${t('exportExcel')}</button>
+        ${(CURRENT_USER.role!=='user') ? `<button class="btn danger" onclick="deleteForm()">${t('delete')}</button>` : ''}` : ''}
+      </div>
+    </div>`;
+  renderRows();
+}
+
+function changeFormCountry(){
+  const c = document.getElementById('f-country').value;
+  window._editingForm.country = c;
+  window._editingForm.projectId = '';
+  window._editingForm.partyB_name = COMPANY_NAMES[c] || '';
+  renderFormEditorView();
+}
+function onProjectChange(){
+  const id = document.getElementById('f-project').value;
+  const p = PROJECTS_CACHE.find(p=>p.id===id);
+  window._editingForm.projectId = id;
+  window._editingForm.projectName = p ? p.name : '';
+  if(p){ document.getElementById('f-location').value = p.location || ''; }
+}
+function renderRows(){
+  const tbody = document.getElementById('rows-tbody');
+  const rows = window._editingForm.rows;
+  tbody.innerHTML = rows.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="txt"><input value="${r.borehole}" onchange="updateRow(${i},'borehole',this.value)"></td>
+      <td><input value="${r.depth}" onchange="updateRow(${i},'depth',this.value)" style="width:55px"></td>
+      <td><input type="number" min="0" value="${r.soil}" onchange="updateRow(${i},'soil',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.rock}" onchange="updateRow(${i},'rock',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.spt}" onchange="updateRow(${i},'spt',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.water}" onchange="updateRow(${i},'water',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.stainless}" onchange="updateRow(${i},'stainless',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.pvc}" onchange="updateRow(${i},'pvc',this.value)" style="width:45px"></td>
+      <td class="txt"><input value="${r.remarks}" onchange="updateRow(${i},'remarks',this.value)"></td>
+      <td><button class="btn small secondary" onclick="removeRow(${i})">✕</button></td>
+    </tr>`).join('') + totalsRowHtml(rows);
+}
+function totalsRowHtml(rows){
+  const sum = k => rows.reduce((a,r)=>a + (parseFloat(r[k])||0), 0);
+  return `<tr class="totalrow"><td colspan="3">${t('total')}</td>
+    <td>${sum('soil')}</td><td>${sum('rock')}</td><td>${sum('spt')}</td><td>${sum('water')}</td>
+    <td>${sum('stainless')}</td><td>${sum('pvc')}</td><td colspan="2"></td></tr>`;
+}
+function updateRow(i, field, val){
+  window._editingForm.rows[i][field] = (['soil','rock','spt','water','stainless','pvc'].includes(field)) ? (parseFloat(val)||0) : val;
+  renderRows();
+}
+function addRow(){ window._editingForm.rows.push(blankRow(window._editingForm.rows.length+1)); renderRows(); }
+function removeRow(i){ window._editingForm.rows.splice(i,1); renderRows(); }
+
+async function getNextDocNo(country){
+  const counterRef = db.collection('counters').doc(country);
+  return db.runTransaction(async (tx)=>{
+    const snap = await tx.get(counterRef);
+    const last = snap.exists ? (snap.data().lastNumber||0) : 0;
+    const next = last + 1;
+    tx.set(counterRef, {lastNumber: next}, {merge:true});
+    return `${country}-${String(next).padStart(4,'0')}`;
+  });
+}
+
+async function saveForm(status){
+  const form = window._editingForm;
+  form.location = document.getElementById('f-location').value.trim();
+  form.partyA_name = document.getElementById('f-partyA-name').value.trim();
+  form.partyA_person = document.getElementById('f-partyA-person').value.trim();
+  form.partyB_name = document.getElementById('f-partyB-name').value.trim();
+  form.partyB_person = document.getElementById('f-partyB-person').value.trim();
+  form.place = document.getElementById('f-place').value.trim();
+  form.date = document.getElementById('f-date').value;
+  form.comment = document.getElementById('f-comment').value;
+  form.status = status;
+  if(!form.projectId){ toast(t('selectProjectFirst')); return; }
+
+  const payload = {
+    country: form.country, projectId: form.projectId, projectName: form.projectName, location: form.location,
+    partyA_name: form.partyA_name, partyA_person: form.partyA_person,
+    partyB_name: form.partyB_name, partyB_person: form.partyB_person,
+    place: form.place, date: form.date, rows: form.rows, comment: form.comment, status: form.status,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: CURRENT_USER.email
+  };
+
+  if(form.id){
+    await db.collection('handovers').doc(form.id).update(payload);
+    toast(t('formSaved'));
+  } else {
+    const docNo = await getNextDocNo(form.country);
+    payload.docNo = docNo;
+    payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    payload.createdBy = CURRENT_USER.email;
+    const ref = await db.collection('handovers').add(payload);
+    form.id = ref.id; form.docNo = docNo;
+    toast(t('formSaved') + ': ' + docNo);
+  }
+  renderFormEditorView();
+}
+async function deleteForm(){
+  if(!confirm(t('confirmDelete'))) return;
+  await db.collection('handovers').doc(window._editingForm.id).delete();
+  renderForms();
+}
+
+function exportPdf(){
+  const f = window._editingForm;
+  const doc = new jspdf.jsPDF();
+  doc.setFontSize(13); doc.text(t('formTitle'), 105, 14, {align:'center'});
+  doc.setFontSize(9);
+  doc.text(`${t('docNo')}: ${f.docNo||''}`, 14, 22);
+  doc.text(`${t('project')}: ${f.projectName||''}`, 14, 28);
+  doc.text(`${t('location')}: ${f.location||''}`, 14, 34);
+  doc.text(`${t('partyA')}: ${f.partyA_name||''} (${f.partyA_person||''})`, 14, 40);
+  doc.text(`${t('partyB')}: ${f.partyB_name||''} (${f.partyB_person||''})`, 14, 46);
+  const sum = k => f.rows.reduce((a,r)=>a + (parseFloat(r[k])||0), 0);
+  const body = f.rows.map((r,i)=>[i+1, r.borehole, r.depth, r.soil, r.rock, r.spt, r.water, r.stainless, r.pvc, r.remarks]);
+  body.push([t('total'),'','',sum('soil'),sum('rock'),sum('spt'),sum('water'),sum('stainless'),sum('pvc'),'']);
+  doc.autoTable({
+    startY:52,
+    head:[[t('no'),t('borehole'),t('depth'),t('soil'),t('rock'),t('spt'),t('water'),t('stainless'),t('pvc'),t('remarks')]],
+    body, styles:{fontSize:7}
+  });
+  let y = doc.lastAutoTable.finalY + 8;
+  doc.text(`${t('comment')}: ${f.comment||''}`, 14, y); y+=14;
+  doc.text(t('signPartyA'), 40, y, {align:'center'});
+  doc.text(t('signPartyB'), 160, y, {align:'center'});
+  doc.save(`${f.docNo||'handover'}.pdf`);
+}
+function exportExcel(){
+  const f = window._editingForm;
+  const sum = k => f.rows.reduce((a,r)=>a + (parseFloat(r[k])||0), 0);
+  const sheetData = [
+    [t('formTitle')],
+    [t('docNo'), f.docNo||''],
+    [t('project'), f.projectName||''],
+    [t('location'), f.location||''],
+    [t('partyA'), f.partyA_name||'', f.partyA_person||''],
+    [t('partyB'), f.partyB_name||'', f.partyB_person||''],
+    [],
+    [t('no'),t('borehole'),t('depth'),t('soil'),t('rock'),t('spt'),t('water'),t('stainless'),t('pvc'),t('remarks')],
+    ...f.rows.map((r,i)=>[i+1, r.borehole, r.depth, r.soil, r.rock, r.spt, r.water, r.stainless, r.pvc, r.remarks]),
+    [t('total'),'','',sum('soil'),sum('rock'),sum('spt'),sum('water'),sum('stainless'),sum('pvc'),''],
+    [],
+    [t('comment'), f.comment||'']
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Handover');
+  XLSX.writeFile(wb, `${f.docNo||'handover'}.xlsx`);
+}
+
+// ============ ADMIN ============
+function renderAdmin(){
+  if(CURRENT_USER.role==='user') return;
+  const el = document.getElementById('tab-admin');
+  el.innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">${t('users')}</h3>
+        <button class="btn small" onclick="openNewUserModal()">${t('createUser')}</button>
+      </div>
+      <div id="users-list">${t('loadingForms')}</div>
+    </div>
+    ${CURRENT_USER.role==='superadmin' ? `
+    <div class="card">
+      <h3>${t('companyNames')}</h3>
+      ${Object.keys(COUNTRIES).map(c=>`
+        <div class="field"><label>${cName(c)}</label>
+          <input id="cn-${c}" value="${COMPANY_NAMES[c]||''}">
+        </div>`).join('')}
+      <button class="btn small" onclick="saveCompanyNames()">${t('save')}</button>
+    </div>` : ''}`;
+
+  let q = db.collection('users');
+  if(CURRENT_USER.role!=='superadmin') q = q.where('country','==',CURRENT_USER.country);
+  q.get().then(snap=>{
+    const list = snap.docs.map(d=>d.data());
+    const listEl = document.getElementById('users-list');
+    if(!list.length){ listEl.innerHTML = `<p class="muted">${t('noUsers')}</p>`; return; }
+    listEl.innerHTML = list.map(u=>`
+      <div class="listrow">
+        <div>
+          <div><strong>${u.displayName||u.email}</strong> <span class="badge ${u.country}">${u.country}</span></div>
+          <div class="meta">${u.email} · ${t('role'+capitalize(u.role)) || u.role} · ${u.active===false? t('inactive') : t('active')}</div>
+        </div>
+        ${u.email!==SUPER_ADMIN_EMAIL ? `<div><button class="btn small secondary" onclick="toggleUserActive('${u.email}', ${u.active===false})">${u.active===false? t('active') : t('inactive')}</button></div>` : ''}
+      </div>`).join('');
+  });
+}
+function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
+function roleLabel(r){ if(r==='superadmin') return t('roleSuperadmin'); if(r==='admin') return t('roleAdmin'); return t('roleUser'); }
+
+function openNewUserModal(){
+  const isSuper = CURRENT_USER.role==='superadmin';
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===CURRENT_USER.country?'selected':''}>${cName(c)}</option>`).join('');
+  const roleOptions = `<option value="user">${t('roleUser')}</option>` + (isSuper ? `<option value="admin">${t('roleAdmin')}</option><option value="superadmin">${t('roleSuperadmin')}</option>` : '');
+  openModal(`
+    <h3>${t('newAccount')}</h3>
+    <div class="field"><label>${t('staffName')}</label><input id="nu-name"></div>
+    <div class="field"><label>${t('email')}</label><input id="nu-email" type="email"></div>
+    <div class="field"><label>${t('password6')}</label><input id="nu-pass" type="password"></div>
+    <p class="muted">${t('tempPasswordNote')}</p>
+    <div class="field"><label>${t('role')}</label><select id="nu-role" class="role-select">${roleOptions}</select></div>
+    <div class="field"><label>${t('country')}</label><select id="nu-country" ${isSuper?'':'disabled'}>${countryOptions}</select></div>
+    <div class="row">
+      <button class="btn" onclick="saveNewUser()">${t('save')}</button>
+      <button class="btn secondary" onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+}
+async function saveNewUser(){
+  const name = document.getElementById('nu-name').value.trim();
+  const email = document.getElementById('nu-email').value.trim().toLowerCase();
+  const pass = document.getElementById('nu-pass').value;
+  const role = document.getElementById('nu-role').value;
+  const country = document.getElementById('nu-country').value;
+  if(!email || pass.length<6){ toast(t('password6')); return; }
+  // Secondary app instance so we don't sign out the current admin
+  const secondary = firebase.initializeApp(firebaseConfig, 'Secondary-' + Date.now());
+  try{
+    await secondary.auth().createUserWithEmailAndPassword(email, pass);
+    await db.collection('users').doc(email).set({
+      email, displayName:name, role, country, active:true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: CURRENT_USER.email
+    });
+    await secondary.auth().signOut();
+    await secondary.delete();
+    closeModal(); toast(t('save')+' ✓'); renderAdmin();
+  }catch(err){
+    toast(err.message);
+    await secondary.delete();
+  }
+}
+async function toggleUserActive(email, makeActive){
+  await db.collection('users').doc(email).update({active: makeActive});
+  renderAdmin();
+}
+async function saveCompanyNames(){
+  const data = {};
+  Object.keys(COUNTRIES).forEach(c=>{ data[c] = document.getElementById('cn-'+c).value.trim(); });
+  await db.collection('settings').doc('companyNames').set(data);
+  COMPANY_NAMES = data;
+  toast(t('save')+' ✓');
+}
+
+applyI18n();
+</script>
+</body>
+</html>
