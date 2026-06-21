@@ -1689,6 +1689,42 @@ function ensureStructure() {
   STORE.customers.forEach(c => { if (!c.branch) c.branch = "cambodia"; });
   STORE.projects.forEach(p => { if (!p.branch) p.branch = "cambodia"; });
 
+  // Migration: ensure every paid/settled advance has a corresponding "received" income tx
+  let _migrationAddedTx = false;
+  STORE.advances.forEach(adv => {
+    const needsIncomeTx = ["paid", "settled", "settlement_pending", "settlement_returned"].includes(adv.status);
+    if (!needsIncomeTx) return;
+    const hasIncomeTx = STORE.transactions.some(tx => tx.fromAdvanceId === adv.id && tx.type === "income");
+    if (!hasIncomeTx) {
+      const txDate = adv.paidAt ? adv.paidAt.substring(0, 10) : (adv.createdAt ? adv.createdAt.substring(0, 10) : "2026-06-01");
+      STORE.transactions.push({
+        id: genId("tx"),
+        type: "income",
+        categoryId: "c_reimbursement",
+        date: txDate,
+        amount: adv.amount,
+        projectId: adv.projectId || null,
+        note: "Nhận tạm ứng: " + (adv.reason || ""),
+        userId: adv.userId,
+        timestamp: "00:00",
+        createdAt: nowISO(),
+        fromAdvanceId: adv.id,
+        _autoMigrated: true,
+      });
+      _migrationAddedTx = true;
+    }
+  });
+  if (_migrationAddedTx) {
+    // Save migrated data back to localStorage and Firestore immediately
+    lsSaveAll(STORE);
+    if (typeof db !== "undefined" && db && firebaseReady) {
+      STORE._savedAt = nowISO();
+      STORE._savedBy = "migration";
+      db.collection(COLLECTION_NAME).doc("main").set(STORE, { merge: false })
+        .catch(err => console.warn("Migration save failed:", err));
+    }
+  }
+
   // Migrate old per-customer "payments" (flat) into invoices structure
   STORE.customers.forEach(c => {
     if (!c.invoices) c.invoices = [];
