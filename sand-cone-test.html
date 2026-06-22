@@ -198,6 +198,23 @@
     </div>
   </div>
 
+  <!-- PROJECT SELECTION -->
+  <div class="card">
+    <h2>Dự Án / Project</h2>
+    <div class="grid2">
+      <div class="field" style="margin-bottom:0;">
+        <label>Chọn dự án có sẵn / Select existing project</label>
+        <select id="projectSelect" onchange="onProjectSelectChange()">
+          <option value="">— Chọn dự án / Select project —</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0; display:flex; align-items:flex-end;">
+        <button class="accent" style="width:100%;" onclick="openNewProjectModal()">+ Dự án mới / New Project</button>
+      </div>
+    </div>
+    <small class="hint">Chọn dự án để tự điền Chủ đầu tư, ĐV thi công, Địa điểm, γmax... Vẫn có thể sửa lại các trường bên dưới cho báo cáo này nếu cần. Báo cáo lưu sẽ được gắn vào đúng dự án này.</small>
+  </div>
+
   <!-- PROJECT INFO -->
   <div class="card">
     <h2>I. Thông Tin Liên Quan / Project Information</h2>
@@ -323,8 +340,12 @@
 </div>
 
 <div class="footer-bar">
+  <div id="editingIndicator" style="display:none; width:100%; text-align:center; font-size:11.5px; color:#7a5c00; background:#fdf3e3; border:1px solid #f0d8a0; border-radius:6px; padding:4px 8px; margin-bottom:4px;">
+    ✏️ Đang mở báo cáo đã lưu — "Lưu mới" để tạo báo cáo khác, "Cập nhật" để sửa báo cáo này.
+  </div>
   <button class="secondary" onclick="newReport()">+ Mới / New</button>
-  <button onclick="saveReport()">💾 Lưu / Save</button>
+  <button onclick="saveAsNewReport()">💾 Lưu mới / Save New</button>
+  <button class="accent" id="updateReportBtn" onclick="updateExistingReport()" style="display:none;">✏️ Cập nhật / Update</button>
   <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
   <button class="accent" onclick="exportPDF()">📄 PDF</button>
   <button class="accent" onclick="exportExcel()">📊 Excel</button>
@@ -337,6 +358,20 @@
 <div class="modal-bg" id="loadModal">
   <div class="modal">
     <h3>Báo cáo đã lưu / Saved Reports</h3>
+    <div class="grid2" style="margin-bottom:10px;">
+      <div class="field" style="margin-bottom:0;">
+        <label>Lọc theo dự án / Filter by project</label>
+        <select id="filterProject" onchange="renderFilteredReports()">
+          <option value="">— Tất cả dự án / All projects —</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Lọc theo khách hàng / Filter by client</label>
+        <select id="filterInvestor" onchange="renderFilteredReports()">
+          <option value="">— Tất cả khách hàng / All clients —</option>
+        </select>
+      </div>
+    </div>
     <div id="savedList"></div>
     <div class="row-actions" style="margin-top:10px;">
       <button class="secondary" onclick="closeLoadModal()">Đóng / Close</button>
@@ -367,6 +402,61 @@
   </div>
 </div>
 
+<div class="modal-bg" id="newProjectModal">
+  <div class="modal">
+    <h3>Tạo dự án mới / New Project</h3>
+    <div class="field">
+      <label>Tên công trình / Project name *</label>
+      <input id="npName" type="text">
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Chủ đầu tư / Investor (Khách hàng / Client)</label>
+        <input id="npInvestor" type="text">
+      </div>
+      <div class="field">
+        <label>ĐV thi công / Contractor</label>
+        <input id="npContractor" type="text">
+      </div>
+      <div class="field">
+        <label>ĐV TVGS / Supervisor</label>
+        <input id="npSupervisor" type="text">
+      </div>
+      <div class="field">
+        <label>Địa điểm XD / Location</label>
+        <input id="npLocation" type="text">
+      </div>
+      <div class="field">
+        <label>Khu vực TN / Testing Area</label>
+        <input id="npTestingArea" type="text">
+      </div>
+      <div class="field">
+        <label>Mô tả / Description</label>
+        <input id="npDescription" type="text">
+      </div>
+    </div>
+    <div class="grid3">
+      <div class="field">
+        <label>Mass cát đầy phễu (g)</label>
+        <input id="npSandFillMass" type="number" step="any" value="1450">
+      </div>
+      <div class="field">
+        <label>Bulk density cát (g/cm³)</label>
+        <input id="npSandBulkDensity" type="number" step="any" value="1.44">
+      </div>
+      <div class="field">
+        <label>γmax (g/cm³)</label>
+        <input id="npGammaMax" type="number" step="any" value="2.306">
+      </div>
+    </div>
+    <div class="login-error" id="newProjectError"></div>
+    <div class="row-actions">
+      <button class="accent" onclick="createProject()">Tạo dự án / Create</button>
+      <button class="secondary" onclick="closeNewProjectModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ====================================================================
    FIREBASE CONFIG
@@ -387,7 +477,9 @@ firebase.initializeApp(firebaseConfig);
 const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const auth = firebase.auth();
 const db = firebase.firestore();
-db.enablePersistence().catch(()=>{});
+// Note: offline persistence intentionally NOT enabled — it caused stale cached
+// auth state when switching between staff accounts in the same browser tab,
+// leading to "Missing or insufficient permissions" errors for some accounts.
 
 document.getElementById('superAdminEmailDisplay').textContent = SUPER_ADMIN_EMAIL;
 
@@ -432,6 +524,12 @@ async function login(){
 
 function logout(){
   auth.signOut();
+  currentReportId = null;
+  if(document.getElementById('updateReportBtn')) setEditingUI(false);
+  if(document.getElementById('tbody')){
+    document.getElementById('tbody').innerHTML = '';
+    rowCount = 0;
+  }
 }
 
 /* ---------------- AUTH STATE ---------------- */
@@ -481,6 +579,7 @@ function enterApp(){
   const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
   document.getElementById('adminCard').style.display = isAdminLike ? 'block' : 'none';
   if(isAdminLike) loadStaffList();
+  loadProjectsDropdown();
   if(document.getElementById('tbody').children.length === 0) addRow();
 }
 
@@ -569,6 +668,82 @@ async function deleteStaff(email){
    ==================================================================== */
 let rowCount = 0;
 let currentReportId = null; // Firestore doc id of the report currently loaded, null = unsaved/new
+let currentProjectId = null; // Firestore doc id of the project currently applied to the form
+let projectsCache = []; // [{id, ...data}] loaded once per session, refreshed after create
+
+/* ---------------- PROJECTS ---------------- */
+async function loadProjectsDropdown(){
+  const sel = document.getElementById('projectSelect');
+  try{
+    const snap = await db.collection('projects').orderBy('name').get();
+    projectsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    sel.innerHTML = '<option value="">— Chọn dự án / Select project —</option>' +
+      projectsCache.map(p => `<option value="${p.id}">${p.name}${p.investor ? ' — ' + p.investor : ''}</option>`).join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">(Lỗi tải danh sách dự án)</option>';
+  }
+}
+
+function onProjectSelectChange(){
+  const id = document.getElementById('projectSelect').value;
+  if(!id){ currentProjectId = null; return; }
+  const p = projectsCache.find(x => x.id === id);
+  if(!p) return;
+  currentProjectId = id;
+  setVal('investor', p.investor || '');
+  setVal('contractor', p.contractor || '');
+  setVal('project', p.name || '');
+  setVal('supervisor', p.supervisor || '');
+  setVal('location', p.location || '');
+  setVal('testingArea', p.testingArea || '');
+  setVal('description', p.description || '');
+  if(p.sandFillMass != null) setVal('sandFillMass', p.sandFillMass);
+  if(p.sandBulkDensity != null) setVal('sandBulkDensity', p.sandBulkDensity);
+  if(p.gammaMax != null) setVal('gammaMax', p.gammaMax);
+  recalcAll();
+  showToast('Đã áp dụng dự án: ' + p.name);
+}
+
+function openNewProjectModal(){
+  document.getElementById('newProjectError').textContent = '';
+  document.getElementById('newProjectModal').style.display = 'flex';
+}
+function closeNewProjectModal(){
+  document.getElementById('newProjectModal').style.display = 'none';
+  ['npName','npInvestor','npContractor','npSupervisor','npLocation','npTestingArea','npDescription'].forEach(id => setVal(id, ''));
+  setVal('npSandFillMass', 1450); setVal('npSandBulkDensity', 1.44); setVal('npGammaMax', 2.306);
+}
+
+async function createProject(){
+  const name = document.getElementById('npName').value.trim();
+  const err = document.getElementById('newProjectError');
+  err.textContent = '';
+  if(!name){ err.textContent = 'Nhập tên công trình / Enter project name'; return; }
+  const projectData = {
+    name,
+    investor: document.getElementById('npInvestor').value.trim(),
+    contractor: document.getElementById('npContractor').value.trim(),
+    supervisor: document.getElementById('npSupervisor').value.trim(),
+    location: document.getElementById('npLocation').value.trim(),
+    testingArea: document.getElementById('npTestingArea').value.trim(),
+    description: document.getElementById('npDescription').value.trim(),
+    sandFillMass: parseFloat(document.getElementById('npSandFillMass').value) || null,
+    sandBulkDensity: parseFloat(document.getElementById('npSandBulkDensity').value) || null,
+    gammaMax: parseFloat(document.getElementById('npGammaMax').value) || null,
+    createdBy: currentUserData?.email || '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try{
+    const ref = await db.collection('projects').add(projectData);
+    await loadProjectsDropdown();
+    document.getElementById('projectSelect').value = ref.id;
+    onProjectSelectChange();
+    closeNewProjectModal();
+    showToast('Đã tạo dự án: ' + name);
+  }catch(e){
+    err.textContent = 'Lỗi: ' + e.message;
+  }
+}
 
 function fmt(n, d=3){
   if(!isFinite(n)) return '';
@@ -676,6 +851,11 @@ function collectData(){
 function val(id){ return document.getElementById(id).value; }
 function setVal(id, v){ document.getElementById(id).value = v ?? ''; }
 
+function setEditingUI(isEditing){
+  document.getElementById('editingIndicator').style.display = isEditing ? 'block' : 'none';
+  document.getElementById('updateReportBtn').style.display = isEditing ? 'inline-block' : 'none';
+}
+
 function newReport(){
   if(!confirm('Tạo báo cáo mới? Dữ liệu chưa lưu sẽ mất.\nCreate new report? Unsaved data will be lost.')) return;
   ['investor','contractor','project','supervisor','location','testingArea','description','testDate','labTech','checkedBy']
@@ -686,36 +866,70 @@ function newReport(){
   document.getElementById('tbody').innerHTML = '';
   rowCount = 0;
   currentReportId = null;
+  currentProjectId = null;
+  document.getElementById('projectSelect').value = '';
+  setEditingUI(false);
   addRow();
   showToast('Đã tạo báo cáo mới / New report created');
 }
 
-async function saveReport(){
+function buildRecord(){
+  const data = collectData();
+  const liveUser = auth.currentUser;
+  const liveEmail = (liveUser?.email || '').toLowerCase();
+  const key = (data.project || data.location || 'Report') + ' — ' + (data.testDate || new Date().toISOString().slice(0,10));
+  const proj = currentProjectId ? projectsCache.find(p => p.id === currentProjectId) : null;
+  return {
+    record: {
+      ...data, key,
+      projectId: currentProjectId || null,
+      projectName: proj ? proj.name : (data.project || null),
+      savedByEmail: liveEmail,
+      savedByName: currentUserData?.displayName || liveEmail,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+    liveEmail, key
+  };
+}
+
+// Always creates a brand-new report document. Never overwrites anything,
+// even if a report was previously loaded — this is the safe default.
+async function saveAsNewReport(){
   const data = collectData();
   if(!data.project && !data.location){
     if(!confirm('Chưa nhập tên công trình. Vẫn lưu?\nNo project name entered. Save anyway?')) return;
   }
-  const key = (data.project || data.location || 'Report') + ' — ' + (data.testDate || new Date().toISOString().slice(0,10));
-  const record = {
-    ...data,
-    key,
-    savedByEmail: currentUserData?.email || '',
-    savedByName: currentUserData?.displayName || '',
-    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-  };
+  const liveUser = auth.currentUser;
+  if(!liveUser){ alert('Bạn đã bị đăng xuất, vui lòng đăng nhập lại.'); return; }
+  const { record, liveEmail, key } = buildRecord();
   try{
-    if(currentReportId){
-      await db.collection('reports').doc(currentReportId).set(record, { merge: true });
-    } else {
-      record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      const ref = await db.collection('reports').add(record);
-      currentReportId = ref.id;
-    }
-    showToast('Đã lưu lên hệ thống / Saved to system: ' + key);
+    record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    const ref = await db.collection('reports').add(record);
+    currentReportId = ref.id;
+    setEditingUI(true);
+    showToast('Đã lưu báo cáo mới lên hệ thống / Saved as new: ' + key);
   }catch(e){
-    alert('Lỗi khi lưu lên hệ thống: ' + e.message);
+    alert('Lỗi khi lưu lên hệ thống: ' + e.message + (e.code ? ' ('+e.code+')' : '') + '\nEmail đang đăng nhập: ' + liveEmail);
   }
 }
+
+// Overwrites the specific report that is currently open (only available after
+// using "Load" or right after "Save New"). Requires explicit confirmation.
+async function updateExistingReport(){
+  if(!currentReportId){ alert('Chưa có báo cáo nào đang mở để cập nhật.'); return; }
+  if(!confirm('Cập nhật sẽ GHI ĐÈ báo cáo đang mở. Tiếp tục?\nThis will OVERWRITE the currently open report. Continue?')) return;
+  const liveUser = auth.currentUser;
+  if(!liveUser){ alert('Bạn đã bị đăng xuất, vui lòng đăng nhập lại.'); return; }
+  const { record, liveEmail, key } = buildRecord();
+  try{
+    await db.collection('reports').doc(currentReportId).set(record, { merge: true });
+    showToast('Đã cập nhật báo cáo / Updated: ' + key);
+  }catch(e){
+    alert('Lỗi khi cập nhật: ' + e.message + (e.code ? ' ('+e.code+')' : '') + '\nEmail đang đăng nhập: ' + liveEmail);
+  }
+}
+
+let reportsCache = [];
 
 async function openLoadModal(){
   const list = document.getElementById('savedList');
@@ -723,28 +937,56 @@ async function openLoadModal(){
   document.getElementById('loadModal').style.display = 'flex';
   try{
     const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
-    let query = db.collection('reports').orderBy('updatedAt', 'desc').limit(100);
+    let query = db.collection('reports').orderBy('updatedAt', 'desc').limit(300);
     if(!isAdminLike){
-      query = db.collection('reports').where('savedByEmail', '==', currentUserData.email).orderBy('updatedAt', 'desc').limit(100);
+      query = db.collection('reports').where('savedByEmail', '==', currentUserData.email).orderBy('updatedAt', 'desc').limit(300);
     }
     const snap = await query.get();
-    list.innerHTML = '';
-    if(snap.empty){
-      list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chưa có báo cáo nào / No saved reports yet.</p>';
-      return;
-    }
-    snap.forEach(doc => {
-      const r = doc.data();
-      const when = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString() : '';
-      const div = document.createElement('div');
-      div.className = 'saved-item';
-      div.innerHTML = `<div class="info" onclick="loadReport('${doc.id}')"><strong>${r.key||''}</strong><br><small>${when} ${r.savedByName? '· '+r.savedByName : ''}</small></div>
-        <button class="danger small" onclick="deleteReport('${doc.id}')">✕</button>`;
-      list.appendChild(div);
-    });
+    reportsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // populate project filter
+    const projNames = [...new Set(reportsCache.map(r => r.projectName).filter(Boolean))].sort();
+    const projSel = document.getElementById('filterProject');
+    const prevProj = projSel.value;
+    projSel.innerHTML = '<option value="">— Tất cả dự án / All projects —</option>' +
+      projNames.map(n => `<option value="${n}">${n}</option>`).join('');
+    projSel.value = projNames.includes(prevProj) ? prevProj : '';
+
+    // populate investor/client filter
+    const investors = [...new Set(reportsCache.map(r => r.investor).filter(Boolean))].sort();
+    const invSel = document.getElementById('filterInvestor');
+    const prevInv = invSel.value;
+    invSel.innerHTML = '<option value="">— Tất cả khách hàng / All clients —</option>' +
+      investors.map(n => `<option value="${n}">${n}</option>`).join('');
+    invSel.value = investors.includes(prevInv) ? prevInv : '';
+
+    renderFilteredReports();
   }catch(e){
     list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi tải danh sách: ${e.message}</p>`;
   }
+}
+
+function renderFilteredReports(){
+  const list = document.getElementById('savedList');
+  const projFilter = document.getElementById('filterProject').value;
+  const invFilter = document.getElementById('filterInvestor').value;
+  const filtered = reportsCache.filter(r =>
+    (!projFilter || r.projectName === projFilter) &&
+    (!invFilter || r.investor === invFilter)
+  );
+  list.innerHTML = '';
+  if(filtered.length === 0){
+    list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Không có báo cáo phù hợp / No matching reports.</p>';
+    return;
+  }
+  filtered.forEach(r => {
+    const when = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString() : '';
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    div.innerHTML = `<div class="info" onclick="loadReport('${r.id}')"><strong>${r.key||''}</strong><br><small>${when} ${r.savedByName? '· '+r.savedByName : ''}${r.projectName? ' · '+r.projectName : ''}</small></div>
+      <button class="danger small" onclick="deleteReport('${r.id}')">✕</button>`;
+    list.appendChild(div);
+  });
 }
 function closeLoadModal(){ document.getElementById('loadModal').style.display = 'none'; }
 
@@ -760,6 +1002,9 @@ async function loadReport(docId){
     (r.rows||[]).forEach(rowData => addRow(rowData));
     if((r.rows||[]).length === 0) addRow();
     currentReportId = docId;
+    currentProjectId = r.projectId || null;
+    document.getElementById('projectSelect').value = currentProjectId || '';
+    setEditingUI(true);
     closeLoadModal();
     showToast('Đã mở / Loaded: ' + (r.key||''));
   }catch(e){
@@ -771,7 +1016,7 @@ async function deleteReport(docId){
   if(!confirm('Xóa báo cáo này khỏi hệ thống?\nDelete this report from the system?')) return;
   try{
     await db.collection('reports').doc(docId).delete();
-    if(currentReportId === docId) currentReportId = null;
+    if(currentReportId === docId){ currentReportId = null; setEditingUI(false); }
     openLoadModal();
   }catch(e){
     alert('Lỗi xóa báo cáo: ' + e.message);
