@@ -567,8 +567,8 @@ async function deleteStaff(email){
 /* ====================================================================
    FORM LOGIC (sand cone calculations, save/load, export)
    ==================================================================== */
-const STORAGE_KEY = 'haic_sandcone_reports';
 let rowCount = 0;
+let currentReportId = null; // Firestore doc id of the report currently loaded, null = unsaved/new
 
 function fmt(n, d=3){
   if(!isFinite(n)) return '';
@@ -685,70 +685,97 @@ function newReport(){
   setVal('gammaMax', 2.306);
   document.getElementById('tbody').innerHTML = '';
   rowCount = 0;
+  currentReportId = null;
   addRow();
   showToast('Đã tạo báo cáo mới / New report created');
 }
 
-function saveReport(){
+async function saveReport(){
   const data = collectData();
   if(!data.project && !data.location){
     if(!confirm('Chưa nhập tên công trình. Vẫn lưu?\nNo project name entered. Save anyway?')) return;
   }
-  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const id = data.project || data.location || 'Report';
-  const date = data.testDate || new Date().toISOString().slice(0,10);
-  const key = id + ' — ' + date;
-  const existingIdx = all.findIndex(r => r._key === key);
-  const record = { _key: key, _savedAt: new Date().toISOString(), _savedBy: currentUserData?.email || '', ...data };
-  if(existingIdx >= 0){
-    if(!confirm('Báo cáo trùng tên đã tồn tại. Ghi đè?\nA report with this name/date exists. Overwrite?')) return;
-    all[existingIdx] = record;
-  } else {
-    all.push(record);
+  const key = (data.project || data.location || 'Report') + ' — ' + (data.testDate || new Date().toISOString().slice(0,10));
+  const record = {
+    ...data,
+    key,
+    savedByEmail: currentUserData?.email || '',
+    savedByName: currentUserData?.displayName || '',
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try{
+    if(currentReportId){
+      await db.collection('reports').doc(currentReportId).set(record, { merge: true });
+    } else {
+      record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await db.collection('reports').add(record);
+      currentReportId = ref.id;
+    }
+    showToast('Đã lưu lên hệ thống / Saved to system: ' + key);
+  }catch(e){
+    alert('Lỗi khi lưu lên hệ thống: ' + e.message);
   }
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  showToast('Đã lưu / Saved: ' + key);
 }
 
-function openLoadModal(){
-  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+async function openLoadModal(){
   const list = document.getElementById('savedList');
-  list.innerHTML = '';
-  if(all.length === 0){
-    list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chưa có báo cáo nào / No saved reports yet.</p>';
-  }
-  all.slice().reverse().forEach((r) => {
-    const realIdx = all.indexOf(r);
-    const div = document.createElement('div');
-    div.className = 'saved-item';
-    div.innerHTML = `<div class="info" onclick="loadReport(${realIdx})"><strong>${r._key}</strong><br><small>${r._savedAt?.slice(0,16).replace('T',' ')||''} ${r._savedBy? '· '+r._savedBy : ''}</small></div>
-      <button class="danger small" onclick="deleteReport(${realIdx})">✕</button>`;
-    list.appendChild(div);
-  });
+  list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Đang tải / Loading...</p>';
   document.getElementById('loadModal').style.display = 'flex';
+  try{
+    const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
+    let query = db.collection('reports').orderBy('updatedAt', 'desc').limit(100);
+    if(!isAdminLike){
+      query = db.collection('reports').where('savedByEmail', '==', currentUserData.email).orderBy('updatedAt', 'desc').limit(100);
+    }
+    const snap = await query.get();
+    list.innerHTML = '';
+    if(snap.empty){
+      list.innerHTML = '<p style="color:#6b7280;font-size:13px;">Chưa có báo cáo nào / No saved reports yet.</p>';
+      return;
+    }
+    snap.forEach(doc => {
+      const r = doc.data();
+      const when = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString() : '';
+      const div = document.createElement('div');
+      div.className = 'saved-item';
+      div.innerHTML = `<div class="info" onclick="loadReport('${doc.id}')"><strong>${r.key||''}</strong><br><small>${when} ${r.savedByName? '· '+r.savedByName : ''}</small></div>
+        <button class="danger small" onclick="deleteReport('${doc.id}')">✕</button>`;
+      list.appendChild(div);
+    });
+  }catch(e){
+    list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi tải danh sách: ${e.message}</p>`;
+  }
 }
 function closeLoadModal(){ document.getElementById('loadModal').style.display = 'none'; }
 
-function loadReport(idx){
-  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  const r = all[idx];
-  if(!r) return;
-  ['investor','contractor','project','supervisor','location','testingArea','description','testDate',
-   'sandFillMass','sandBulkDensity','gammaMax','labTech','checkedBy'].forEach(id => setVal(id, r[id]));
-  document.getElementById('tbody').innerHTML = '';
-  rowCount = 0;
-  (r.rows||[]).forEach(rowData => addRow(rowData));
-  if((r.rows||[]).length === 0) addRow();
-  closeLoadModal();
-  showToast('Đã mở / Loaded: ' + r._key);
+async function loadReport(docId){
+  try{
+    const snap = await db.collection('reports').doc(docId).get();
+    if(!snap.exists){ showToast('Báo cáo không còn tồn tại.'); return; }
+    const r = snap.data();
+    ['investor','contractor','project','supervisor','location','testingArea','description','testDate',
+     'sandFillMass','sandBulkDensity','gammaMax','labTech','checkedBy'].forEach(id => setVal(id, r[id]));
+    document.getElementById('tbody').innerHTML = '';
+    rowCount = 0;
+    (r.rows||[]).forEach(rowData => addRow(rowData));
+    if((r.rows||[]).length === 0) addRow();
+    currentReportId = docId;
+    closeLoadModal();
+    showToast('Đã mở / Loaded: ' + (r.key||''));
+  }catch(e){
+    alert('Lỗi mở báo cáo: ' + e.message);
+  }
 }
 
-function deleteReport(idx){
-  if(!confirm('Xóa báo cáo này?\nDelete this report?')) return;
-  const all = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-  all.splice(idx,1);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
-  openLoadModal();
+async function deleteReport(docId){
+  if(!confirm('Xóa báo cáo này khỏi hệ thống?\nDelete this report from the system?')) return;
+  try{
+    await db.collection('reports').doc(docId).delete();
+    if(currentReportId === docId) currentReportId = null;
+    openLoadModal();
+  }catch(e){
+    alert('Lỗi xóa báo cáo: ' + e.message);
+  }
 }
 
 function exportExcel(){
