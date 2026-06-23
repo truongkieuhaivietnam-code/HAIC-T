@@ -1632,12 +1632,13 @@ function getDefaultData() {
         { id: "c_transport", name_vi: "Đi lại", name_en: "Transport", icon: "🚗" },
         { id: "c_food", name_vi: "Ăn uống", name_en: "Food", icon: "🍜" },
         { id: "c_office", name_vi: "Văn phòng", name_en: "Office", icon: "🖇️" },
-        { id: "c_reimbursement", name_vi: "Hoàn ứng", name_en: "Reimbursement", icon: "🔄" },
+        { id: "c_reimbursement", name_vi: "Hoàn ứng", name_en: "Advance Refund", icon: "🔄" },
         { id: "c_other", name_vi: "Khác", name_en: "Other", icon: "📦" },
       ],
       income: [
         { id: "c_salary", name_vi: "Lương", name_en: "Salary", icon: "💰" },
-        { id: "c_reimbursement", name_vi: "Hoàn ứng", name_en: "Reimbursement", icon: "🔄" },
+        { id: "c_advance_received", name_vi: "Nhận tạm ứng", name_en: "Advance Received", icon: "💵" },
+        { id: "c_reimbursement", name_vi: "Bù thiếu", name_en: "Shortfall Top-up", icon: "🔄" },
         { id: "c_other_in", name_vi: "Khác", name_en: "Other", icon: "📦" },
       ]
     },
@@ -1700,6 +1701,13 @@ function ensureStructure() {
     return true;
   });
 
+  // Fix category: old income txs from advances that used "c_reimbursement" → change to "c_advance_received"
+  STORE.transactions.forEach(tx => {
+    if (tx.fromAdvanceId && tx.type === "income" && tx.categoryId === "c_reimbursement") {
+      tx.categoryId = "c_advance_received";
+    }
+  });
+
   // Migration: ensure every paid/settled advance has a corresponding "received" income tx
   // Uses _migrated_advance_income flag to run ONCE only (flag saved to Firestore)
   if (!STORE._migrated_advance_income) {
@@ -1714,7 +1722,7 @@ function ensureStructure() {
         STORE.transactions.push({
           id: genId("tx"),
           type: "income",
-          categoryId: "c_reimbursement",
+          categoryId: "c_advance_received",
           date: txDate,
           amount: adv.amount,
           projectId: adv.projectId || null,
@@ -2970,7 +2978,7 @@ function markAdvancePaid(advanceId) {
   STORE.transactions.push({
     id: genId("tx"),
     type: "income",
-    categoryId: "c_reimbursement",
+    categoryId: "c_advance_received",
     date: todayStr(),
     amount: adv.amount,
     projectId: adv.projectId,
