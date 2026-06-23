@@ -1,0 +1,1016 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Point Load Test on Rock | HAIC</title>
+<meta name="theme-color" content="#1a5276">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Point Load Test">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --primary:#1a5276;
+    --primary-dark:#0e3b53;
+    --accent:#1e8449;
+    --danger:#c0392b;
+    --bg:#f4f6f7;
+    --card:#ffffff;
+    --border:#d5dbdb;
+    --text:#212f3c;
+    --muted:#6b7280;
+    --input-bg:#ffffff;
+  }
+  [data-theme="dark"]{
+    --bg:#0d1517;
+    --card:#1c2628;
+    --border:#2a3638;
+    --text:#ecefef;
+    --muted:#93a3a7;
+    --input-bg:#172022;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text);
+    padding-bottom:90px; transition:background .15s,color .15s;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff; padding:14px 16px; position:sticky; top:0; z-index:50;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  header h1{margin:0; font-size:15px; line-height:1.4; font-weight:700;}
+  header .sub{font-size:11px; opacity:.85; margin-top:2px;}
+  .userbar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    margin-top:8px; font-size:12px; background:rgba(255,255,255,.12); border-radius:8px; padding:6px 10px;
+  }
+  .userbar .who{font-weight:700;}
+  .userbar .actions{display:flex; gap:6px; flex-wrap:wrap; align-items:center;}
+  .userbar button{padding:5px 9px; font-size:11.5px; border-radius:6px;}
+  .theme-toggle{
+    background:rgba(255,255,255,.18); border:none; color:#fff; width:30px; height:30px; border-radius:8px;
+    font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  }
+  .wrap{max-width:1100px; margin:0 auto; padding:10px;}
+  .card{
+    background:var(--card); border-radius:10px; padding:14px; margin-bottom:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid var(--border);
+  }
+  .card h2{
+    font-size:13px; color:var(--primary); margin:0 0 10px; padding-bottom:6px;
+    border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px;
+  }
+  [data-theme="dark"] .card h2{ color:#5fb3d9; }
+  .card .card-desc{font-size:11.5px; color:var(--muted); margin:-6px 0 12px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  @media(max-width:640px){.grid2,.grid3{grid-template-columns:1fr;}}
+  label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:3px; font-weight:600;}
+  input,textarea,select{
+    width:100%; padding:8px 9px; border:1px solid var(--border); border-radius:6px;
+    font-size:14px; background:var(--input-bg); color:var(--text); font-family:inherit;
+  }
+  input:focus,textarea:focus,select:focus{outline:none; border-color:var(--primary);}
+  .field{margin-bottom:10px;}
+  .row-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;}
+  button{
+    border:none; border-radius:7px; padding:9px 14px; font-size:13px; font-weight:600;
+    cursor:pointer; color:#fff; background:var(--primary); transition:.15s;
+  }
+  button:hover{filter:brightness(1.08);}
+  button.secondary{background:#5d6d7e;}
+  button.accent{background:var(--accent);}
+  button.danger{background:var(--danger);}
+  button.small{padding:5px 9px; font-size:12px; border-radius:6px; margin-right:4px;}
+  button.ghost{background:#eef1f3; color:var(--primary);}
+  [data-theme="dark"] button.ghost{background:#23302f; color:#5fb3d9;}
+  .table-scroll{overflow-x:auto; border:1px solid var(--border); border-radius:8px;}
+  table{border-collapse:collapse; width:100%; min-width:1280px; font-size:12px;}
+  th,td{border:1px solid var(--border); padding:6px; text-align:center;}
+  thead th{background:var(--primary); color:#fff; font-weight:600; font-size:11px; line-height:1.3;}
+  thead tr.units th{background:#eef1f3; color:var(--text); font-weight:500; font-size:10.5px;}
+  [data-theme="dark"] thead tr.units th{background:#23302f;}
+  tbody td input{padding:5px 4px; font-size:12px; min-width:62px; text-align:center;}
+  tbody td.calc{background:#f6fbf8; font-weight:600; color:var(--accent);}
+  [data-theme="dark"] tbody td.calc{background:#16291a;}
+  tbody td.label-col input{min-width:78px; text-align:left;}
+  tbody tr:nth-child(even){background:#fafbfb;}
+  [data-theme="dark"] tbody tr:nth-child(even){background:#172022;}
+  .footer-bar{
+    position:fixed; bottom:0; left:0; right:0; background:var(--card); border-top:1px solid var(--border);
+    padding:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; z-index:40;
+    box-shadow:0 -2px 6px rgba(0,0,0,.08);
+  }
+  .signoff{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:640px){.signoff{grid-template-columns:1fr;}}
+  .signoff .box{text-align:center;}
+  .signoff .box .ttl{font-weight:700; font-size:12px; margin-bottom:36px;}
+  .companyfoot{font-size:11px; color:var(--muted); text-align:center; line-height:1.5; margin-top:6px;}
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(0,0,0,.45); display:none; align-items:center;
+    justify-content:center; z-index:100; padding:16px;
+  }
+  .modal{background:var(--card); border-radius:10px; max-width:480px; width:100%; max-height:85vh; overflow:auto; padding:16px;}
+  .modal h3{margin-top:0; color:var(--primary); font-size:15px;}
+  [data-theme="dark"] .modal h3{ color:#5fb3d9; }
+  .saved-item{
+    display:flex; justify-content:space-between; align-items:center; padding:8px;
+    border:1px solid var(--border); border-radius:7px; margin-bottom:6px; font-size:12.5px;
+  }
+  .saved-item .info{flex:1; cursor:pointer;}
+  .toast{
+    position:fixed; bottom:100px; left:50%; transform:translateX(-50%); background:var(--accent);
+    color:#fff; padding:9px 16px; border-radius:20px; font-size:13px; z-index:200; opacity:0;
+    transition:opacity .25s; pointer-events:none;
+  }
+  .toast.show{opacity:1;}
+  small.hint{display:block; color:var(--muted); font-size:10.5px; margin-top:3px;}
+  #loginScreen{
+    position:fixed; inset:0; background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    display:flex; align-items:center; justify-content:center; z-index:500; padding:16px; overflow-y:auto;
+  }
+  .login-box{
+    background:var(--card); border-radius:14px; padding:30px 26px; max-width:400px; width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.25); margin:auto;
+  }
+  .login-box h2{color:var(--primary); font-size:17px; margin:0 0 4px; text-align:center;}
+  [data-theme="dark"] .login-box h2{ color:#5fb3d9; }
+  .login-box .sub{font-size:11.5px; color:var(--muted); margin-bottom:20px; text-align:center;}
+  .login-error{color:var(--danger); font-size:12.5px; margin-top:10px; min-height:16px; text-align:center;}
+  .login-box button.primary-btn{width:100%; padding:11px; font-size:14px; margin-top:6px;}
+  .firstrun-box{
+    margin-top:18px; padding-top:14px; border-top:1px solid var(--border);
+    font-size:11px; color:var(--muted); line-height:1.5;
+  }
+  .firstrun-box strong{color:var(--text);}
+  #appShell{display:none;}
+  .accounts-table{width:100%; border-collapse:collapse; font-size:12.5px;}
+  .accounts-table th,.accounts-table td{border:1px solid var(--border); padding:7px 8px; text-align:left;}
+  .accounts-table th{background:#eef1f3;}
+  [data-theme="dark"] .accounts-table th{background:#23302f;}
+  .badge{display:inline-block; padding:2px 9px; border-radius:10px; font-size:10.5px; font-weight:700;}
+  .badge.superadmin{background:#f1e8fa; color:#6c3483;}
+  .badge.admin{background:#eaf2e8; color:var(--accent);}
+  .badge.user{background:#eaf0f6; color:var(--primary);}
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN SCREEN ======================= -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>HAIC Lab — Đăng nhập / Login</h2>
+    <div class="sub">Point Load Strength Index Test on Rock</div>
+    <div class="field">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="ten@gmail.com">
+    </div>
+    <div class="field">
+      <label>Mật khẩu / Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+    </div>
+    <button class="primary-btn" onclick="login()">Đăng nhập / Sign In</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="firstrun-box">
+      <strong>Lần đầu sử dụng / First-time setup:</strong><br>
+      Tài khoản Super Admin được tạo tự động ở lần đăng nhập đầu tiên với email đã cấu hình sẵn (<span id="superAdminEmailDisplay"></span>). Đặt mật khẩu bất kỳ (tối thiểu 6 ký tự) — hệ thống sẽ ghi nhận đó là mật khẩu chính thức.<br><br>
+      Các tài khoản khác (Admin, Nhân viên) do Admin tạo trực tiếp trong app, mục "Quản Lý Tài Khoản", dùng địa chỉ Gmail.
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MAIN APP ======================= -->
+<div id="appShell">
+
+<header>
+  <h1>KẾT QUẢ THÍ NGHIỆM XUYÊN ĐIỂM TRÊN ĐÁ<br>
+  <span style="font-weight:400">Results of Point Load Test on Rock</span></h1>
+  <div class="sub">Point Load Strength Index, Is(50)</div>
+  <div class="userbar">
+    <div class="who" id="whoami">—</div>
+    <div class="actions">
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Dark mode">🌙</button>
+      <button class="danger" onclick="logout()">Đăng xuất</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ADMIN CARD -->
+  <div class="card" id="adminCard" style="display:none;">
+    <h2>Quản Lý Tài Khoản / Account Management</h2>
+    <div class="row-actions" style="margin-bottom:10px;">
+      <button class="accent" onclick="openAddStaffModal()">+ Thêm nhân viên / Add Staff</button>
+    </div>
+    <div class="table-scroll">
+      <table class="accounts-table">
+        <thead><tr><th>Tên / Name</th><th>Email</th><th>Vai trò / Role</th><th>Hành động / Action</th></tr></thead>
+        <tbody id="staffBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PROJECT -->
+  <div class="card">
+    <h2>Dự Án / Project</h2>
+    <div class="field">
+      <label>Chọn dự án / Select project</label>
+      <select id="projectSelect" onchange="onProjectSelectChange()"></select>
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="openNewProjectModal()">+ Dự án mới / New Project</button>
+    </div>
+    <div class="grid2" style="margin-top:10px;">
+      <div class="field">
+        <label>PROJECT</label>
+        <input id="project" type="text">
+      </div>
+      <div class="field">
+        <label>LOCATION</label>
+        <input id="location" type="text">
+      </div>
+    </div>
+  </div>
+
+  <!-- RESULTS TABLE -->
+  <div class="card">
+    <h2>Kết Quả Thí Nghiệm / Test Results</h2>
+    <div class="card-desc">Công thức tính theo đúng file Excel gốc: Waverage=(W1+W2)/2; De²=4·D·Waverage/π; De=√De²; Is=P×1000/De²; F=(De/50)^0.45; Is50=Is×F</div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">Test<br>No.</th>
+            <th rowspan="2">Borehole</th>
+            <th rowspan="2">Sample<br>No.</th>
+            <th rowspan="2">Sample<br>depth,m</th>
+            <th rowspan="2">2L<br>(mm)</th>
+            <th rowspan="2">D<br>(mm)</th>
+            <th rowspan="2">W1<br>(mm)</th>
+            <th rowspan="2">W2<br>(mm)</th>
+            <th rowspan="2">Waverage<br>(mm)</th>
+            <th rowspan="2">Pressure, P<br>(KN)</th>
+            <th rowspan="2">De<br>(mm)</th>
+            <th rowspan="2">De²<br>(mm²)</th>
+            <th rowspan="2">Is<br>(Mpa)</th>
+            <th rowspan="2">Is(50)<br>(Mpa)</th>
+            <th rowspan="2">F</th>
+            <th rowspan="2"></th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="addRow()">+ Thêm dòng / Add Row</button>
+    </div>
+  </div>
+
+  <!-- REMARKS -->
+  <div class="card">
+    <h2>Ghi Chú / Remarks</h2>
+    <div class="field">
+      <textarea id="remarks" rows="2">The testing result only right on testing sample.</textarea>
+    </div>
+    <div class="field">
+      <label>Ngày thử nghiệm / Test date</label>
+      <input id="testDate" type="date">
+    </div>
+  </div>
+
+  <!-- SIGN OFF -->
+  <div class="card">
+    <h2>Xác Nhận / Sign-off</h2>
+    <div class="signoff">
+      <div class="box">
+        <div class="ttl">Thí nghiệm viên / Tested by</div>
+        <input id="testedBy" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
+      </div>
+      <div class="box">
+        <div class="ttl">Phụ trách Lab / Chief of Lab</div>
+        <input id="chiefOfLab" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
+      </div>
+    </div>
+    <div class="companyfoot">
+      HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD<br>
+      Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia<br>
+      Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-bar">
+  <div id="editingIndicator" style="display:none; width:100%; text-align:center; font-size:11.5px; color:#7a5c00; background:#fdf3e3; border:1px solid #f0d8a0; border-radius:6px; padding:4px 8px; margin-bottom:4px;">
+    ✏️ Đang mở báo cáo đã lưu — "Lưu mới" để tạo báo cáo khác, "Cập nhật" để sửa báo cáo này.
+  </div>
+  <button class="secondary" onclick="newReport()">+ Mới / New</button>
+  <button onclick="saveAsNewReport()">💾 Lưu mới / Save New</button>
+  <button class="accent" id="updateReportBtn" onclick="updateExistingReport()" style="display:none;">✏️ Cập nhật / Update</button>
+  <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
+  <button class="accent" onclick="exportPDF()">📄 PDF</button>
+  <button class="accent" onclick="exportExcel()">📊 Excel</button>
+</div>
+
+</div><!-- /#appShell -->
+
+<div class="toast" id="toast"></div>
+
+<div class="modal-bg" id="loadModal">
+  <div class="modal">
+    <h3>Báo cáo đã lưu / Saved Reports</h3>
+    <div class="field">
+      <label>Lọc theo dự án / Filter by project</label>
+      <select id="filterProject" onchange="renderFilteredReports()">
+        <option value="">— Tất cả dự án / All projects —</option>
+      </select>
+    </div>
+    <div id="savedList"></div>
+    <div class="row-actions" style="margin-top:10px;">
+      <button class="secondary" onclick="closeLoadModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="addStaffModal">
+  <div class="modal">
+    <h3>Thêm nhân viên / Add Staff</h3>
+    <div class="field">
+      <label>Họ tên / Name</label>
+      <input id="staffName" type="text" placeholder="Nguyễn Văn A">
+    </div>
+    <div class="field">
+      <label>Email (Gmail)</label>
+      <input id="staffEmail" type="email" placeholder="nhanvien@gmail.com">
+    </div>
+    <div class="field">
+      <label>Mật khẩu tạm / Temp password (tối thiểu 6 ký tự)</label>
+      <input id="staffPassword" type="text" placeholder="vd: 123456">
+    </div>
+    <div class="login-error" id="addStaffError"></div>
+    <div class="row-actions">
+      <button class="accent" onclick="addStaff()">Tạo tài khoản / Create</button>
+      <button class="secondary" onclick="closeAddStaffModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="newProjectModal">
+  <div class="modal">
+    <h3>Tạo dự án mới / New Project</h3>
+    <div class="field">
+      <label>PROJECT *</label>
+      <input id="npProject" type="text">
+    </div>
+    <div class="field">
+      <label>LOCATION</label>
+      <input id="npLocation" type="text">
+    </div>
+    <div class="login-error" id="newProjectError"></div>
+    <div class="row-actions">
+      <button class="accent" onclick="createProject()">Tạo dự án / Create</button>
+      <button class="secondary" onclick="closeNewProjectModal()">Đóng / Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   FIREBASE CONFIG — paste values from Firebase Console > Project Settings
+   ==================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAs2JlBnINH46JUvJYvbSGZczDw_eIG01Q",
+  authDomain: "point-load-test.firebaseapp.com",
+  projectId: "point-load-test",
+  storageBucket: "point-load-test.firebasestorage.app",
+  messagingSenderId: "497051430921",
+  appId: "1:497051430921:web:750a8c76f93610817488d8"
+};
+
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
+firebase.initializeApp(firebaseConfig);
+const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
+const auth = firebase.auth();
+const db = firebase.firestore();
+// Offline persistence intentionally NOT enabled — see sand-cone-test.html notes
+// (stale cached auth state when switching staff accounts in the same tab).
+
+document.getElementById('superAdminEmailDisplay').textContent = SUPER_ADMIN_EMAIL;
+
+let currentUserData = null; // {email, displayName, role, uid}
+
+function showLoginMsg(msg, isError){
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
+}
+
+/* ---------------- THEME (dark mode) ---------------- */
+function applyStoredTheme(){
+  const t = localStorage.getItem('plt_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('plt_theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+applyStoredTheme();
+
+/* ---------------- LOGIN ---------------- */
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  showLoginMsg('', false);
+  if(!email || !password){ showLoginMsg('Nhập đầy đủ email và mật khẩu / Enter email and password', true); return; }
+  if(password.length < 6){ showLoginMsg('Mật khẩu tối thiểu 6 ký tự / Password must be at least 6 characters', true); return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, password);
+  }catch(e){
+    if(e.code === 'auth/user-not-found' && email === SUPER_ADMIN_EMAIL.toLowerCase()){
+      try{
+        await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(email).set({
+          email, displayName: 'Super Admin', role: 'superadmin', active: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: 'system-bootstrap'
+        });
+        showToast('Đã tạo tài khoản Super Admin.');
+      }catch(e2){
+        showLoginMsg('Lỗi tạo tài khoản Super Admin: ' + e2.message, true);
+      }
+    } else if(e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'){
+      showLoginMsg('Sai email hoặc mật khẩu / Wrong email or password', true);
+    } else {
+      showLoginMsg('Lỗi: ' + e.message, true);
+    }
+  }
+}
+
+function logout(){
+  auth.signOut();
+  currentReportId = null;
+  if(document.getElementById('updateReportBtn')) setEditingUI(false);
+  if(document.getElementById('tbody')){
+    document.getElementById('tbody').innerHTML = '';
+    rowCount = 0;
+  }
+}
+
+/* ---------------- AUTH STATE ---------------- */
+auth.onAuthStateChanged(async (user) => {
+  if(!user){
+    currentUserData = null;
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    return;
+  }
+  const email = (user.email || '').toLowerCase();
+  try{
+    const docRef = db.collection('users').doc(email);
+    let docSnap = await docRef.get();
+    if(!docSnap.exists){
+      if(email === SUPER_ADMIN_EMAIL.toLowerCase()){
+        await docRef.set({
+          email, displayName: 'Super Admin', role: 'superadmin', active: true,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: 'system-bootstrap'
+        });
+        docSnap = await docRef.get();
+      } else {
+        showLoginMsg('Tài khoản chưa được cấp quyền sử dụng app. Liên hệ Admin.', true);
+        await auth.signOut();
+        return;
+      }
+    }
+    const d = docSnap.data();
+    if(d.active === false){
+      showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+      await auth.signOut();
+      return;
+    }
+    currentUserData = { email, displayName: d.displayName || email, role: d.role, uid: user.uid };
+    enterApp();
+  }catch(e){
+    showLoginMsg('Lỗi: ' + e.message, true);
+    await auth.signOut();
+  }
+});
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  const roleLabel = currentUserData.role === 'superadmin' ? 'Super Admin' : (currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên');
+  document.getElementById('whoami').textContent = `${currentUserData.displayName} (${roleLabel})`;
+  const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
+  document.getElementById('adminCard').style.display = isAdminLike ? 'block' : 'none';
+  if(isAdminLike) loadStaffList();
+  loadProjectsDropdown();
+  if(document.getElementById('tbody').children.length === 0) addRow();
+  if(!document.getElementById('testDate').value) setVal('testDate', new Date().toISOString().slice(0,10));
+}
+
+/* ---------------- ADMIN: STAFF MANAGEMENT ---------------- */
+function openAddStaffModal(){
+  document.getElementById('addStaffError').textContent = '';
+  document.getElementById('addStaffModal').style.display = 'flex';
+}
+function closeAddStaffModal(){
+  document.getElementById('addStaffModal').style.display = 'none';
+  document.getElementById('staffName').value = '';
+  document.getElementById('staffEmail').value = '';
+  document.getElementById('staffPassword').value = '';
+}
+
+async function addStaff(){
+  const name = document.getElementById('staffName').value.trim();
+  const email = document.getElementById('staffEmail').value.trim().toLowerCase();
+  const tempPass = document.getElementById('staffPassword').value;
+  const err = document.getElementById('addStaffError');
+  err.textContent = '';
+  if(!name || !email || !tempPass){ err.textContent = 'Nhập đầy đủ thông tin'; return; }
+  if(tempPass.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
+  try{
+    await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
+    await db.collection('users').doc(email).set({
+      email, displayName: name, role: 'user', active: true,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentUserData.email
+    });
+    await secondaryApp.auth().signOut();
+    showToast('Đã tạo tài khoản: ' + email);
+    closeAddStaffModal();
+    loadStaffList();
+  }catch(e){
+    err.textContent = e.code === 'auth/email-already-in-use' ? 'Email này đã có tài khoản.' : ('Lỗi: ' + e.message);
+  }
+}
+
+async function loadStaffList(){
+  const tbody = document.getElementById('staffBody');
+  tbody.innerHTML = '<tr><td colspan="4">Đang tải...</td></tr>';
+  try{
+    const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+    tbody.innerHTML = '';
+    snap.forEach(doc => {
+      const d = doc.data();
+      const roleLabel = d.role === 'superadmin' ? 'SUPER ADMIN' : (d.role === 'admin' ? 'ADMIN / QUẢN TRỊ' : 'NHÂN VIÊN / STAFF');
+      const roleClass = d.role === 'superadmin' ? 'superadmin' : (d.role === 'admin' ? 'admin' : 'user');
+      const tr = document.createElement('tr');
+      let actions;
+      if(d.role === 'superadmin'){
+        actions = '<em style="color:var(--muted); font-size:11.5px;">Super Admin — cố định</em>';
+      } else {
+        const toggleLabel = d.role === 'admin' ? 'HẠ CẤP / DEMOTE' : 'BỔ NHIỆM ADMIN / MAKE ADMIN';
+        actions = `
+          <button class="small ghost" onclick="toggleStaffRole('${doc.id}', '${d.role}')">${toggleLabel}</button>
+          <button class="small danger" onclick="deleteStaff('${doc.id}')">XÓA / DELETE</button>`;
+      }
+      tr.innerHTML = `
+        <td>${d.displayName || ''}</td>
+        <td>${d.email}</td>
+        <td><span class="badge ${roleClass}">${roleLabel}</span></td>
+        <td>${actions}</td>`;
+      tbody.appendChild(tr);
+    });
+    if(tbody.innerHTML.trim() === '') tbody.innerHTML = '<tr><td colspan="4">Chưa có tài khoản.</td></tr>';
+  }catch(e){
+    tbody.innerHTML = `<tr><td colspan="4">Lỗi tải danh sách: ${e.message}</td></tr>`;
+  }
+}
+
+async function toggleStaffRole(email, currentRole){
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  await db.collection('users').doc(email).update({ role: newRole });
+  loadStaffList();
+}
+
+async function deleteStaff(email){
+  if(!confirm('Xóa tài khoản ' + email + '? (Tài khoản đăng nhập Firebase Auth vẫn còn, chỉ mất quyền truy cập app — xóa hẳn trong Firebase Console > Authentication nếu cần.)')) return;
+  await db.collection('users').doc(email).delete();
+  loadStaffList();
+}
+
+/* ====================================================================
+   FORM LOGIC (point load calculations, save/load, export)
+   ==================================================================== */
+let rowCount = 0;
+let currentReportId = null;
+let currentProjectId = null;
+let projectsCache = [];
+
+/* ---------------- PROJECTS ---------------- */
+async function loadProjectsDropdown(){
+  const sel = document.getElementById('projectSelect');
+  try{
+    const snap = await db.collection('projects').orderBy('name').get();
+    projectsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    sel.innerHTML = '<option value="">— Chọn dự án / Select project —</option>' +
+      projectsCache.map(p => `<option value="${p.id}">${p.name}${p.location ? ' — ' + p.location : ''}</option>`).join('');
+  }catch(e){
+    sel.innerHTML = '<option value="">(Lỗi tải danh sách dự án)</option>';
+  }
+}
+
+function onProjectSelectChange(){
+  const id = document.getElementById('projectSelect').value;
+  if(!id){ currentProjectId = null; return; }
+  const p = projectsCache.find(x => x.id === id);
+  if(!p) return;
+  currentProjectId = id;
+  setVal('project', p.name || '');
+  setVal('location', p.location || '');
+  showToast('Đã áp dụng dự án: ' + p.name);
+}
+
+function openNewProjectModal(){
+  document.getElementById('newProjectError').textContent = '';
+  document.getElementById('newProjectModal').style.display = 'flex';
+}
+function closeNewProjectModal(){
+  document.getElementById('newProjectModal').style.display = 'none';
+  setVal('npProject', ''); setVal('npLocation', '');
+}
+
+async function createProject(){
+  const name = document.getElementById('npProject').value.trim();
+  const err = document.getElementById('newProjectError');
+  err.textContent = '';
+  if(!name){ err.textContent = 'Nhập tên PROJECT / Enter project name'; return; }
+  const projectData = {
+    name,
+    location: document.getElementById('npLocation').value.trim(),
+    createdBy: currentUserData?.email || '',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  try{
+    const ref = await db.collection('projects').add(projectData);
+    await loadProjectsDropdown();
+    document.getElementById('projectSelect').value = ref.id;
+    onProjectSelectChange();
+    closeNewProjectModal();
+    showToast('Đã tạo dự án: ' + name);
+  }catch(e){
+    err.textContent = 'Lỗi: ' + e.message;
+  }
+}
+
+function fmt(n, d=3){
+  if(!isFinite(n)) return '';
+  return Number(n.toFixed(d));
+}
+
+// Formulas mirror the original Excel exactly (Point_Load_Test.xls):
+// Waverage = (W1+W2)/2 ; De2 = 4*D*Waverage/PI() ; De = SQRT(De2)
+// Is(Mpa) = P*1000/De2 ; F = (De/50)^0.45 ; Is50 = Is*F
+function calcRow(tr){
+  const get = id => parseFloat(tr.querySelector('.'+id).value);
+  const D = get('f-d') || 0;
+  const W1 = get('f-w1') || 0;
+  const W2 = get('f-w2') || 0;
+  const P = get('f-p') || 0;
+
+  const Wavg = (W1 + W2) / 2;
+  const De2 = D && Wavg ? (4 * D * Wavg / Math.PI) : NaN;
+  const De = isFinite(De2) && De2 > 0 ? Math.sqrt(De2) : NaN;
+  const Is = isFinite(De2) && De2 ? (P * 1000 / De2) : NaN;
+  const F = isFinite(De) && De > 0 ? Math.pow(De / 50, 0.45) : NaN;
+  const Is50 = isFinite(Is) && isFinite(F) ? Is * F : NaN;
+
+  tr.querySelector('.calc-wavg').textContent = isFinite(Wavg) ? fmt(Wavg, 2) : '-';
+  tr.querySelector('.calc-de').textContent = isFinite(De) ? fmt(De, 3) : '-';
+  tr.querySelector('.calc-de2').textContent = isFinite(De2) ? fmt(De2, 2) : '-';
+  tr.querySelector('.calc-is').textContent = isFinite(Is) ? fmt(Is, 4) : '-';
+  tr.querySelector('.calc-is50').textContent = isFinite(Is50) ? fmt(Is50, 4) : '-';
+  tr.querySelector('.calc-f').textContent = isFinite(F) ? fmt(F, 4) : '-';
+}
+
+function recalcAll(){
+  document.querySelectorAll('#tbody tr').forEach(calcRow);
+}
+
+function addRow(data){
+  rowCount++;
+  const tbody = document.getElementById('tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><input class="f-testno" type="text" value="${data?.testNo ?? rowCount}" style="width:40px;"></td>
+    <td class="label-col"><input class="f-borehole" type="text" value="${data?.borehole||''}"></td>
+    <td class="label-col"><input class="f-sampleno" type="text" value="${data?.sampleNo||''}"></td>
+    <td><input class="f-depth" type="number" step="any" value="${data?.depth??''}"></td>
+    <td><input class="f-2l" type="number" step="any" value="${data?.l2??''}"></td>
+    <td><input class="f-d" type="number" step="any" value="${data?.d??''}"></td>
+    <td><input class="f-w1" type="number" step="any" value="${data?.w1??''}"></td>
+    <td><input class="f-w2" type="number" step="any" value="${data?.w2??''}"></td>
+    <td class="calc calc-wavg">-</td>
+    <td><input class="f-p" type="number" step="any" value="${data?.p??''}"></td>
+    <td class="calc calc-de">-</td>
+    <td class="calc calc-de2">-</td>
+    <td class="calc calc-is">-</td>
+    <td class="calc calc-is50">-</td>
+    <td class="calc calc-f">-</td>
+    <td><button class="danger small" onclick="deleteRow(this)">✕</button></td>
+  `;
+  tbody.appendChild(tr);
+  tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', () => calcRow(tr)));
+  calcRow(tr);
+}
+
+function deleteRow(btn){
+  btn.closest('tr').remove();
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+function collectData(){
+  const rows = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    rows.push({
+      testNo: tr.querySelector('.f-testno').value,
+      borehole: tr.querySelector('.f-borehole').value,
+      sampleNo: tr.querySelector('.f-sampleno').value,
+      depth: tr.querySelector('.f-depth').value,
+      l2: tr.querySelector('.f-2l').value,
+      d: tr.querySelector('.f-d').value,
+      w1: tr.querySelector('.f-w1').value,
+      w2: tr.querySelector('.f-w2').value,
+      p: tr.querySelector('.f-p').value,
+    });
+  });
+  return {
+    project: val('project'), location: val('location'),
+    remarks: val('remarks'), testDate: val('testDate'),
+    testedBy: val('testedBy'), chiefOfLab: val('chiefOfLab'),
+    rows
+  };
+}
+function val(id){ return document.getElementById(id).value; }
+function setVal(id, v){ document.getElementById(id).value = v ?? ''; }
+
+function setEditingUI(isEditing){
+  document.getElementById('editingIndicator').style.display = isEditing ? 'block' : 'none';
+  document.getElementById('updateReportBtn').style.display = isEditing ? 'inline-block' : 'none';
+}
+
+function newReport(){
+  if(!confirm('Tạo báo cáo mới? Dữ liệu chưa lưu sẽ mất.\nCreate new report? Unsaved data will be lost.')) return;
+  ['project','location','remarks','testedBy','chiefOfLab'].forEach(id => setVal(id, ''));
+  setVal('remarks', 'The testing result only right on testing sample.');
+  setVal('testDate', new Date().toISOString().slice(0,10));
+  document.getElementById('tbody').innerHTML = '';
+  rowCount = 0;
+  currentReportId = null;
+  currentProjectId = null;
+  document.getElementById('projectSelect').value = '';
+  setEditingUI(false);
+  addRow();
+  showToast('Đã tạo báo cáo mới / New report created');
+}
+
+function buildRecord(){
+  const data = collectData();
+  const liveUser = auth.currentUser;
+  const liveEmail = (liveUser?.email || '').toLowerCase();
+  const key = (data.project || data.location || 'Report') + ' — ' + (data.testDate || new Date().toISOString().slice(0,10));
+  const proj = currentProjectId ? projectsCache.find(p => p.id === currentProjectId) : null;
+  return {
+    record: {
+      ...data, key,
+      projectId: currentProjectId || null,
+      projectName: proj ? proj.name : (data.project || null),
+      savedByEmail: liveEmail,
+      savedByName: currentUserData?.displayName || liveEmail,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+    liveEmail, key
+  };
+}
+
+async function saveAsNewReport(){
+  const data = collectData();
+  if(!data.project && !data.location){
+    if(!confirm('Chưa nhập PROJECT. Vẫn lưu?\nNo project name entered. Save anyway?')) return;
+  }
+  const liveUser = auth.currentUser;
+  if(!liveUser){ alert('Bạn đã bị đăng xuất, vui lòng đăng nhập lại.'); return; }
+  const { record, liveEmail, key } = buildRecord();
+  try{
+    record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    const ref = await db.collection('reports').add(record);
+    currentReportId = ref.id;
+    setEditingUI(true);
+    showToast('Đã lưu báo cáo mới lên hệ thống / Saved as new: ' + key);
+  }catch(e){
+    alert('Lỗi khi lưu lên hệ thống: ' + e.message + (e.code ? ' ('+e.code+')' : '') + '\nEmail đang đăng nhập: ' + liveEmail);
+  }
+}
+
+async function updateExistingReport(){
+  if(!currentReportId){ alert('Chưa có báo cáo nào đang mở để cập nhật.'); return; }
+  if(!confirm('Cập nhật sẽ GHI ĐÈ báo cáo đang mở. Tiếp tục?\nThis will OVERWRITE the currently open report. Continue?')) return;
+  const liveUser = auth.currentUser;
+  if(!liveUser){ alert('Bạn đã bị đăng xuất, vui lòng đăng nhập lại.'); return; }
+  const { record, liveEmail, key } = buildRecord();
+  try{
+    await db.collection('reports').doc(currentReportId).set(record, { merge: true });
+    showToast('Đã cập nhật báo cáo / Updated: ' + key);
+  }catch(e){
+    alert('Lỗi khi cập nhật: ' + e.message + (e.code ? ' ('+e.code+')' : '') + '\nEmail đang đăng nhập: ' + liveEmail);
+  }
+}
+
+let reportsCache = [];
+
+async function openLoadModal(){
+  const list = document.getElementById('savedList');
+  list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Đang tải / Loading...</p>';
+  document.getElementById('loadModal').style.display = 'flex';
+  try{
+    const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
+    let query = db.collection('reports').orderBy('updatedAt', 'desc').limit(300);
+    if(!isAdminLike){
+      query = db.collection('reports').where('savedByEmail', '==', currentUserData.email).orderBy('updatedAt', 'desc').limit(300);
+    }
+    const snap = await query.get();
+    reportsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const projNames = [...new Set(reportsCache.map(r => r.projectName).filter(Boolean))].sort();
+    const filterSel = document.getElementById('filterProject');
+    filterSel.innerHTML = '<option value="">— Tất cả dự án / All projects —</option>' +
+      projNames.map(n => `<option value="${n}">${n}</option>`).join('');
+    renderFilteredReports();
+  }catch(e){
+    list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi tải danh sách: ${e.message}</p>`;
+  }
+}
+
+function renderFilteredReports(){
+  const list = document.getElementById('savedList');
+  const projFilter = document.getElementById('filterProject').value;
+  const filtered = reportsCache.filter(r => !projFilter || r.projectName === projFilter);
+  list.innerHTML = '';
+  if(filtered.length === 0){
+    list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có báo cáo phù hợp / No matching reports.</p>';
+    return;
+  }
+  filtered.forEach(r => {
+    const when = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString() : '';
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    div.innerHTML = `<div class="info" onclick="loadReport('${r.id}')"><strong>${r.key||''}</strong><br><small>${when} ${r.savedByName? '· '+r.savedByName : ''}${r.projectName? ' · '+r.projectName : ''}</small></div>
+      <button class="danger small" onclick="deleteReport('${r.id}')">✕</button>`;
+    list.appendChild(div);
+  });
+}
+function closeLoadModal(){ document.getElementById('loadModal').style.display = 'none'; }
+
+async function loadReport(docId){
+  try{
+    const snap = await db.collection('reports').doc(docId).get();
+    if(!snap.exists){ showToast('Báo cáo không còn tồn tại.'); return; }
+    const r = snap.data();
+    ['project','location','remarks','testDate','testedBy','chiefOfLab'].forEach(id => setVal(id, r[id]));
+    document.getElementById('tbody').innerHTML = '';
+    rowCount = 0;
+    (r.rows||[]).forEach(rowData => addRow(rowData));
+    if((r.rows||[]).length === 0) addRow();
+    currentReportId = docId;
+    currentProjectId = r.projectId || null;
+    document.getElementById('projectSelect').value = currentProjectId || '';
+    setEditingUI(true);
+    closeLoadModal();
+    showToast('Đã mở / Loaded: ' + (r.key||''));
+  }catch(e){
+    alert('Lỗi mở báo cáo: ' + e.message);
+  }
+}
+
+async function deleteReport(docId){
+  if(!confirm('Xóa báo cáo này khỏi hệ thống?\nDelete this report from the system?')) return;
+  try{
+    await db.collection('reports').doc(docId).delete();
+    if(currentReportId === docId){ currentReportId = null; setEditingUI(false); }
+    openLoadModal();
+  }catch(e){
+    alert('Lỗi xóa báo cáo: ' + e.message);
+  }
+}
+
+function exportExcel(){
+  const data = collectData();
+  const wb = XLSX.utils.book_new();
+  const aoa = [
+    ['RESULTS OF POINT LOAD TEST ON ROCK'],
+    [`PROJECT: ${data.project||''}`],
+    [`LOCATION: ${data.location||''}`],
+    [],
+    ['Test No.','Borehole','Sample No.','Sample depth,m','2L (mm)','D (mm)','W1 (mm)','W2 (mm)','Waverage (mm)','Pressure, P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Is(50) (Mpa)','F']
+  ];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    aoa.push([
+      tr.querySelector('.f-testno').value,
+      tr.querySelector('.f-borehole').value,
+      tr.querySelector('.f-sampleno').value,
+      tr.querySelector('.f-depth').value,
+      tr.querySelector('.f-2l').value,
+      tr.querySelector('.f-d').value,
+      tr.querySelector('.f-w1').value,
+      tr.querySelector('.f-w2').value,
+      tr.querySelector('.calc-wavg').textContent,
+      tr.querySelector('.f-p').value,
+      tr.querySelector('.calc-de').textContent,
+      tr.querySelector('.calc-de2').textContent,
+      tr.querySelector('.calc-is').textContent,
+      tr.querySelector('.calc-is50').textContent,
+      tr.querySelector('.calc-f').textContent,
+    ]);
+  });
+  aoa.push([]);
+  aoa.push(['Remarks:', data.remarks]);
+  aoa.push([]);
+  aoa.push(['Tested by', data.testedBy, '', 'Chief of Lab', data.chiefOfLab, '', `Phnom Penh, ${data.testDate||''}`]);
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:8},{wch:12},{wch:10},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:8},{wch:10},{wch:10},{wch:12},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Point load test');
+  const fname = `PointLoadTest_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.xlsx`;
+  XLSX.writeFile(wb, fname);
+}
+
+function exportPDF(){
+  const data = collectData();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'landscape', unit:'mm', format:'a4' });
+  const pageW = doc.internal.pageSize.getWidth();
+
+  doc.setFontSize(13); doc.setFont(undefined,'bold');
+  doc.text('RESULTS OF POINT LOAD TEST ON ROCK', pageW/2, 12, {align:'center'});
+  doc.setFontSize(10); doc.setFont(undefined,'normal');
+  doc.text(`PROJECT: ${data.project||''}`, 8, 20);
+  doc.text(`LOCATION: ${data.location||''}`, 8, 26);
+
+  const head = [[
+    'Test No.','Borehole','Sample No.','Sample depth,m','2L (mm)','D (mm)','W1 (mm)','W2 (mm)',
+    'Waverage (mm)','Pressure,P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Is(50) (Mpa)','F'
+  ]];
+  const body = [];
+  document.querySelectorAll('#tbody tr').forEach(tr => {
+    body.push([
+      tr.querySelector('.f-testno').value,
+      tr.querySelector('.f-borehole').value,
+      tr.querySelector('.f-sampleno').value,
+      tr.querySelector('.f-depth').value,
+      tr.querySelector('.f-2l').value,
+      tr.querySelector('.f-d').value,
+      tr.querySelector('.f-w1').value,
+      tr.querySelector('.f-w2').value,
+      tr.querySelector('.calc-wavg').textContent,
+      tr.querySelector('.f-p').value,
+      tr.querySelector('.calc-de').textContent,
+      tr.querySelector('.calc-de2').textContent,
+      tr.querySelector('.calc-is').textContent,
+      tr.querySelector('.calc-is50').textContent,
+      tr.querySelector('.calc-f').textContent,
+    ]);
+  });
+
+  doc.autoTable({
+    head, body, startY: 32, theme:'grid',
+    styles:{ fontSize:7.5, halign:'center', valign:'middle' },
+    headStyles:{ fillColor:[26,82,118], textColor:255, fontSize:7 },
+    columnStyles:{ 1:{halign:'left'}, 2:{halign:'left'} }
+  });
+
+  let finalY = doc.lastAutoTable.finalY + 8;
+  doc.setFontSize(9);
+  doc.text(`Remarks: ${data.remarks||''}`, 8, finalY);
+
+  finalY += 12;
+  doc.text(`Tested by: ${data.testedBy||'____________________'}`, 8, finalY);
+  doc.text(`Chief of Lab: ${data.chiefOfLab||'____________________'}`, pageW/2+4, finalY);
+  doc.text(`Phnom Penh, ${data.testDate||''}`, pageW-8, finalY, {align:'right'});
+
+  finalY += 14;
+  doc.setFontSize(8);
+  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, finalY, {align:'center'});
+  doc.text('Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia', pageW/2, finalY+4, {align:'center'});
+  doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, finalY+8, {align:'center'});
+
+  const fname = `PointLoadTest_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.pdf`;
+  doc.save(fname);
+}
+</script>
+</body>
+</html>
