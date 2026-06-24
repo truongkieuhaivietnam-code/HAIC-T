@@ -62,10 +62,608 @@ const DEFAULT_VIOLATIONS = [
   { id: 'v4', name: 'No Google Maps screenshot leaving site', penalty: 5, type: 'per_occurrence' }
 ];
 
+// ══════════════════════════════════════════════════════════════
+// i18n – LANGUAGE SYSTEM (EN / VI)
+// ══════════════════════════════════════════════════════════════
+const LANGS = {
+  en: {
+    // Nav
+    nav_dashboard:   'Dashboard',
+    nav_employees:   'Employees',
+    nav_leave:       'Leave',
+    nav_attendance:  'Attendance & Late',
+    nav_violations:  'Violations',
+    nav_payroll:     'Payroll',
+    nav_reports:     'Reports',
+    nav_policies:    'Policies',
+    nav_my_profile:  'My Profile',
+    nav_my_leave:    'My Leave',
+    nav_my_salary:   'My Salary',
+    nav_my_penalties:'My Penalties',
+    nav_overview:    'Overview',
+    nav_people:      'People',
+    nav_finance:     'Finance',
+    nav_settings:    'Settings',
+    nav_me:          'Me',
+
+    // Page titles
+    page_dashboard:    'Dashboard',
+    page_employees:    'Employees',
+    page_leave:        'Leave Management',
+    page_attendance:   'Attendance & Late',
+    page_violations:   'Violations',
+    page_payroll:      'Payroll',
+    page_policies:     'Policy Settings',
+    page_reports:      'Reports',
+    page_my_profile:   'My Profile',
+    page_my_leave:     'My Leave',
+    page_my_salary:    'My Salary',
+    page_my_penalties: 'My Penalties',
+
+    // Auth
+    auth_title:    'HAI Multi Country\nAdministration System',
+    auth_subtitle: 'Cambodia · Vietnam · Laos',
+    auth_email:    'Email Address',
+    auth_password: 'Password',
+    auth_signin:   'Sign In',
+    auth_signing:  'Signing in…',
+    auth_footer:   'HAI (Cambodia) Survey & Construction Co., Ltd',
+    err_no_user:   'No account found with this email.',
+    err_wrong_pw:  'Incorrect password.',
+    err_invalid:   'Invalid email address.',
+    err_too_many:  'Too many attempts. Try again later.',
+    err_default:   'Sign in failed. Check your credentials.',
+    err_no_profile:'User profile not found. Contact administrator.',
+
+    // Dashboard
+    dash_active_emp:   'Active Employees',
+    dash_pending_leave:'Pending Leave Requests',
+    dash_pending_viol: 'Pending Violations',
+    dash_quick:        'Quick Actions',
+    dash_manage_emp:   'Manage Employees',
+    dash_review_leave: 'Review Leave',
+    dash_view_payroll: 'View Payroll',
+    dash_welcome:      'Welcome',
+    dash_leave_bal:    'Leave Balance (days)',
+    dash_pending_req:  'Pending Requests',
+
+    // Employees
+    emp_total:       'total',
+    emp_add:         '+ Add Employee',
+    emp_search:      'Search name, position…',
+    emp_all_countries:'All Countries',
+    emp_all_roles:   'All Roles',
+    emp_all_status:  'Active & Inactive',
+    emp_active_only: 'Active Only',
+    emp_inactive_only:'Inactive Only',
+    emp_name:        'Name',
+    emp_country:     'Country',
+    emp_dept:        'Department',
+    emp_position:    'Position',
+    emp_role:        'Role',
+    emp_salary:      'Salary',
+    emp_status:      'Status',
+    emp_actions:     'Actions',
+    emp_edit:        'Edit',
+    emp_deactivate:  'Deactivate',
+    emp_activate:    'Activate',
+    emp_active:      'Active',
+    emp_inactive:    'Inactive',
+    emp_add_title:   'Add Employee',
+    emp_edit_title:  'Edit Employee',
+    emp_full_name:   'Full Name *',
+    emp_email:       'Email *',
+    emp_role_lbl:    'Role *',
+    emp_country_lbl: 'Country *',
+    emp_dept_lbl:    'Department',
+    emp_pos_lbl:     'Position / Title',
+    emp_basic_sal:   'Basic Salary (USD)',
+    emp_allowance:   'Allowance (USD)',
+    emp_schedule:    'Work Schedule Override',
+    emp_sched_hint:  'Leave all unchecked to use country default schedule.',
+    emp_password:    'Password (new employees only)',
+    emp_pw_hint:     'Leave blank when editing an existing employee.',
+    emp_active_chk:  'Active',
+    emp_cancel:      'Cancel',
+    emp_save:        'Save Employee',
+    emp_confirm_deact:'Deactivate this employee?',
+    emp_confirm_act: 'Activate this employee?',
+
+    // Leave
+    leave_requests:  'requests',
+    leave_from:      'From',
+    leave_to:        'To',
+    leave_days:      'Days',
+    leave_type:      'Type',
+    leave_reason:    'Reason',
+    leave_status:    'Status',
+    leave_actions:   'Actions',
+    leave_approve:   'Approve',
+    leave_reject:    'Reject',
+    leave_paid:      'Paid',
+    leave_unpaid:    'Unpaid',
+    leave_pending:   'Pending',
+    leave_approved:  'Approved',
+    leave_rejected:  'Rejected',
+    leave_request_btn:'+ Request Leave',
+    leave_balance:   'Balance',
+    leave_submit:    'Submit Request',
+    leave_from_date: 'From Date',
+    leave_to_date:   'To Date',
+    leave_reason_lbl:'Reason',
+    leave_reason_ph: 'Reason for leave…',
+    leave_hint:      'Leave balance: {bal} days. Submit at least 24h in advance.',
+    leave_approved_msg:'Leave approved. Remaining balance: {bal} days.',
+    leave_approved_unpaid:'Leave approved (unpaid).',
+    leave_rejected_msg:'Leave rejected.',
+    leave_reject_prompt:'Rejection reason (optional):',
+
+    // Attendance
+    att_records:    'records',
+    att_log:        '+ Log Record',
+    att_employee:   'Employee',
+    att_date:       'Date',
+    att_type:       'Type',
+    att_minutes:    'Minutes Late',
+    att_penalty:    'Penalty',
+    att_status:     'Status',
+    att_notes:      'Notes',
+    att_late:       'Late Arrival',
+    att_unauth:     'Unauthorized Absence',
+    att_log_title:  'Log Attendance Record',
+    att_select_emp: 'Select employee…',
+    att_minutes_ph: 'e.g. 20',
+    att_calc_pen:   'Calculated Penalty',
+    att_notes_ph:   'Optional notes…',
+    att_save:       'Save Record',
+    att_no_records: 'No attendance records',
+
+    // OT
+    ot_total_pay:   'Total OT Pay',
+    ot_log:         '+ Log OT',
+    ot_hours:       'OT Hours',
+    ot_daily_rate:  'Daily Rate',
+    ot_pay:         'OT Pay (×2)',
+    ot_log_title:   'Log Overtime',
+    ot_hours_lbl:   'OT Hours',
+    ot_type_lbl:    'OT Type',
+    ot_normal:      'Normal OT (×2)',
+    ot_holiday:     'Public Holiday (×2)',
+    ot_calc:        'Calculated OT Pay',
+    ot_notes_ph:    'Project / task…',
+    ot_no_records:  'No OT records',
+
+    // Violations
+    viol_manage_types:'⚙️ Manage Types',
+    viol_log:        '+ Log Violation',
+    viol_employee:   'Employee',
+    viol_date:       'Date',
+    viol_type:       'Violation',
+    viol_penalty:    'Penalty',
+    viol_status:     'Status',
+    viol_notes:      'Notes',
+    viol_no_records: 'No violations recorded',
+    viol_log_title:  'Log Violation',
+    viol_type_lbl:   'Violation Type',
+    viol_pen_lbl:    'Penalty Amount (USD)',
+    viol_types_title:'Violation Types',
+    viol_add_name:   'Name',
+    viol_add_pen:    'Penalty (USD)',
+    viol_add_btn:    'Add Type',
+    viol_late:       'Late/Absence',
+    viol_viol:       'Violation',
+
+    // Payroll
+    pay_month:       'Month',
+    pay_generate:    '⚡ Generate',
+    pay_export:      '📥 Export CSV',
+    pay_lock:        '🔒 Lock',
+    pay_employee:    'Employee',
+    pay_country:     'Country',
+    pay_basic:       'Basic',
+    pay_allowance:   'Allowance',
+    pay_ot:          'OT',
+    pay_holiday:     'Holiday',
+    pay_leave_ded:   'Leave Ded.',
+    pay_late_ded:    'Late Ded.',
+    pay_penalties:   'Penalties',
+    pay_net:         'Net Salary',
+    pay_edit:        'Edit',
+    pay_confirm_gen: 'Generate payroll for all employees this month?',
+    pay_confirm_lock:'Lock payroll? This cannot be undone.',
+    pay_generated:   'Payroll generated for {n} employees ({month}).',
+
+    // Policies
+    pol_title:       'Policy Settings',
+    pol_sub:         'Country-level payroll and HR policies',
+    pol_accrue:      '🌴 Accrue Leave (Manual)',
+    pol_seed:        '🌱 Seed Defaults',
+    pol_currency:    'Currency',
+    pol_working:     'Working Days',
+    pol_off:         'Weekly Off',
+    pol_leave_mo:    'Leave Days/Month',
+    pol_ot_mult:     'OT Multiplier',
+    pol_hol_mult:    'Holiday Multiplier',
+    pol_holidays:    'Cambodia Holidays 2025',
+    pol_edit:        'Edit',
+    pol_edit_title:  'Edit Policy',
+    pol_currency_lbl:'Currency',
+    pol_leave_lbl:   'Leave Days Per Month',
+    pol_working_lbl: 'Working Days (comma-separated)',
+    pol_off_lbl:     'Weekly Off Days',
+    pol_save:        'Save Policy',
+    pol_seed_confirm:'Seed default Cambodia policy to Firestore?',
+    pol_seed_done:   'Default policies and Cambodia holidays seeded.',
+    pol_accrue_confirm:'Accrue 1 leave day for all active employees now?',
+    pol_accrue_done: 'Leave accrued for {n} employees (max {max} days).',
+
+    // Reports
+    rep_title:       'Reports',
+    rep_sub:         'Generate and export company reports',
+    rep_employees:   'Employee List',
+    rep_payroll:     'Payroll Summary',
+    rep_leave:       'Leave Summary',
+    rep_violations:  'Violations Report',
+    rep_holidays:    'Holiday List',
+    rep_export:      'Export CSV',
+
+    // My profile
+    my_email:        'Email',
+    my_country:      'Country',
+    my_dept:         'Department',
+    my_position:     'Position',
+    my_salary:       'Basic Salary',
+    my_allowance:    'Allowance',
+    my_leave_bal:    'My leave balance',
+    my_no_leave:     'No leave requests',
+    my_no_salary:    'No payroll records yet',
+    my_no_penalties: 'No penalties on record',
+    my_deductions:   'Deductions',
+
+    // Status
+    status_logged:    'Logged',
+    status_processed: 'Processed',
+    status_pending:   'Pending',
+
+    // Roles
+    role_super_admin:    'Super Admin',
+    role_admin:          'Admin',
+    role_country_manager:'Country Manager',
+    role_employee:       'Employee',
+
+    // Buttons
+    btn_cancel: 'Cancel',
+    btn_save:   'Save',
+    btn_close:  'Close',
+    btn_confirm:'Confirm',
+
+    // Topbar
+    topbar_operations: 'operations',
+  },
+
+  vi: {
+    // Nav
+    nav_dashboard:   'Tổng quan',
+    nav_employees:   'Nhân viên',
+    nav_leave:       'Nghỉ phép',
+    nav_attendance:  'Chuyên cần & Trễ',
+    nav_violations:  'Vi phạm',
+    nav_payroll:     'Bảng lương',
+    nav_reports:     'Báo cáo',
+    nav_policies:    'Chính sách',
+    nav_my_profile:  'Hồ sơ của tôi',
+    nav_my_leave:    'Nghỉ phép',
+    nav_my_salary:   'Lương của tôi',
+    nav_my_penalties:'Vi phạm của tôi',
+    nav_overview:    'Tổng quan',
+    nav_people:      'Nhân sự',
+    nav_finance:     'Tài chính',
+    nav_settings:    'Cài đặt',
+    nav_me:          'Cá nhân',
+
+    // Page titles
+    page_dashboard:    'Tổng quan',
+    page_employees:    'Nhân viên',
+    page_leave:        'Quản lý nghỉ phép',
+    page_attendance:   'Chuyên cần & Đi trễ',
+    page_violations:   'Vi phạm',
+    page_payroll:      'Bảng lương',
+    page_policies:     'Cài đặt chính sách',
+    page_reports:      'Báo cáo',
+    page_my_profile:   'Hồ sơ của tôi',
+    page_my_leave:     'Nghỉ phép của tôi',
+    page_my_salary:    'Lương của tôi',
+    page_my_penalties: 'Vi phạm của tôi',
+
+    // Auth
+    auth_title:    'Hệ thống Quản lý\nĐa Quốc Gia HAI',
+    auth_subtitle: 'Campuchia · Việt Nam · Lào',
+    auth_email:    'Địa chỉ Email',
+    auth_password: 'Mật khẩu',
+    auth_signin:   'Đăng nhập',
+    auth_signing:  'Đang đăng nhập…',
+    auth_footer:   'Công ty TNHH Khảo sát & Xây dựng HAI (Campuchia)',
+    err_no_user:   'Không tìm thấy tài khoản với email này.',
+    err_wrong_pw:  'Mật khẩu không đúng.',
+    err_invalid:   'Địa chỉ email không hợp lệ.',
+    err_too_many:  'Quá nhiều lần thử. Vui lòng thử lại sau.',
+    err_default:   'Đăng nhập thất bại. Kiểm tra lại thông tin.',
+    err_no_profile:'Không tìm thấy hồ sơ người dùng. Liên hệ quản trị viên.',
+
+    // Dashboard
+    dash_active_emp:   'Nhân viên đang làm',
+    dash_pending_leave:'Yêu cầu nghỉ phép chờ duyệt',
+    dash_pending_viol: 'Vi phạm chờ xử lý',
+    dash_quick:        'Thao tác nhanh',
+    dash_manage_emp:   'Quản lý nhân viên',
+    dash_review_leave: 'Duyệt nghỉ phép',
+    dash_view_payroll: 'Xem bảng lương',
+    dash_welcome:      'Xin chào',
+    dash_leave_bal:    'Số ngày phép còn lại',
+    dash_pending_req:  'Yêu cầu đang chờ',
+
+    // Employees
+    emp_total:       'tổng cộng',
+    emp_add:         '+ Thêm nhân viên',
+    emp_search:      'Tìm tên, vị trí…',
+    emp_all_countries:'Tất cả quốc gia',
+    emp_all_roles:   'Tất cả vai trò',
+    emp_all_status:  'Đang làm & Nghỉ việc',
+    emp_active_only: 'Đang làm',
+    emp_inactive_only:'Đã nghỉ việc',
+    emp_name:        'Họ tên',
+    emp_country:     'Quốc gia',
+    emp_dept:        'Phòng ban',
+    emp_position:    'Chức vụ',
+    emp_role:        'Vai trò',
+    emp_salary:      'Lương cơ bản',
+    emp_status:      'Trạng thái',
+    emp_actions:     'Thao tác',
+    emp_edit:        'Sửa',
+    emp_deactivate:  'Vô hiệu hóa',
+    emp_activate:    'Kích hoạt',
+    emp_active:      'Đang làm',
+    emp_inactive:    'Đã nghỉ',
+    emp_add_title:   'Thêm nhân viên',
+    emp_edit_title:  'Sửa nhân viên',
+    emp_full_name:   'Họ tên đầy đủ *',
+    emp_email:       'Email *',
+    emp_role_lbl:    'Vai trò *',
+    emp_country_lbl: 'Quốc gia *',
+    emp_dept_lbl:    'Phòng ban',
+    emp_pos_lbl:     'Chức vụ / Danh hiệu',
+    emp_basic_sal:   'Lương cơ bản (USD)',
+    emp_allowance:   'Phụ cấp (USD)',
+    emp_schedule:    'Lịch làm việc riêng',
+    emp_sched_hint:  'Để trống để dùng lịch mặc định của quốc gia.',
+    emp_password:    'Mật khẩu (chỉ cho nhân viên mới)',
+    emp_pw_hint:     'Để trống khi chỉnh sửa nhân viên đã có.',
+    emp_active_chk:  'Đang làm việc',
+    emp_cancel:      'Hủy',
+    emp_save:        'Lưu nhân viên',
+    emp_confirm_deact:'Vô hiệu hóa nhân viên này?',
+    emp_confirm_act: 'Kích hoạt lại nhân viên này?',
+
+    // Leave
+    leave_requests:  'yêu cầu',
+    leave_from:      'Từ ngày',
+    leave_to:        'Đến ngày',
+    leave_days:      'Số ngày',
+    leave_type:      'Loại',
+    leave_reason:    'Lý do',
+    leave_status:    'Trạng thái',
+    leave_actions:   'Thao tác',
+    leave_approve:   'Duyệt',
+    leave_reject:    'Từ chối',
+    leave_paid:      'Có lương',
+    leave_unpaid:    'Không lương',
+    leave_pending:   'Chờ duyệt',
+    leave_approved:  'Đã duyệt',
+    leave_rejected:  'Từ chối',
+    leave_request_btn:'+ Xin nghỉ phép',
+    leave_balance:   'Số ngày phép',
+    leave_submit:    'Gửi yêu cầu',
+    leave_from_date: 'Từ ngày',
+    leave_to_date:   'Đến ngày',
+    leave_reason_lbl:'Lý do',
+    leave_reason_ph: 'Lý do xin nghỉ…',
+    leave_hint:      'Số ngày phép còn: {bal} ngày. Nộp trước ít nhất 24 giờ.',
+    leave_approved_msg:'Đã duyệt nghỉ phép. Còn lại: {bal} ngày.',
+    leave_approved_unpaid:'Đã duyệt nghỉ không lương.',
+    leave_rejected_msg:'Đã từ chối đơn nghỉ phép.',
+    leave_reject_prompt:'Lý do từ chối (không bắt buộc):',
+
+    // Attendance
+    att_records:    'bản ghi',
+    att_log:        '+ Ghi nhận',
+    att_employee:   'Nhân viên',
+    att_date:       'Ngày',
+    att_type:       'Loại',
+    att_minutes:    'Số phút trễ',
+    att_penalty:    'Phạt',
+    att_status:     'Trạng thái',
+    att_notes:      'Ghi chú',
+    att_late:       'Đi trễ',
+    att_unauth:     'Vắng không phép',
+    att_log_title:  'Ghi nhận chuyên cần',
+    att_select_emp: 'Chọn nhân viên…',
+    att_minutes_ph: 'VD: 20',
+    att_calc_pen:   'Tiền phạt tính được',
+    att_notes_ph:   'Ghi chú (không bắt buộc)…',
+    att_save:       'Lưu bản ghi',
+    att_no_records: 'Chưa có bản ghi chuyên cần',
+
+    // OT
+    ot_total_pay:   'Tổng tiền OT',
+    ot_log:         '+ Ghi OT',
+    ot_hours:       'Số giờ OT',
+    ot_daily_rate:  'Lương ngày',
+    ot_pay:         'Tiền OT (×2)',
+    ot_log_title:   'Ghi nhận tăng ca',
+    ot_hours_lbl:   'Số giờ OT',
+    ot_type_lbl:    'Loại OT',
+    ot_normal:      'Tăng ca thường (×2)',
+    ot_holiday:     'Ngày lễ (×2)',
+    ot_calc:        'Tiền OT tính được',
+    ot_notes_ph:    'Dự án / công việc…',
+    ot_no_records:  'Chưa có bản ghi OT',
+
+    // Violations
+    viol_manage_types:'⚙️ Quản lý loại vi phạm',
+    viol_log:        '+ Ghi vi phạm',
+    viol_employee:   'Nhân viên',
+    viol_date:       'Ngày',
+    viol_type:       'Vi phạm',
+    viol_penalty:    'Phạt',
+    viol_status:     'Trạng thái',
+    viol_notes:      'Ghi chú',
+    viol_no_records: 'Chưa có vi phạm nào',
+    viol_log_title:  'Ghi nhận vi phạm',
+    viol_type_lbl:   'Loại vi phạm',
+    viol_pen_lbl:    'Số tiền phạt (USD)',
+    viol_types_title:'Danh mục vi phạm',
+    viol_add_name:   'Tên vi phạm',
+    viol_add_pen:    'Tiền phạt (USD)',
+    viol_add_btn:    'Thêm loại',
+    viol_late:       'Trễ/Vắng',
+    viol_viol:       'Vi phạm',
+
+    // Payroll
+    pay_month:       'Tháng',
+    pay_generate:    '⚡ Tạo bảng lương',
+    pay_export:      '📥 Xuất CSV',
+    pay_lock:        '🔒 Khóa',
+    pay_employee:    'Nhân viên',
+    pay_country:     'Quốc gia',
+    pay_basic:       'Lương cơ bản',
+    pay_allowance:   'Phụ cấp',
+    pay_ot:          'OT',
+    pay_holiday:     'Ngày lễ',
+    pay_leave_ded:   'Khấu trừ phép',
+    pay_late_ded:    'Khấu trừ trễ',
+    pay_penalties:   'Vi phạm',
+    pay_net:         'Lương thực nhận',
+    pay_edit:        'Sửa',
+    pay_confirm_gen: 'Tạo bảng lương cho tất cả nhân viên tháng này?',
+    pay_confirm_lock:'Khóa bảng lương? Không thể hoàn tác.',
+    pay_generated:   'Đã tạo bảng lương cho {n} nhân viên ({month}).',
+
+    // Policies
+    pol_title:       'Cài đặt chính sách',
+    pol_sub:         'Chính sách lương & nhân sự theo quốc gia',
+    pol_accrue:      '🌴 Cộng phép (thủ công)',
+    pol_seed:        '🌱 Khởi tạo mặc định',
+    pol_currency:    'Đơn vị tiền tệ',
+    pol_working:     'Ngày làm việc',
+    pol_off:         'Ngày nghỉ hàng tuần',
+    pol_leave_mo:    'Ngày phép/tháng',
+    pol_ot_mult:     'Hệ số OT',
+    pol_hol_mult:    'Hệ số ngày lễ',
+    pol_holidays:    'Ngày lễ Campuchia 2025',
+    pol_edit:        'Sửa',
+    pol_edit_title:  'Sửa chính sách',
+    pol_currency_lbl:'Đơn vị tiền tệ',
+    pol_leave_lbl:   'Số ngày phép mỗi tháng',
+    pol_working_lbl: 'Ngày làm việc (cách nhau bằng dấu phẩy)',
+    pol_off_lbl:     'Ngày nghỉ hàng tuần',
+    pol_save:        'Lưu chính sách',
+    pol_seed_confirm:'Khởi tạo chính sách mặc định Campuchia?',
+    pol_seed_done:   'Đã khởi tạo chính sách và ngày lễ Campuchia.',
+    pol_accrue_confirm:'Cộng 1 ngày phép cho tất cả nhân viên?',
+    pol_accrue_done: 'Đã cộng phép cho {n} nhân viên (tối đa {max} ngày).',
+
+    // Reports
+    rep_title:       'Báo cáo',
+    rep_sub:         'Tạo và xuất báo cáo công ty',
+    rep_employees:   'Danh sách nhân viên',
+    rep_payroll:     'Tổng hợp lương',
+    rep_leave:       'Tổng hợp nghỉ phép',
+    rep_violations:  'Báo cáo vi phạm',
+    rep_holidays:    'Danh sách ngày lễ',
+    rep_export:      'Xuất CSV',
+
+    // My profile
+    my_email:        'Email',
+    my_country:      'Quốc gia',
+    my_dept:         'Phòng ban',
+    my_position:     'Chức vụ',
+    my_salary:       'Lương cơ bản',
+    my_allowance:    'Phụ cấp',
+    my_leave_bal:    'Số ngày phép của tôi',
+    my_no_leave:     'Chưa có yêu cầu nghỉ phép',
+    my_no_salary:    'Chưa có bảng lương',
+    my_no_penalties: 'Chưa có vi phạm nào',
+    my_deductions:   'Khấu trừ',
+
+    // Status
+    status_logged:    'Đã ghi',
+    status_processed: 'Đã xử lý',
+    status_pending:   'Chờ duyệt',
+
+    // Roles
+    role_super_admin:    'Quản trị tối cao',
+    role_admin:          'Quản trị viên',
+    role_country_manager:'Quản lý quốc gia',
+    role_employee:       'Nhân viên',
+
+    // Buttons
+    btn_cancel: 'Hủy',
+    btn_save:   'Lưu',
+    btn_close:  'Đóng',
+    btn_confirm:'Xác nhận',
+
+    // Topbar
+    topbar_operations: 'hoạt động',
+  }
+};
+
+// Active language (persisted in localStorage)
+let lang = localStorage.getItem('haic_lang') || 'en';
+
+// Translate helper
+function t(key, vars = {}) {
+  let str = (LANGS[lang] && LANGS[lang][key]) || (LANGS['en'] && LANGS['en'][key]) || key;
+  Object.entries(vars).forEach(([k, v]) => { str = str.replace(`{${k}}`, v); });
+  return str;
+}
+
+function setLang(l) {
+  lang = l;
+  localStorage.setItem('haic_lang', l);
+  // Update toggle buttons
+  $$('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === l));
+  // Re-render current page
+  buildNav();
+  updateTopbarLang();
+  loadPageData(state.activePage);
+  // Update auth screen if visible
+  renderAuthLang();
+}
+
+function renderAuthLang() {
+  const titleEl = document.querySelector('.auth-logo h1');
+  const subEl   = document.querySelector('.auth-logo p');
+  const footEl  = document.querySelector('.auth-card > p');
+  if (titleEl) titleEl.innerHTML = t('auth_title').replace('\n', '<br>');
+  if (subEl)   subEl.textContent = t('auth_subtitle');
+  if (footEl)  footEl.textContent = t('auth_footer');
+  const emailLbl = document.querySelector('label[for="login-email"]');
+  const pwLbl    = document.querySelector('label[for="login-password"]');
+  const btn      = $('login-btn');
+  if (emailLbl) emailLbl.textContent = t('auth_email');
+  if (pwLbl)    pwLbl.textContent    = t('auth_password');
+  if (btn && btn.textContent !== t('auth_signing')) btn.textContent = t('auth_signin');
+}
+
+function updateTopbarLang() {
+  const titleEl = $('topbar-title');
+  if (titleEl) titleEl.textContent = t('page_' + state.activePage.replace('-','_')) || pageTitle(state.activePage);
+}
+
 // ── App State ─────────────────────────────────────────────────
 const state = {
-  currentUser:   null,   // Firebase Auth user
-  userProfile:   null,   // Firestore user doc
+  currentUser:   null,
+  userProfile:   null,
   activePage:    'dashboard',
   sidebarCollapsed: false,
   cache: {
@@ -93,31 +691,18 @@ function showPage(pageId) {
 }
 
 function pageTitle(id) {
-  const titles = {
-    dashboard: 'Dashboard',
-    employees: 'Employees',
-    leave: 'Leave Management',
-    attendance: 'Attendance & Late',
-    violations: 'Violations',
-    payroll: 'Payroll',
-    policies: 'Policy Settings',
-    reports: 'Reports',
-    'my-profile': 'My Profile',
-    'my-leave': 'My Leave',
-    'my-salary': 'My Salary',
-    'my-penalties': 'My Penalties'
-  };
-  return titles[id] || id.charAt(0).toUpperCase() + id.slice(1);
+  const key = 'page_' + id.replace(/-/g, '_');
+  return t(key) || id.charAt(0).toUpperCase() + id.slice(1);
 }
 
 // ── Toast ─────────────────────────────────────────────────────
 function toast(msg, type = 'default') {
   const icons = { success: '✅', error: '❌', info: 'ℹ️', default: '📢' };
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  t.innerHTML = `<span>${icons[type] || icons.default}</span><span>${msg}</span>`;
-  $('toast-container').appendChild(t);
-  setTimeout(() => t.remove(), 3800);
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.innerHTML = `<span>${icons[type] || icons.default}</span><span>${msg}</span>`;
+  $('toast-container').appendChild(el);
+  setTimeout(() => el.remove(), 3800);
 }
 
 // ── Loader ────────────────────────────────────────────────────
@@ -146,13 +731,7 @@ function canManageCountry(country) {
 }
 
 function roleLabel(role) {
-  const m = {
-    super_admin:     'Super Admin',
-    admin:           'Admin',
-    country_manager: 'Country Manager',
-    employee:        'Employee'
-  };
-  return m[role] || role;
+  return t('role_' + role) || role;
 }
 
 function roleBadgeClass(role) {
@@ -200,32 +779,31 @@ function buildNav() {
 function getNavItems(role) {
   if (role === ROLES.SUPER_ADMIN || role === ROLES.ADMIN) {
     return [
-      { section: 'Overview', page: 'dashboard',   icon: '📊', label: 'Dashboard' },
-      { section: 'People',   page: 'employees',   icon: '👥', label: 'Employees' },
-      { section: 'People',   page: 'leave',        icon: '🌴', label: 'Leave', badge: '' },
-      { section: 'People',   page: 'attendance',   icon: '⏱️', label: 'Attendance & Late' },
-      { section: 'People',   page: 'violations',   icon: '⚠️', label: 'Violations' },
-      { section: 'Finance',  page: 'payroll',      icon: '💰', label: 'Payroll' },
-      { section: 'Finance',  page: 'reports',      icon: '📑', label: 'Reports' },
-      { section: 'Settings', page: 'policies',     icon: '⚙️', label: 'Policies' }
+      { section: t('nav_overview'),  page: 'dashboard',  icon: '📊', label: t('nav_dashboard') },
+      { section: t('nav_people'),    page: 'employees',  icon: '👥', label: t('nav_employees') },
+      { section: t('nav_people'),    page: 'leave',      icon: '🌴', label: t('nav_leave'), badge: '' },
+      { section: t('nav_people'),    page: 'attendance', icon: '⏱️', label: t('nav_attendance') },
+      { section: t('nav_people'),    page: 'violations', icon: '⚠️', label: t('nav_violations') },
+      { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') },
+      { section: t('nav_finance'),   page: 'reports',    icon: '📑', label: t('nav_reports') },
+      { section: t('nav_settings'),  page: 'policies',   icon: '⚙️', label: t('nav_policies') }
     ];
   }
   if (role === ROLES.COUNTRY_MANAGER) {
     return [
-      { section: 'Overview', page: 'dashboard',   icon: '📊', label: 'Dashboard' },
-      { section: 'People',   page: 'employees',   icon: '👥', label: 'Employees' },
-      { section: 'People',   page: 'leave',        icon: '🌴', label: 'Leave', badge: '' },
-      { section: 'People',   page: 'attendance',   icon: '⏱️', label: 'Attendance & Late' },
-      { section: 'People',   page: 'violations',   icon: '⚠️', label: 'Violations' },
-      { section: 'Finance',  page: 'payroll',      icon: '💰', label: 'Payroll' }
+      { section: t('nav_overview'),  page: 'dashboard',  icon: '📊', label: t('nav_dashboard') },
+      { section: t('nav_people'),    page: 'employees',  icon: '👥', label: t('nav_employees') },
+      { section: t('nav_people'),    page: 'leave',      icon: '🌴', label: t('nav_leave'), badge: '' },
+      { section: t('nav_people'),    page: 'attendance', icon: '⏱️', label: t('nav_attendance') },
+      { section: t('nav_people'),    page: 'violations', icon: '⚠️', label: t('nav_violations') },
+      { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') }
     ];
   }
-  // Employee
   return [
-    { section: 'Me', page: 'my-profile',   icon: '👤', label: 'My Profile' },
-    { section: 'Me', page: 'my-leave',     icon: '🌴', label: 'My Leave' },
-    { section: 'Me', page: 'my-salary',    icon: '💵', label: 'My Salary' },
-    { section: 'Me', page: 'my-penalties', icon: '⚠️', label: 'My Penalties' }
+    { section: t('nav_me'), page: 'my-profile',   icon: '👤', label: t('nav_my_profile') },
+    { section: t('nav_me'), page: 'my-leave',     icon: '🌴', label: t('nav_my_leave') },
+    { section: t('nav_me'), page: 'my-salary',    icon: '💵', label: t('nav_my_salary') },
+    { section: t('nav_me'), page: 'my-penalties', icon: '⚠️', label: t('nav_my_penalties') }
   ];
 }
 
@@ -273,6 +851,15 @@ function initApp() {
     $('topbar-country').style.display = 'none';
   }
 
+  // Lang toggle
+  const langToggle = $('lang-toggle');
+  if (langToggle) {
+    langToggle.innerHTML = `
+      <button class="lang-btn ${lang==='en'?'active':''}" data-lang="en" onclick="setLang('en')">EN</button>
+      <button class="lang-btn ${lang==='vi'?'active':''}" data-lang="vi" onclick="setLang('vi')">VI</button>
+    `;
+  }
+
   // Sidebar user info
   const initials = (p.name || 'U').split(' ').map(w => w[0]).slice(0,2).join('').toUpperCase();
   $('user-avatar').textContent = initials;
@@ -295,7 +882,7 @@ $('login-form').addEventListener('submit', async e => {
   const password = $('login-password').value;
   $('auth-error').classList.remove('show');
   $('login-btn').disabled = true;
-  $('login-btn').textContent = 'Signing in…';
+  $('login-btn').textContent = t('auth_signing');
   try {
     await auth.signInWithEmailAndPassword(email, password);
   } catch (err) {
@@ -303,18 +890,18 @@ $('login-form').addEventListener('submit', async e => {
     $('auth-error').classList.add('show');
   } finally {
     $('login-btn').disabled = false;
-    $('login-btn').textContent = 'Sign In';
+    $('login-btn').textContent = t('auth_signin');
   }
 });
 
 function friendlyAuthError(code) {
   const m = {
-    'auth/user-not-found':    'No account found with this email.',
-    'auth/wrong-password':    'Incorrect password.',
-    'auth/invalid-email':     'Invalid email address.',
-    'auth/too-many-requests': 'Too many attempts. Try again later.'
+    'auth/user-not-found':    t('err_no_user'),
+    'auth/wrong-password':    t('err_wrong_pw'),
+    'auth/invalid-email':     t('err_invalid'),
+    'auth/too-many-requests': t('err_too_many')
   };
-  return m[code] || 'Sign in failed. Check your credentials.';
+  return m[code] || t('err_default');
 }
 
 $('logout-btn').addEventListener('click', () => auth.signOut());
@@ -389,11 +976,12 @@ async function loadDashboard() {
 
 function renderDashboard({ total, byCo, leavePending, violPending }) {
   const page = $('page-dashboard');
+  const country = state.userProfile.country || (lang==='vi' ? 'Tất cả quốc gia' : 'All Countries');
   page.innerHTML = `
     <div class="page-header">
       <div>
-        <h2>Dashboard</h2>
-        <p>Overview of ${state.userProfile.country || 'All Countries'} operations</p>
+        <h2>${t('page_dashboard')}</h2>
+        <p>${country} ${t('topbar_operations')}</p>
       </div>
     </div>
 
@@ -401,17 +989,17 @@ function renderDashboard({ total, byCo, leavePending, violPending }) {
       <div class="stat-card navy">
         <div class="stat-icon">👥</div>
         <div class="stat-value">${total}</div>
-        <div class="stat-label">Active Employees</div>
+        <div class="stat-label">${t('dash_active_emp')}</div>
       </div>
       <div class="stat-card gold">
         <div class="stat-icon">🌴</div>
         <div class="stat-value">${leavePending}</div>
-        <div class="stat-label">Pending Leave Requests</div>
+        <div class="stat-label">${t('dash_pending_leave')}</div>
       </div>
       <div class="stat-card red">
         <div class="stat-icon">⚠️</div>
         <div class="stat-value">${violPending}</div>
-        <div class="stat-label">Pending Violations</div>
+        <div class="stat-label">${t('dash_pending_viol')}</div>
       </div>
     </div>
 
@@ -422,18 +1010,18 @@ function renderDashboard({ total, byCo, leavePending, violPending }) {
           <div class="country-flag">${COUNTRY_FLAG[c]}</div>
           <div class="country-name">${c}</div>
           <div class="country-count">${byCo[c] || 0}</div>
-          <div class="stat-label">Employees</div>
+          <div class="stat-label">${t('nav_employees')}</div>
         </div>
       `).join('')}
     </div>` : ''}
 
     <div class="card">
-      <div class="card-header"><h3>Quick Actions</h3></div>
+      <div class="card-header"><h3>${t('dash_quick')}</h3></div>
       <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="navigateTo('employees')">👥 Manage Employees</button>
-        <button class="btn btn-gold" onclick="navigateTo('leave')">🌴 Review Leave</button>
-        <button class="btn btn-outline" onclick="navigateTo('payroll')">💰 View Payroll</button>
-        <button class="btn btn-outline" onclick="navigateTo('violations')">⚠️ Violations</button>
+        <button class="btn btn-primary" onclick="navigateTo('employees')">👥 ${t('dash_manage_emp')}</button>
+        <button class="btn btn-gold" onclick="navigateTo('leave')">🌴 ${t('dash_review_leave')}</button>
+        <button class="btn btn-outline" onclick="navigateTo('payroll')">💰 ${t('dash_view_payroll')}</button>
+        <button class="btn btn-outline" onclick="navigateTo('violations')">⚠️ ${t('nav_violations')}</button>
       </div>
     </div>
   `;
@@ -446,22 +1034,22 @@ async function loadEmployeeDashboard() {
 
   $('page-dashboard').innerHTML = `
     <div class="page-header">
-      <div><h2>Welcome, ${p.name}</h2><p>${p.position || ''} · ${p.department || ''} · ${p.country || ''}</p></div>
+      <div><h2>${t('dash_welcome')}, ${p.name}</h2><p>${p.position || ''} · ${p.department || ''} · ${p.country || ''}</p></div>
     </div>
     <div class="stats-grid">
       <div class="stat-card navy"><div class="stat-icon">🌴</div>
         <div class="stat-value" id="my-leave-balance">–</div>
-        <div class="stat-label">Leave Balance (days)</div></div>
+        <div class="stat-label">${t('dash_leave_bal')}</div></div>
       <div class="stat-card gold"><div class="stat-icon">📋</div>
         <div class="stat-value">${leaveSnap.size}</div>
-        <div class="stat-label">Pending Requests</div></div>
+        <div class="stat-label">${t('dash_pending_req')}</div></div>
     </div>
     <div class="card">
-      <div class="card-header"><h3>Quick Actions</h3></div>
+      <div class="card-header"><h3>${t('dash_quick')}</h3></div>
       <div class="card-body" style="display:flex;gap:12px;flex-wrap:wrap;">
-        <button class="btn btn-primary" onclick="navigateTo('my-leave')">🌴 Request Leave</button>
-        <button class="btn btn-outline" onclick="navigateTo('my-salary')">💵 View Salary</button>
-        <button class="btn btn-outline" onclick="navigateTo('my-penalties')">⚠️ My Penalties</button>
+        <button class="btn btn-primary" onclick="navigateTo('my-leave')">🌴 ${t('leave_request_btn')}</button>
+        <button class="btn btn-outline" onclick="navigateTo('my-salary')">💵 ${t('nav_my_salary')}</button>
+        <button class="btn btn-outline" onclick="navigateTo('my-penalties')">⚠️ ${t('nav_my_penalties')}</button>
       </div>
     </div>
   `;
@@ -492,30 +1080,30 @@ function renderEmployeeTable(employees) {
   const canAdd = isAdmin() || isCountryManager();
   $('page-employees').innerHTML = `
     <div class="page-header">
-      <div><h2>Employees</h2><p>${employees.length} total</p></div>
+      <div><h2>${t('page_employees')}</h2><p>${employees.length} ${t('emp_total')}</p></div>
       <div class="page-actions">
-        ${canAdd ? `<button class="btn btn-primary" onclick="openAddEmployee()">+ Add Employee</button>` : ''}
+        ${canAdd ? `<button class="btn btn-primary" onclick="openAddEmployee()">${t('emp_add')}</button>` : ''}
       </div>
     </div>
 
     <div class="filter-bar">
       <div class="search-wrap">
         <span class="search-icon">🔍</span>
-        <input class="form-control search-input" id="emp-search" placeholder="Search name, position…" oninput="filterEmployees()">
+        <input class="form-control search-input" id="emp-search" placeholder="${t('emp_search')}" oninput="filterEmployees()">
       </div>
       ${isAdmin() ? `
       <select class="form-control" id="emp-filter-country" onchange="filterEmployees()">
-        <option value="">All Countries</option>
+        <option value="">${t('emp_all_countries')}</option>
         ${COUNTRIES.map(c=>`<option>${c}</option>`).join('')}
       </select>` : ''}
       <select class="form-control" id="emp-filter-role" onchange="filterEmployees()">
-        <option value="">All Roles</option>
+        <option value="">${t('emp_all_roles')}</option>
         ${Object.values(ROLES).map(r=>`<option value="${r}">${roleLabel(r)}</option>`).join('')}
       </select>
       <select class="form-control" id="emp-filter-active" onchange="filterEmployees()">
-        <option value="">Active & Inactive</option>
-        <option value="true">Active Only</option>
-        <option value="false">Inactive Only</option>
+        <option value="">${t('emp_all_status')}</option>
+        <option value="true">${t('emp_active_only')}</option>
+        <option value="false">${t('emp_inactive_only')}</option>
       </select>
     </div>
 
@@ -524,14 +1112,14 @@ function renderEmployeeTable(employees) {
         <table id="emp-table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Country</th>
-              <th>Department</th>
-              <th>Position</th>
-              <th>Role</th>
-              <th>Salary</th>
-              <th>Status</th>
-              <th>Actions</th>
+              <th>${t('emp_name')}</th>
+              <th>${t('emp_country')}</th>
+              <th>${t('emp_dept')}</th>
+              <th>${t('emp_position')}</th>
+              <th>${t('emp_role')}</th>
+              <th>${t('emp_salary')}</th>
+              <th>${t('emp_status')}</th>
+              <th>${t('emp_actions')}</th>
             </tr>
           </thead>
           <tbody id="emp-tbody"></tbody>
@@ -550,23 +1138,23 @@ function renderEmployeeTable(employees) {
           <input type="hidden" id="emp-uid">
           <div class="form-row">
             <div class="form-group">
-              <label>Full Name *</label>
+              <label>${t('emp_full_name')}</label>
               <input class="form-control" id="emp-name" placeholder="Nguyen Van A">
             </div>
             <div class="form-group">
-              <label>Email *</label>
+              <label>${t('emp_email')}</label>
               <input class="form-control" id="emp-email" type="email" placeholder="email@company.com">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Role *</label>
+              <label>${t('emp_role_lbl')}</label>
               <select class="form-control" id="emp-role" onchange="onEmpRoleChange()">
                 ${buildRoleOptions()}
               </select>
             </div>
             <div class="form-group">
-              <label>Country *</label>
+              <label>${t('emp_country_lbl')}</label>
               <select class="form-control" id="emp-country">
                 ${COUNTRIES.map(c=>`<option>${c}</option>`).join('')}
               </select>
@@ -574,26 +1162,26 @@ function renderEmployeeTable(employees) {
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Department</label>
+              <label>${t('emp_dept_lbl')}</label>
               <input class="form-control" id="emp-department" placeholder="Engineering">
             </div>
             <div class="form-group">
-              <label>Position / Title</label>
+              <label>${t('emp_pos_lbl')}</label>
               <input class="form-control" id="emp-position" placeholder="Senior Technician">
             </div>
           </div>
           <div class="form-row">
             <div class="form-group">
-              <label>Basic Salary (USD)</label>
+              <label>${t('emp_basic_sal')}</label>
               <input class="form-control" id="emp-salary" type="number" placeholder="500">
             </div>
             <div class="form-group">
-              <label>Allowance (USD)</label>
+              <label>${t('emp_allowance')}</label>
               <input class="form-control" id="emp-allowance" type="number" placeholder="0">
             </div>
           </div>
           <div class="form-group">
-            <label>Work Schedule Override</label>
+            <label>${t('emp_schedule')}</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
               ${['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(d =>
                 `<label style="display:flex;align-items:center;gap:4px;font-size:.84rem;font-weight:400;">
@@ -601,22 +1189,22 @@ function renderEmployeeTable(employees) {
                 </label>`
               ).join('')}
             </div>
-            <p class="form-hint">Leave all unchecked to use country default schedule.</p>
+            <p class="form-hint">${t('emp_sched_hint')}</p>
           </div>
           <div class="form-group">
-            <label>Password (new employees only)</label>
+            <label>${t('emp_password')}</label>
             <input class="form-control" id="emp-password" type="password" placeholder="Min 6 characters">
-            <p class="form-hint">Leave blank when editing an existing employee.</p>
+            <p class="form-hint">${t('emp_pw_hint')}</p>
           </div>
           <div class="form-group">
             <label style="display:flex;align-items:center;gap:8px;font-weight:400;cursor:pointer;">
-              <input type="checkbox" id="emp-active" checked> Active
+              <input type="checkbox" id="emp-active" checked> ${t('emp_active_chk')}
             </label>
           </div>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline modal-close">Cancel</button>
-          <button class="btn btn-primary" onclick="saveEmployee()">Save Employee</button>
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="saveEmployee()">${t('emp_save')}</button>
         </div>
       </div>
     </div>
@@ -646,13 +1234,13 @@ function renderEmployeeRows(list) {
       <td><span class="${roleBadgeClass(e.role)}" style="font-size:.70rem;">${roleLabel(e.role)}</span></td>
       <td class="td-mono">$${(e.salary || 0).toLocaleString()}</td>
       <td>${e.active !== false
-        ? '<span class="badge badge-green">Active</span>'
-        : '<span class="badge badge-grey">Inactive</span>'}</td>
+        ? `<span class="badge badge-green">${t('emp_active')}</span>`
+        : `<span class="badge badge-grey">${t('emp_inactive')}</span>`}</td>
       <td>
         ${canManageCountry(e.country) ? `
-          <button class="btn btn-sm btn-outline" onclick="editEmployee('${e.uid}')">Edit</button>
+          <button class="btn btn-sm btn-outline" onclick="editEmployee('${e.uid}')">${t('emp_edit')}</button>
           <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="toggleEmployeeStatus('${e.uid}', ${e.active !== false})">
-            ${e.active !== false ? 'Deactivate' : 'Activate'}
+            ${e.active !== false ? t('emp_deactivate') : t('emp_activate')}
           </button>` : '–'}
       </td>
     </tr>
@@ -765,7 +1353,7 @@ window.saveEmployee = async function() {
 };
 
 window.toggleEmployeeStatus = async function(uid, currentlyActive) {
-  if (!confirm(`${currentlyActive ? 'Deactivate' : 'Activate'} this employee?`)) return;
+  if (!confirm(currentlyActive ? t('emp_confirm_deact') : t('emp_confirm_act'))) return;
   try {
     await db.collection('users').doc(uid).update({ active: !currentlyActive });
     toast('Status updated.', 'success');
@@ -799,22 +1387,24 @@ async function loadLeave() {
 function renderLeave(requests) {
   $('page-leave').innerHTML = `
     <div class="page-header">
-      <div><h2>Leave Management</h2><p>${requests.length} requests</p></div>
+      <div><h2>${t('page_leave')}</h2><p>${requests.length} ${t('leave_requests')}</p></div>
     </div>
     <div class="filter-bar">
       <select class="form-control" id="leave-filter-status" onchange="filterLeave()">
-        <option value="">All Status</option>
-        <option value="pending">Pending</option>
-        <option value="approved">Approved</option>
-        <option value="rejected">Rejected</option>
+        <option value="">${lang==='vi'?'Tất cả trạng thái':'All Status'}</option>
+        <option value="pending">${t('leave_pending')}</option>
+        <option value="approved">${t('leave_approved')}</option>
+        <option value="rejected">${t('leave_rejected')}</option>
       </select>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th>Employee</th><th>Country</th><th>From</th><th>To</th>
-            <th>Days</th><th>Type</th><th>Reason</th><th>Status</th><th>Actions</th>
+            <th>${t('att_employee')}</th><th>${t('emp_country')}</th>
+            <th>${t('leave_from')}</th><th>${t('leave_to')}</th>
+            <th>${t('leave_days')}</th><th>${t('leave_type')}</th>
+            <th>${t('leave_reason')}</th><th>${t('leave_status')}</th><th>${t('emp_actions')}</th>
           </tr></thead>
           <tbody id="leave-tbody">
             ${requests.map(r => leaveRow(r)).join('')}
@@ -827,9 +1417,9 @@ function renderLeave(requests) {
 
 function leaveRow(r) {
   const statusBadge = {
-    pending:  '<span class="badge badge-amber">Pending</span>',
-    approved: '<span class="badge badge-green">Approved</span>',
-    rejected: '<span class="badge badge-red">Rejected</span>'
+    pending:  `<span class="badge badge-amber">${t('leave_pending')}</span>`,
+    approved: `<span class="badge badge-green">${t('leave_approved')}</span>`,
+    rejected: `<span class="badge badge-red">${t('leave_rejected')}</span>`
   }[r.status] || '';
 
   const canAct = r.status === 'pending' && canManageCountry(r.country);
@@ -839,13 +1429,13 @@ function leaveRow(r) {
     <td>${r.from || ''}</td>
     <td>${r.to || ''}</td>
     <td>${r.days || 1}</td>
-    <td>${r.leaveType === 'paid' ? '🟢 Paid' : '🔴 Unpaid'}</td>
+    <td>${r.leaveType === 'paid' ? `🟢 ${t('leave_paid')}` : `🔴 ${t('leave_unpaid')}`}</td>
     <td style="max-width:200px;white-space:normal;">${r.reason || ''}</td>
     <td>${statusBadge}</td>
     <td>
       ${canAct ? `
-        <button class="btn btn-sm btn-success" onclick="approveLeave('${r.id}')">Approve</button>
-        <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectLeave('${r.id}')">Reject</button>
+        <button class="btn btn-sm btn-success" onclick="approveLeave('${r.id}')">${t('leave_approve')}</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectLeave('${r.id}')">${t('leave_reject')}</button>
       ` : '–'}
     </td>
   </tr>`;
@@ -869,7 +1459,7 @@ window.approveLeave = async function(id) {
 };
 
 window.rejectLeave = async function(id) {
-  const reason = prompt('Rejection reason (optional):') || '';
+  const reason = prompt(t('leave_reject_prompt')) || '';
   try {
     await db.collection('leave_requests').doc(id).update({
       status: 'rejected',
@@ -1249,18 +1839,18 @@ function renderPayroll(employees, existing, month) {
     <div class="page-header">
       <div><h2>Payroll</h2><p>Month: ${month}</p></div>
       <div class="page-actions">
-        ${!isLocked ? `<button class="btn btn-gold" onclick="generatePayroll()">⚡ Generate</button>` : ''}
-        <button class="btn btn-outline" onclick="exportPayrollCSV()">📥 Export CSV</button>
-        ${isAdmin() && !isLocked ? `<button class="btn btn-primary" onclick="lockPayroll()">🔒 Lock</button>` : ''}
+        ${!isLocked ? `<button class="btn btn-gold" onclick="generatePayroll()">${t('pay_generate')}</button>` : ''}
+        <button class="btn btn-outline" onclick="exportPayrollCSV()">${t('pay_export')}</button>
+        ${isAdmin() && !isLocked ? `<button class="btn btn-primary" onclick="lockPayroll()">${t('pay_lock')}</button>` : ''}
       </div>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table id="payroll-table">
           <thead><tr>
-            <th>Employee</th><th>Country</th><th>Basic</th><th>Allowance</th>
-            <th>OT</th><th>Holiday</th><th>Leave Ded.</th><th>Late Ded.</th>
-            <th>Penalties</th><th class="payroll-total">Net Salary</th>
+            <th>${t('pay_employee')}</th><th>${t('pay_country')}</th><th>${t('pay_basic')}</th><th>${t('pay_allowance')}</th>
+            <th>${t('pay_ot')}</th><th>${t('pay_holiday')}</th><th>${t('pay_leave_ded')}</th><th>${t('pay_late_ded')}</th>
+            <th>${t('pay_penalties')}</th><th class="payroll-total">${t('pay_net')}</th>
             ${!isLocked ? '<th></th>' : ''}
           </tr></thead>
           <tbody>
@@ -1288,7 +1878,7 @@ function renderPayroll(employees, existing, month) {
 }
 
 window.generatePayroll = async function() {
-  if (!confirm('Generate payroll for all employees this month?')) return;
+  if (!confirm(t('pay_confirm_gen'))) return;
   showLoader();
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
@@ -1348,7 +1938,7 @@ window.generatePayroll = async function() {
 };
 
 window.lockPayroll = async function() {
-  if (!confirm('Lock payroll? This cannot be undone.')) return;
+  if (!confirm(t('pay_confirm_lock'))) return;
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   const snap = await db.collection('payroll').where('month','==',month).get();
@@ -1503,19 +2093,19 @@ window.seedDefaultPolicies = async function() {
 // ── REPORTS ───────────────────────────────────────────────────
 function loadReports() {
   $('page-reports').innerHTML = `
-    <div class="page-header"><div><h2>Reports</h2><p>Generate and export company reports</p></div></div>
+    <div class="page-header"><div><h2>${t('rep_title')}</h2><p>${t('rep_sub')}</p></div></div>
     <div class="card card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--gap);">
       ${[
-        { icon:'👥', label:'Employee List', action:'rptEmployees' },
-        { icon:'💰', label:'Payroll Summary', action:'rptPayroll' },
-        { icon:'🌴', label:'Leave Summary', action:'rptLeave' },
-        { icon:'⚠️', label:'Violations Report', action:'rptViolations' },
-        { icon:'📅', label:'Holiday List', action:'rptHolidays' }
+        { icon:'👥', label:t('rep_employees'), action:'rptEmployees' },
+        { icon:'💰', label:t('rep_payroll'),   action:'rptPayroll' },
+        { icon:'🌴', label:t('rep_leave'),     action:'rptLeave' },
+        { icon:'⚠️', label:t('rep_violations'),action:'rptViolations' },
+        { icon:'📅', label:t('rep_holidays'),  action:'rptHolidays' }
       ].map(r => `
         <div class="stat-card navy" style="cursor:pointer;" onclick="${r.action}()">
           <div class="stat-icon">${r.icon}</div>
           <div class="stat-label" style="font-size:.9rem;font-weight:600;color:var(--navy);">${r.label}</div>
-          <div class="form-hint" style="margin-top:4px;">Export CSV</div>
+          <div class="form-hint" style="margin-top:4px;">${t('rep_export')}</div>
         </div>`).join('')}
     </div>
   `;
@@ -1548,7 +2138,7 @@ function downloadCSV(rows, filename) {
 async function loadMyProfile() {
   const p = state.userProfile;
   $('page-my-profile').innerHTML = `
-    <div class="page-header"><div><h2>My Profile</h2></div></div>
+    <div class="page-header"><div><h2>${t('page_my_profile')}</h2></div></div>
     <div class="card" style="max-width:520px;">
       <div class="card-body">
         <div style="text-align:center;margin-bottom:var(--gap-lg);">
@@ -1558,12 +2148,12 @@ async function loadMyProfile() {
           <h3>${p.name||'–'}</h3>
           <span class="${roleBadgeClass(p.role)}">${roleLabel(p.role)}</span>
         </div>
-        ${profileField('Email', p.email)}
-        ${profileField('Country', `${COUNTRY_FLAG[p.country]||''} ${p.country||'–'}`)}
-        ${profileField('Department', p.department||'–')}
-        ${profileField('Position', p.position||'–')}
-        ${profileField('Basic Salary', `$${(p.salary||0).toLocaleString()}`)}
-        ${profileField('Allowance', `$${(p.allowance||0).toLocaleString()}`)}
+        ${profileField(t('my_email'), p.email)}
+        ${profileField(t('my_country'), `${COUNTRY_FLAG[p.country]||''} ${p.country||'–'}`)}
+        ${profileField(t('my_dept'), p.department||'–')}
+        ${profileField(t('my_position'), p.position||'–')}
+        ${profileField(t('my_salary'), `$${(p.salary||0).toLocaleString()}`)}
+        ${profileField(t('my_allowance'), `$${(p.allowance||0).toLocaleString()}`)}
       </div>
     </div>
   `;
@@ -1592,24 +2182,29 @@ async function loadMyLeave() {
 
   $('page-my-leave').innerHTML = `
     <div class="page-header">
-      <div><h2>My Leave</h2><p>Balance: <strong>${balance} days</strong></p></div>
+      <div><h2>${t('page_my_leave')}</h2><p>${t('leave_balance')}: <strong>${balance} ${lang==='vi'?'ngày':'days'}</strong></p></div>
       <div class="page-actions">
-        <button class="btn btn-primary" onclick="openRequestLeave()">+ Request Leave</button>
+        <button class="btn btn-primary" onclick="openRequestLeave()">${t('leave_request_btn')}</button>
       </div>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>From</th><th>To</th><th>Days</th><th>Type</th><th>Reason</th><th>Status</th></tr></thead>
+          <thead><tr>
+            <th>${t('leave_from')}</th><th>${t('leave_to')}</th><th>${t('leave_days')}</th>
+            <th>${t('leave_type')}</th><th>${t('leave_reason')}</th><th>${t('leave_status')}</th>
+          </tr></thead>
           <tbody>
             ${requests.length ? requests.map(r=>`
               <tr>
                 <td>${r.from}</td><td>${r.to}</td><td>${r.days}</td>
-                <td>${r.leaveType==='paid'?'🟢 Paid':'🔴 Unpaid'}</td>
+                <td>${r.leaveType==='paid'?`🟢 ${t('leave_paid')}`:`🔴 ${t('leave_unpaid')}`}</td>
                 <td>${r.reason||''}</td>
-                <td><span class="badge badge-${r.status==='approved'?'green':r.status==='rejected'?'red':'amber'}">${r.status}</span></td>
+                <td><span class="badge badge-${r.status==='approved'?'green':r.status==='rejected'?'red':'amber'}">${
+                  r.status==='approved'?t('leave_approved'):r.status==='rejected'?t('leave_rejected'):t('leave_pending')
+                }</span></td>
               </tr>`).join('')
-            : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🌴</div><h4>No leave requests</h4></div></td></tr>`}
+            : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">🌴</div><h4>${t('my_no_leave')}</h4></div></td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1617,18 +2212,18 @@ async function loadMyLeave() {
 
     <div class="modal-overlay" id="modal-my-leave">
       <div class="modal">
-        <div class="modal-header"><h3>Request Leave</h3><button class="modal-close">×</button></div>
+        <div class="modal-header"><h3>${t('leave_request_btn')}</h3><button class="modal-close">×</button></div>
         <div class="modal-body">
           <div class="form-row">
-            <div class="form-group"><label>From Date</label><input class="form-control" type="date" id="leave-from"></div>
-            <div class="form-group"><label>To Date</label><input class="form-control" type="date" id="leave-to"></div>
+            <div class="form-group"><label>${t('leave_from_date')}</label><input class="form-control" type="date" id="leave-from"></div>
+            <div class="form-group"><label>${t('leave_to_date')}</label><input class="form-control" type="date" id="leave-to"></div>
           </div>
-          <div class="form-group"><label>Reason</label><textarea class="form-control" id="leave-reason" rows="3" placeholder="Reason for leave…"></textarea></div>
-          <p class="form-hint">Leave balance: <strong>${balance} days</strong>. Requests must be submitted at least 24h in advance (except emergencies).</p>
+          <div class="form-group"><label>${t('leave_reason_lbl')}</label><textarea class="form-control" id="leave-reason" rows="3" placeholder="${t('leave_reason_ph')}"></textarea></div>
+          <p class="form-hint">${t('leave_hint', {bal: balance})}</p>
         </div>
         <div class="modal-footer">
-          <button class="btn btn-outline modal-close">Cancel</button>
-          <button class="btn btn-primary" onclick="submitLeaveRequest()">Submit Request</button>
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="submitLeaveRequest()">${t('leave_submit')}</button>
         </div>
       </div>
     </div>
@@ -1672,12 +2267,14 @@ async function loadMySalary() {
   const records = snap.docs.map(d => d.data());
 
   $('page-my-salary').innerHTML = `
-    <div class="page-header"><div><h2>My Salary</h2></div></div>
+    <div class="page-header"><div><h2>${t('page_my_salary')}</h2></div></div>
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Month</th><th>Basic</th><th>Allowance</th><th>OT</th>
-            <th>Deductions</th><th class="payroll-total">Net Salary</th></tr></thead>
+          <thead><tr>
+            <th>${t('pay_month')}</th><th>${t('pay_basic')}</th><th>${t('pay_allowance')}</th><th>${t('pay_ot')}</th>
+            <th>${t('my_deductions')}</th><th class="payroll-total">${t('pay_net')}</th>
+          </tr></thead>
           <tbody>
             ${records.length ? records.map(r=>`
               <tr>
@@ -1688,7 +2285,7 @@ async function loadMySalary() {
                 <td class="td-mono payroll-negative">-$${((r.leaveDeduction||0)+(r.lateDeduction||0)+(r.penalties||0)).toFixed(2)}</td>
                 <td class="td-mono payroll-total">$${(r.net||0).toLocaleString()}</td>
               </tr>`).join('')
-            : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">💵</div><h4>No payroll records yet</h4></div></td></tr>`}
+            : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">💵</div><h4>${t('my_no_salary')}</h4></div></td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1711,21 +2308,24 @@ async function loadMyPenalties() {
 
   $('page-my-penalties').innerHTML = `
     <div class="page-header">
-      <div><h2>My Penalties</h2><p>Total: <strong class="payroll-negative">$${total.toFixed(2)}</strong></p></div>
+      <div><h2>${t('page_my_penalties')}</h2><p>${lang==='vi'?'Tổng cộng':'Total'}: <strong class="payroll-negative">$${total.toFixed(2)}</strong></p></div>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Date</th><th>Type</th><th>Detail</th><th>Penalty</th></tr></thead>
+          <thead><tr>
+            <th>${t('att_date')}</th><th>${t('att_type')}</th>
+            <th>${lang==='vi'?'Chi tiết':'Detail'}</th><th>${t('att_penalty')}</th>
+          </tr></thead>
           <tbody>
             ${all.length ? all.map(r=>`
               <tr>
                 <td class="td-mono">${r.date||''}</td>
-                <td><span class="badge badge-${r._type==='late'?'amber':'red'}">${r._type==='late'?'Late/Absence':'Violation'}</span></td>
+                <td><span class="badge badge-${r._type==='late'?'amber':'red'}">${r._type==='late'?t('viol_late'):t('viol_viol')}</span></td>
                 <td>${r.type||r.violationType||''}</td>
                 <td class="td-mono payroll-negative">$${(r.penalty||0).toFixed(2)}</td>
               </tr>`).join('')
-            : `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">✅</div><h4>No penalties on record</h4></div></td></tr>`}
+            : `<tr><td colspan="4"><div class="empty-state"><div class="empty-icon">✅</div><h4>${t('my_no_penalties')}</h4></div></td></tr>`}
           </tbody>
         </table>
       </div>
@@ -2054,7 +2654,7 @@ window.generatePayroll = async function() {
     }
 
     await batch.commit();
-    toast(`Payroll generated for ${employees.length} employees (${month}).`, 'success');
+    toast(t('pay_generated', {n: employees.length, month}), 'success');
     loadPayroll();
   } catch(e) {
     toast('Error generating payroll: ' + e.message, 'error');

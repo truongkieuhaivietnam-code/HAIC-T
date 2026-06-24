@@ -765,3 +765,34 @@ tbody tr:hover { background: var(--bg); }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .topbar-role-badge { display: none; }
 }
+
+/* ── Language toggle ─────────────────────────────────────────── */
+.lang-toggle {
+  display: flex;
+  gap: 3px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px;
+}
+.lang-btn {
+  background: none;
+  border: none;
+  font-size: .74rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  padding: 3px 10px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all var(--t);
+  letter-spacing: .04em;
+}
+.lang-btn.active {
+  background: var(--navy);
+  color: var(--gold-light);
+  box-shadow: var(--shadow-sm);
+}
+.lang-btn:hover:not(.active) {
+  color: var(--text-main);
+  background: var(--border);
+}
