@@ -242,7 +242,7 @@
   <!-- RESULTS TABLE -->
   <div class="card">
     <h2>Kết Quả Thí Nghiệm / Test Results</h2>
-    <div class="card-desc">Công thức tính theo đúng file Excel gốc: Waverage=(W1+W2)/2; De²=4·D·Waverage/π; De=√De²; Is=P×1000/De²; F=(De/50)^0.45; Is50=Is×F</div>
+    <div class="card-desc">Công thức tính theo đúng file Excel gốc: Waverage=(W1+W2)/2; De²=4·D·Waverage/π; De=√De²; Is=P×1000/De²; F=(De/50)^0.45; Is50=Is×F; UCS=Is50×24 (ISRM). Sau mỗi 3 mẫu tự động chèn dòng trung bình (Average) Is50 và UCS.</div>
     <div class="table-scroll">
       <table>
         <thead>
@@ -260,8 +260,9 @@
             <th rowspan="2">De<br>(mm)</th>
             <th rowspan="2">De²<br>(mm²)</th>
             <th rowspan="2">Is<br>(Mpa)</th>
+            <th rowspan="2">Size correction<br>factor, F</th>
             <th rowspan="2">Is(50)<br>(Mpa)</th>
-            <th rowspan="2">F</th>
+            <th rowspan="2">Convert to UCS<br>(Mpa)</th>
             <th rowspan="2"></th>
           </tr>
         </thead>
@@ -671,7 +672,8 @@ function fmt(n, d=3){
 
 // Formulas mirror the original Excel exactly (Point_Load_Test.xls):
 // Waverage = (W1+W2)/2 ; De2 = 4*D*Waverage/PI() ; De = SQRT(De2)
-// Is(Mpa) = P*1000/De2 ; F = (De/50)^0.45 ; Is50 = Is*F
+// Is(Mpa) = P*1000/De2 ; F = (De/50)^0.45 ; Is50 = Is*F ; UCS = Is50 * 24 (ISRM correlation)
+const UCS_FACTOR = 24;
 function calcRow(tr){
   const get = id => parseFloat(tr.querySelector('.'+id).value);
   const D = get('f-d') || 0;
@@ -685,23 +687,28 @@ function calcRow(tr){
   const Is = isFinite(De2) && De2 ? (P * 1000 / De2) : NaN;
   const F = isFinite(De) && De > 0 ? Math.pow(De / 50, 0.45) : NaN;
   const Is50 = isFinite(Is) && isFinite(F) ? Is * F : NaN;
+  const UCS = isFinite(Is50) ? Is50 * UCS_FACTOR : NaN;
 
   tr.querySelector('.calc-wavg').textContent = isFinite(Wavg) ? fmt(Wavg, 2) : '-';
   tr.querySelector('.calc-de').textContent = isFinite(De) ? fmt(De, 3) : '-';
   tr.querySelector('.calc-de2').textContent = isFinite(De2) ? fmt(De2, 2) : '-';
   tr.querySelector('.calc-is').textContent = isFinite(Is) ? fmt(Is, 4) : '-';
-  tr.querySelector('.calc-is50').textContent = isFinite(Is50) ? fmt(Is50, 4) : '-';
   tr.querySelector('.calc-f').textContent = isFinite(F) ? fmt(F, 4) : '-';
+  tr.querySelector('.calc-is50').textContent = isFinite(Is50) ? fmt(Is50, 4) : '-';
+  tr.querySelector('.calc-ucs').textContent = isFinite(UCS) ? fmt(UCS, 4) : '-';
+  renderAverages();
 }
 
 function recalcAll(){
-  document.querySelectorAll('#tbody tr').forEach(calcRow);
+  document.querySelectorAll('#tbody tr.data-row').forEach(calcRow);
+  renderAverages();
 }
 
 function addRow(data){
   rowCount++;
   const tbody = document.getElementById('tbody');
   const tr = document.createElement('tr');
+  tr.className = 'data-row';
   tr.innerHTML = `
     <td><input class="f-testno" type="text" value="${data?.testNo ?? rowCount}" style="width:40px;"></td>
     <td class="label-col"><input class="f-borehole" type="text" value="${data?.borehole||''}"></td>
@@ -716,8 +723,9 @@ function addRow(data){
     <td class="calc calc-de">-</td>
     <td class="calc calc-de2">-</td>
     <td class="calc calc-is">-</td>
-    <td class="calc calc-is50">-</td>
     <td class="calc calc-f">-</td>
+    <td class="calc calc-is50">-</td>
+    <td class="calc calc-ucs">-</td>
     <td><button class="danger small" onclick="deleteRow(this)">✕</button></td>
   `;
   tbody.appendChild(tr);
@@ -727,6 +735,38 @@ function addRow(data){
 
 function deleteRow(btn){
   btn.closest('tr').remove();
+  renderAverages();
+}
+
+function parseCalcNum(tr, cls){
+  const t = tr.querySelector('.'+cls).textContent;
+  const n = parseFloat(t);
+  return isFinite(n) ? n : null;
+}
+
+// Re-builds the "Average" rows: after every full group of 3 data rows
+// (in current display order), insert a read-only row averaging Is(50)
+// and Convert to UCS for that group of 3 samples.
+function renderAverages(){
+  document.querySelectorAll('#tbody tr.avg-row').forEach(r => r.remove());
+  const dataRows = Array.from(document.querySelectorAll('#tbody tr.data-row'));
+  for(let i = 0; i + 3 <= dataRows.length; i += 3){
+    const group = dataRows.slice(i, i + 3);
+    const is50vals = group.map(r => parseCalcNum(r, 'calc-is50')).filter(v => v !== null);
+    const ucsVals = group.map(r => parseCalcNum(r, 'calc-ucs')).filter(v => v !== null);
+    const avgIs50 = is50vals.length ? is50vals.reduce((a,b)=>a+b,0) / is50vals.length : null;
+    const avgUcs = ucsVals.length ? ucsVals.reduce((a,b)=>a+b,0) / ucsVals.length : null;
+    const avgTr = document.createElement('tr');
+    avgTr.className = 'avg-row';
+    avgTr.innerHTML = `
+      <td colspan="13" style="text-align:right; font-weight:700; background:#fdf3e3;">Average / Trung bình (3 mẫu):</td>
+      <td style="font-weight:700; background:#fdf3e3;"></td>
+      <td class="calc" style="font-weight:700; background:#fdf3e3;">${avgIs50!==null ? fmt(avgIs50,4) : '-'}</td>
+      <td class="calc" style="font-weight:700; background:#fdf3e3;">${avgUcs!==null ? fmt(avgUcs,4) : '-'}</td>
+      <td style="background:#fdf3e3;"></td>
+    `;
+    group[2].insertAdjacentElement('afterend', avgTr);
+  }
 }
 
 function showToast(msg){
@@ -738,7 +778,7 @@ function showToast(msg){
 
 function collectData(){
   const rows = [];
-  document.querySelectorAll('#tbody tr').forEach(tr => {
+  document.querySelectorAll('#tbody tr.data-row').forEach(tr => {
     rows.push({
       testNo: tr.querySelector('.f-testno').value,
       borehole: tr.querySelector('.f-borehole').value,
@@ -909,18 +949,14 @@ async function deleteReport(docId){
   }
 }
 
-function exportExcel(){
-  const data = collectData();
-  const wb = XLSX.utils.book_new();
-  const aoa = [
-    ['RESULTS OF POINT LOAD TEST ON ROCK'],
-    [`PROJECT: ${data.project||''}`],
-    [`LOCATION: ${data.location||''}`],
-    [],
-    ['Test No.','Borehole','Sample No.','Sample depth,m','2L (mm)','D (mm)','W1 (mm)','W2 (mm)','Waverage (mm)','Pressure, P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Is(50) (Mpa)','F']
-  ];
-  document.querySelectorAll('#tbody tr').forEach(tr => {
-    aoa.push([
+// Builds table rows (array of arrays) for export, in the same column order
+// as the on-screen table, inserting an Average row after every 3 samples.
+function buildExportBody(){
+  const dataRows = Array.from(document.querySelectorAll('#tbody tr.data-row'));
+  const body = [];
+  let group = [];
+  dataRows.forEach(tr => {
+    body.push([
       tr.querySelector('.f-testno').value,
       tr.querySelector('.f-borehole').value,
       tr.querySelector('.f-sampleno').value,
@@ -934,16 +970,40 @@ function exportExcel(){
       tr.querySelector('.calc-de').textContent,
       tr.querySelector('.calc-de2').textContent,
       tr.querySelector('.calc-is').textContent,
-      tr.querySelector('.calc-is50').textContent,
       tr.querySelector('.calc-f').textContent,
+      tr.querySelector('.calc-is50').textContent,
+      tr.querySelector('.calc-ucs').textContent,
     ]);
+    group.push(tr);
+    if(group.length === 3){
+      const is50vals = group.map(r => parseCalcNum(r,'calc-is50')).filter(v=>v!==null);
+      const ucsVals = group.map(r => parseCalcNum(r,'calc-ucs')).filter(v=>v!==null);
+      const avgIs50 = is50vals.length ? is50vals.reduce((a,b)=>a+b,0)/is50vals.length : null;
+      const avgUcs = ucsVals.length ? ucsVals.reduce((a,b)=>a+b,0)/ucsVals.length : null;
+      body.push(['', '', '', '', '', '', '', '', '', '', '', '', 'Average (3 samples):', '', avgIs50!==null?fmt(avgIs50,4):'-', avgUcs!==null?fmt(avgUcs,4):'-']);
+      group = [];
+    }
   });
+  return body;
+}
+
+function exportExcel(){
+  const data = collectData();
+  const wb = XLSX.utils.book_new();
+  const aoa = [
+    ['RESULTS OF POINT LOAD TEST ON ROCK'],
+    [`PROJECT: ${data.project||''}`],
+    [`LOCATION: ${data.location||''}`],
+    [],
+    ['Test No.','Borehole','Sample No.','Sample depth,m','2L (mm)','D (mm)','W1 (mm)','W2 (mm)','Waverage (mm)','Pressure, P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Size correction factor, F','Is(50) (Mpa)','Convert to UCS (Mpa)']
+  ];
+  buildExportBody().forEach(r => aoa.push(r));
   aoa.push([]);
   aoa.push(['Remarks:', data.remarks]);
   aoa.push([]);
   aoa.push(['Tested by', data.testedBy, '', 'Chief of Lab', data.chiefOfLab, '', `Phnom Penh, ${data.testDate||''}`]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:8},{wch:12},{wch:10},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:8},{wch:10},{wch:10},{wch:12},{wch:8}];
+  ws['!cols'] = [{wch:8},{wch:12},{wch:10},{wch:12},{wch:8},{wch:8},{wch:8},{wch:8},{wch:10},{wch:10},{wch:8},{wch:10},{wch:10},{wch:14},{wch:12},{wch:14}];
   XLSX.utils.book_append_sheet(wb, ws, 'Point load test');
   const fname = `PointLoadTest_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${data.testDate||''}.xlsx`;
   XLSX.writeFile(wb, fname);
@@ -963,34 +1023,21 @@ function exportPDF(){
 
   const head = [[
     'Test No.','Borehole','Sample No.','Sample depth,m','2L (mm)','D (mm)','W1 (mm)','W2 (mm)',
-    'Waverage (mm)','Pressure,P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Is(50) (Mpa)','F'
+    'Waverage (mm)','Pressure,P (KN)','De (mm)','De2 (mm2)','Is (Mpa)','Size correction\nfactor, F','Is(50) (Mpa)','Convert to\nUCS (Mpa)'
   ]];
-  const body = [];
-  document.querySelectorAll('#tbody tr').forEach(tr => {
-    body.push([
-      tr.querySelector('.f-testno').value,
-      tr.querySelector('.f-borehole').value,
-      tr.querySelector('.f-sampleno').value,
-      tr.querySelector('.f-depth').value,
-      tr.querySelector('.f-2l').value,
-      tr.querySelector('.f-d').value,
-      tr.querySelector('.f-w1').value,
-      tr.querySelector('.f-w2').value,
-      tr.querySelector('.calc-wavg').textContent,
-      tr.querySelector('.f-p').value,
-      tr.querySelector('.calc-de').textContent,
-      tr.querySelector('.calc-de2').textContent,
-      tr.querySelector('.calc-is').textContent,
-      tr.querySelector('.calc-is50').textContent,
-      tr.querySelector('.calc-f').textContent,
-    ]);
-  });
+  const body = buildExportBody();
 
   doc.autoTable({
     head, body, startY: 32, theme:'grid',
     styles:{ fontSize:7.5, halign:'center', valign:'middle' },
     headStyles:{ fillColor:[26,82,118], textColor:255, fontSize:7 },
-    columnStyles:{ 1:{halign:'left'}, 2:{halign:'left'} }
+    columnStyles:{ 1:{halign:'left'}, 2:{halign:'left'} },
+    didParseCell: function(d){
+      if(d.row.section==='body' && d.row.raw[12]==='Average (3 samples):'){
+        d.cell.styles.fontStyle = 'bold';
+        d.cell.styles.fillColor = [253,243,227];
+      }
+    }
   });
 
   let finalY = doc.lastAutoTable.finalY + 8;
