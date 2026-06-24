@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAI Multi Country Administration System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+
+  <!-- Firebase v8 compat (works without bundler) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════
+     AUTH SCREEN
+════════════════════════════════════════ -->
+<div id="auth-screen">
+  <div class="auth-card">
+    <div class="auth-logo">
+      <div class="logo-mark"><span>HAI</span></div>
+      <h1>HAI Multi Country<br>Administration System</h1>
+      <p>Cambodia · Vietnam · Laos</p>
+    </div>
+
+    <div class="auth-error" id="auth-error"></div>
+
+    <form id="login-form">
+      <div class="form-group">
+        <label>Email Address</label>
+        <input class="form-control" id="login-email" type="email"
+               placeholder="your@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input class="form-control" id="login-password" type="password"
+               placeholder="••••••••" required autocomplete="current-password">
+      </div>
+      <button class="btn btn-primary btn-full" id="login-btn" type="submit">
+        Sign In
+      </button>
+    </form>
+
+    <p style="margin-top:var(--gap);text-align:center;font-size:.74rem;color:var(--text-muted);">
+      HAI (Cambodia) Survey &amp; Construction Co., Ltd
+    </p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════
+     APP SCREEN
+════════════════════════════════════════ -->
+<div id="app-screen">
+
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">HAI</div>
+      <div class="sidebar-title">
+        <h2>HAIC Admin</h2>
+        <span>Management System</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebar-toggle" title="Toggle sidebar">☰</button>
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+      <!-- Built dynamically by app.js -->
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="user-avatar" id="user-avatar">–</div>
+        <div class="user-info">
+          <strong id="user-name">Loading…</strong>
+          <span id="user-role-label"></span>
+        </div>
+        <button class="logout-btn" id="logout-btn" title="Sign out">⏻</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <span class="topbar-country-badge" id="topbar-country" style="display:none;"></span>
+      <span id="topbar-role-badge" class="topbar-role-badge"></span>
+    </header>
+
+    <!-- ── Pages ── -->
+
+    <!-- Dashboard -->
+    <div class="page-content active" id="page-dashboard">
+      <div class="empty-state" style="padding-top:80px;">
+        <div class="spinner" style="margin:0 auto var(--gap);border-top-color:var(--navy);"></div>
+        <p>Loading dashboard…</p>
+      </div>
+    </div>
+
+    <!-- Employees -->
+    <div class="page-content" id="page-employees">
+      <div class="empty-state"><div class="empty-icon">👥</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Leave -->
+    <div class="page-content" id="page-leave">
+      <div class="empty-state"><div class="empty-icon">🌴</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Attendance -->
+    <div class="page-content" id="page-attendance">
+      <div class="empty-state"><div class="empty-icon">⏱️</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Violations -->
+    <div class="page-content" id="page-violations">
+      <div class="empty-state"><div class="empty-icon">⚠️</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Payroll -->
+    <div class="page-content" id="page-payroll">
+      <div class="empty-state"><div class="empty-icon">💰</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Reports -->
+    <div class="page-content" id="page-reports">
+      <div class="empty-state"><div class="empty-icon">📑</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Policies -->
+    <div class="page-content" id="page-policies">
+      <div class="empty-state"><div class="empty-icon">⚙️</div><p>Loading…</p></div>
+    </div>
+
+    <!-- Employee self-service pages -->
+    <div class="page-content" id="page-my-profile">
+      <div class="empty-state"><div class="empty-icon">👤</div><p>Loading…</p></div>
+    </div>
+    <div class="page-content" id="page-my-leave">
+      <div class="empty-state"><div class="empty-icon">🌴</div><p>Loading…</p></div>
+    </div>
+    <div class="page-content" id="page-my-salary">
+      <div class="empty-state"><div class="empty-icon">💵</div><p>Loading…</p></div>
+    </div>
+    <div class="page-content" id="page-my-penalties">
+      <div class="empty-state"><div class="empty-icon">⚠️</div><p>Loading…</p></div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app-screen -->
+
+<!-- ── Global UI chrome ── -->
+<div class="toast-container" id="toast-container"></div>
+
+<div class="loader-overlay" id="loader">
+  <div class="spinner"></div>
+</div>
+
+<!-- ── Scripts ── -->
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+
+</body>
+</html>
