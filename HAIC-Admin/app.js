@@ -662,24 +662,22 @@ function updateTopbarLang() {
 
 // ══════════════════════════════════════════════════════════════
 // FIRESTORE PATH HELPERS
-// Structure: apps/{module}/{collection}
+// Structure: apps (collection) → hr (document) → xxx (subcollection)
 // ══════════════════════════════════════════════════════════════
-const HR      = 'apps/hr';
-const FINANCE = 'apps/finance';
 
 // Shorthand helpers — returns CollectionReference
 const col = {
-  users:       () => db.doc(HR).collection('users'),
-  leave:       () => db.doc(HR).collection('leave'),
-  payroll:     () => db.doc(HR).collection('payroll'),
-  attendance:  () => db.doc(HR).collection('attendance'),
-  violations:  () => db.doc(HR).collection('violations'),
-  violTypes:   () => db.doc(HR).collection('violation_types'),
-  leaveBalance:() => db.doc(HR).collection('leave_balance'),
-  ot:          () => db.doc(HR).collection('ot'),
-  policy:      () => db.doc(HR).collection('country_policy'),
-  holidays:    () => db.doc(HR).collection('holidays'),
-  pendingUsers:() => db.doc(HR).collection('pending_users'),
+  users:       () => db.collection('apps').doc('hr').collection('users'),
+  leave:       () => db.collection('apps').doc('hr').collection('leave'),
+  payroll:     () => db.collection('apps').doc('hr').collection('payroll'),
+  attendance:  () => db.collection('apps').doc('hr').collection('attendance'),
+  violations:  () => db.collection('apps').doc('hr').collection('violations'),
+  violTypes:   () => db.collection('apps').doc('hr').collection('violation_types'),
+  leaveBalance:() => db.collection('apps').doc('hr').collection('leave_balance'),
+  ot:          () => db.collection('apps').doc('hr').collection('ot'),
+  policy:      () => db.collection('apps').doc('hr').collection('country_policy'),
+  holidays:    () => db.collection('apps').doc('hr').collection('holidays'),
+  pendingUsers:() => db.collection('apps').doc('hr').collection('pending_users'),
 };
 
 // ── App State ─────────────────────────────────────────────────
