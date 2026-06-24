@@ -660,6 +660,28 @@ function updateTopbarLang() {
   if (titleEl) titleEl.textContent = t('page_' + state.activePage.replace('-','_')) || pageTitle(state.activePage);
 }
 
+// ══════════════════════════════════════════════════════════════
+// FIRESTORE PATH HELPERS
+// Structure: apps/{module}/{collection}
+// ══════════════════════════════════════════════════════════════
+const HR      = 'apps/hr';
+const FINANCE = 'apps/finance';
+
+// Shorthand helpers — returns CollectionReference
+const col = {
+  users:       () => db.doc(HR).collection('users'),
+  leave:       () => db.doc(HR).collection('leave'),
+  payroll:     () => db.doc(HR).collection('payroll'),
+  attendance:  () => db.doc(HR).collection('attendance'),
+  violations:  () => db.doc(HR).collection('violations'),
+  violTypes:   () => db.doc(HR).collection('violation_types'),
+  leaveBalance:() => db.doc(HR).collection('leave_balance'),
+  ot:          () => db.doc(HR).collection('ot'),
+  policy:      () => db.doc(HR).collection('country_policy'),
+  holidays:    () => db.doc(HR).collection('holidays'),
+  pendingUsers:() => db.doc(HR).collection('pending_users'),
+};
+
 // ── App State ─────────────────────────────────────────────────
 const state = {
   currentUser:   null,
@@ -812,7 +834,7 @@ auth.onAuthStateChanged(async user => {
   if (user) {
     state.currentUser = user;
     try {
-      const doc = await db.collection('users').doc(user.uid).get();
+      const doc = await col.users().doc(user.uid).get();
       if (!doc.exists) {
         toast('User profile not found. Contact administrator.', 'error');
         auth.signOut();
@@ -945,7 +967,7 @@ async function loadDashboard() {
 
   showLoader();
   try {
-    let query = db.collection('users').where('active', '==', true);
+    let query = col.users().where('active', '==', true);
     if (isCountryManager()) query = query.where('country', '==', state.userProfile.country);
 
     const snap = await query.get();
@@ -957,12 +979,12 @@ async function loadDashboard() {
     employees.forEach(e => { if (byCo[e.country] !== undefined) byCo[e.country]++; });
 
     // Pending leaves
-    let leaveQ = db.collection('leave_requests').where('status', '==', 'pending');
+    let leaveQ = col.leave().where('status', '==', 'pending');
     if (isCountryManager()) leaveQ = leaveQ.where('country', '==', state.userProfile.country);
     const leavePending = (await leaveQ.get()).size;
 
     // Pending violations
-    let violQ = db.collection('violations').where('status', '==', 'pending');
+    let violQ = col.violations().where('status', '==', 'pending');
     if (isCountryManager()) violQ = violQ.where('country', '==', state.userProfile.country);
     const violPending = (await violQ.get()).size;
 
@@ -1029,7 +1051,7 @@ function renderDashboard({ total, byCo, leavePending, violPending }) {
 
 async function loadEmployeeDashboard() {
   const p = state.userProfile;
-  const leaveSnap = await db.collection('leave_requests')
+  const leaveSnap = await col.leave()
     .where('uid', '==', p.uid).where('status', '==', 'pending').get();
 
   $('page-dashboard').innerHTML = `
@@ -1064,7 +1086,7 @@ async function loadEmployeeDashboard() {
 async function loadEmployees() {
   showLoader();
   try {
-    let query = db.collection('users');
+    let query = col.users();
     if (isCountryManager()) query = query.where('country', '==', state.userProfile.country);
     const snap = await query.get();
     state.cache.employees = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
@@ -1329,7 +1351,7 @@ window.saveEmployee = async function() {
       } else if (!isSuperAdmin() && state.cache.employees?.find(x=>x.uid===uid)?.role === ROLES.SUPER_ADMIN) {
         toast('Cannot modify Super Admin.', 'error'); hideLoader(); return;
       }
-      await db.collection('users').doc(uid).update(data);
+      await col.users().doc(uid).update(data);
       toast('Employee updated.', 'success');
     } else {
       // Create via a Cloud Function would be ideal; for now use secondary auth approach
@@ -1340,7 +1362,7 @@ window.saveEmployee = async function() {
       data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
       // Note: actual Firebase Auth account creation requires Admin SDK or Cloud Function
       // This creates the Firestore profile; pair with a Cloud Function trigger
-      const ref = await db.collection('pending_users').add({ ...data, password_hint: '(set by admin)' });
+      const ref = await col.pendingUsers().add({ ...data, password_hint: '(set by admin)' });
       toast(`Employee profile created (ID: ${ref.id}). Create Firebase Auth account separately.`, 'info');
     }
     closeModal('modal-employee');
@@ -1355,7 +1377,7 @@ window.saveEmployee = async function() {
 window.toggleEmployeeStatus = async function(uid, currentlyActive) {
   if (!confirm(currentlyActive ? t('emp_confirm_deact') : t('emp_confirm_act'))) return;
   try {
-    await db.collection('users').doc(uid).update({ active: !currentlyActive });
+    await col.users().doc(uid).update({ active: !currentlyActive });
     toast('Status updated.', 'success');
     loadEmployees();
   } catch (err) {
@@ -1369,8 +1391,8 @@ window.onEmpRoleChange = function() {};
 async function loadLeave() {
   showLoader();
   try {
-    let query = db.collection('leave_requests').orderBy('createdAt', 'desc').limit(100);
-    if (isCountryManager()) query = db.collection('leave_requests')
+    let query = col.leave().orderBy('createdAt', 'desc').limit(100);
+    if (isCountryManager()) query = col.leave()
       .where('country', '==', state.userProfile.country)
       .orderBy('createdAt', 'desc').limit(100);
 
@@ -1448,7 +1470,7 @@ window.filterLeave = function() {
 
 window.approveLeave = async function(id) {
   try {
-    await db.collection('leave_requests').doc(id).update({
+    await col.leave().doc(id).update({
       status: 'approved',
       approvedBy: state.userProfile.uid,
       approvedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -1461,7 +1483,7 @@ window.approveLeave = async function(id) {
 window.rejectLeave = async function(id) {
   const reason = prompt(t('leave_reject_prompt')) || '';
   try {
-    await db.collection('leave_requests').doc(id).update({
+    await col.leave().doc(id).update({
       status: 'rejected',
       rejectedBy: state.userProfile.uid,
       rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -1476,8 +1498,8 @@ window.rejectLeave = async function(id) {
 async function loadAttendance() {
   showLoader();
   try {
-    let query = db.collection('attendance_records').orderBy('date', 'desc').limit(100);
-    if (isCountryManager()) query = db.collection('attendance_records')
+    let query = col.attendance().orderBy('date', 'desc').limit(100);
+    if (isCountryManager()) query = col.attendance()
       .where('country', '==', state.userProfile.country)
       .orderBy('date', 'desc').limit(100);
 
@@ -1617,7 +1639,7 @@ window.saveAttendance = async function() {
   } else penalty = dailyRate * 2;
 
   try {
-    await db.collection('attendance_records').add({
+    await col.attendance().add({
       uid, date, type, minutesLate: mins, penalty,
       employeeName: empName.split('(')[0].trim(),
       country: state.userProfile.country || '',
@@ -1638,10 +1660,10 @@ async function loadViolations() {
   try {
     const [vSnap, typeSnap] = await Promise.all([
       (isCountryManager()
-        ? db.collection('violations').where('country','==',state.userProfile.country)
-        : db.collection('violations')
+        ? col.violations().where('country','==',state.userProfile.country)
+        : col.violations()
       ).orderBy('createdAt','desc').limit(100).get(),
-      db.collection('violation_types').get()
+      col.violTypes().get()
     ]);
 
     const violations = vSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -1774,7 +1796,7 @@ window.addViolationType = async function() {
   const penalty = parseFloat($('new-vtype-penalty')?.value) || 0;
   if (!name) { toast('Name required.', 'error'); return; }
   try {
-    await db.collection('violation_types').add({ name, penalty, type: 'fixed', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    await col.violTypes().add({ name, penalty, type: 'fixed', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     toast('Violation type added.', 'success');
     closeModal('modal-vtypes');
     loadViolations();
@@ -1791,7 +1813,7 @@ window.saveViolation = async function() {
 
   const emp = state.cache.employees?.find(e => e.uid === uid);
   try {
-    await db.collection('violations').add({
+    await col.violations().add({
       uid, date, violationType: typeName, penalty,
       employeeName: emp?.name || '',
       country: emp?.country || '',
@@ -1813,13 +1835,13 @@ async function loadPayroll() {
     const now = new Date();
     const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2,'0')}`;
 
-    let empQuery = db.collection('users').where('active','==',true);
+    let empQuery = col.users().where('active','==',true);
     if (isCountryManager()) empQuery = empQuery.where('country','==',state.userProfile.country);
     const empSnap = await empQuery.get();
     const employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     // Load existing payroll for month
-    let prQuery = db.collection('payroll').where('month','==',month);
+    let prQuery = col.payroll().where('month','==',month);
     if (isCountryManager()) prQuery = prQuery.where('country','==',state.userProfile.country);
     const prSnap = await prQuery.get();
     const existing = {};
@@ -1884,15 +1906,15 @@ window.generatePayroll = async function() {
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
 
   try {
-    let empQuery = db.collection('users').where('active','==',true);
+    let empQuery = col.users().where('active','==',true);
     if (isCountryManager()) empQuery = empQuery.where('country','==',state.userProfile.country);
     const empSnap = await empQuery.get();
     const employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     // Aggregate deductions from attendance & violations
     const [attSnap, violSnap] = await Promise.all([
-      db.collection('attendance_records').where('date','>=',`${month}-01`).where('date','<=',`${month}-31`).get(),
-      db.collection('violations').where('date','>=',`${month}-01`).where('date','<=',`${month}-31`).get()
+      col.attendance().where('date','>=',`${month}-01`).where('date','<=',`${month}-31`).get(),
+      col.violations().where('date','>=',`${month}-01`).where('date','<=',`${month}-31`).get()
     ]);
 
     const lateByUID = {};
@@ -1915,7 +1937,7 @@ window.generatePayroll = async function() {
       const penalties  = violByUID[e.uid] || 0;
       const net = basic + allowance - lateDeduction - penalties;
 
-      const ref = db.collection('payroll').doc(`${month}_${e.uid}`);
+      const ref = col.payroll().doc(`${month}_${e.uid}`);
       batch.set(ref, {
         uid: e.uid,
         employeeName: e.name,
@@ -1941,7 +1963,7 @@ window.lockPayroll = async function() {
   if (!confirm(t('pay_confirm_lock'))) return;
   const now = new Date();
   const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  const snap = await db.collection('payroll').where('month','==',month).get();
+  const snap = await col.payroll().where('month','==',month).get();
   const batch = db.batch();
   snap.docs.forEach(d => batch.update(d.ref, { locked: true }));
   await batch.commit();
@@ -1972,7 +1994,7 @@ async function loadPolicies() {
   if (!isAdmin()) { toast('Access denied.', 'error'); return; }
   showLoader();
   try {
-    const snap = await db.collection('country_policy').get();
+    const snap = await col.policy().get();
     const policies = {};
     snap.docs.forEach(d => { policies[d.id] = d.data(); });
     renderPolicies(policies);
@@ -2034,7 +2056,7 @@ function renderPolicies(policies) {
 }
 
 window.editPolicy = async function(country) {
-  const snap = await db.collection('country_policy').doc(country).get();
+  const snap = await col.policy().doc(country).get();
   const p = snap.exists ? snap.data() : DEFAULT_CAMBODIA_POLICY;
   $('modal-policy-title').textContent = `${country} Policy`;
   $('modal-policy-body').innerHTML = `
@@ -2067,7 +2089,7 @@ window.savePolicy = async function() {
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
   try {
-    await db.collection('country_policy').doc(country).set(data, { merge: true });
+    await col.policy().doc(country).set(data, { merge: true });
     toast('Policy saved.', 'success');
     closeModal('modal-policy');
     loadPolicies();
@@ -2077,11 +2099,11 @@ window.savePolicy = async function() {
 window.seedDefaultPolicies = async function() {
   if (!confirm('Seed default Cambodia policy to Firestore?')) return;
   try {
-    await db.collection('country_policy').doc('Cambodia').set(DEFAULT_CAMBODIA_POLICY, { merge: true });
+    await col.policy().doc('Cambodia').set(DEFAULT_CAMBODIA_POLICY, { merge: true });
     // Seed holidays
     const batch = db.batch();
     CAMBODIA_HOLIDAYS_2025.forEach(h => {
-      const ref = db.collection('holidays').doc(`Cambodia_${h.date}`);
+      const ref = col.holidays().doc(`Cambodia_${h.date}`);
       batch.set(ref, { ...h, country: 'Cambodia', paid: true });
     });
     await batch.commit();
@@ -2167,7 +2189,7 @@ function profileField(label, value) {
 }
 
 async function getLeaveBalance(uid) {
-  const snap = await db.collection('leave_balance').doc(uid).get();
+  const snap = await col.leaveBalance().doc(uid).get();
   if (snap.exists) return snap.data().balance ?? 0;
   return 0;
 }
@@ -2175,7 +2197,7 @@ async function getLeaveBalance(uid) {
 async function loadMyLeave() {
   const uid = state.userProfile.uid;
   const [reqSnap, balance] = await Promise.all([
-    db.collection('leave_requests').where('uid','==',uid).orderBy('createdAt','desc').limit(50).get(),
+    col.leave().where('uid','==',uid).orderBy('createdAt','desc').limit(50).get(),
     getLeaveBalance(uid)
   ]);
   const requests = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -2247,7 +2269,7 @@ window.submitLeaveRequest = async function() {
   const leaveType = balance >= days ? 'paid' : 'unpaid';
 
   try {
-    await db.collection('leave_requests').add({
+    await col.leave().add({
       uid: state.userProfile.uid,
       employeeName: state.userProfile.name,
       country: state.userProfile.country,
@@ -2263,7 +2285,7 @@ window.submitLeaveRequest = async function() {
 
 async function loadMySalary() {
   const uid = state.userProfile.uid;
-  const snap = await db.collection('payroll').where('uid','==',uid).orderBy('month','desc').limit(12).get();
+  const snap = await col.payroll().where('uid','==',uid).orderBy('month','desc').limit(12).get();
   const records = snap.docs.map(d => d.data());
 
   $('page-my-salary').innerHTML = `
@@ -2296,8 +2318,8 @@ async function loadMySalary() {
 async function loadMyPenalties() {
   const uid = state.userProfile.uid;
   const [attSnap, violSnap] = await Promise.all([
-    db.collection('attendance_records').where('uid','==',uid).orderBy('date','desc').limit(50).get(),
-    db.collection('violations').where('uid','==',uid).orderBy('date','desc').limit(50).get()
+    col.attendance().where('uid','==',uid).orderBy('date','desc').limit(50).get(),
+    col.violations().where('uid','==',uid).orderBy('date','desc').limit(50).get()
   ]);
 
   const att  = attSnap.docs.map(d => ({ ...d.data(), _type: 'late' }));
@@ -2340,8 +2362,8 @@ async function loadMyPenalties() {
 async function loadOT() {
   showLoader();
   try {
-    let query = db.collection('ot_records').orderBy('date', 'desc').limit(100);
-    if (isCountryManager()) query = db.collection('ot_records')
+    let query = col.ot().orderBy('date', 'desc').limit(100);
+    if (isCountryManager()) query = col.ot()
       .where('country', '==', state.userProfile.country)
       .orderBy('date', 'desc').limit(100);
 
@@ -2476,7 +2498,7 @@ window.saveOT = async function() {
   const otPay = hourlyRate * hours * 2;
 
   try {
-    await db.collection('ot_records').add({
+    await col.ot().add({
       uid, date, hours, dailyRate, hourlyRate, otPay,
       otType: $('ot-type')?.value || 'normal',
       employeeName: empName,
@@ -2506,18 +2528,18 @@ window.accrueLeaveBalances = async function() {
   showLoader();
 
   try {
-    const empSnap = await db.collection('users').where('active', '==', true).get();
+    const empSnap = await col.users().where('active', '==', true).get();
     const employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     const MAX_BALANCE = 12; // carry-forward cap
     let updated = 0;
 
     for (const e of employees) {
-      const balDoc = await db.collection('leave_balance').doc(e.uid).get();
+      const balDoc = await col.leaveBalance().doc(e.uid).get();
       const current = balDoc.exists ? (balDoc.data().balance || 0) : 0;
       const newBalance = Math.min(current + 1, MAX_BALANCE);
 
-      await db.collection('leave_balance').doc(e.uid).set({
+      await col.leaveBalance().doc(e.uid).set({
         uid: e.uid,
         employeeName: e.name,
         country: e.country,
@@ -2538,7 +2560,7 @@ window.accrueLeaveBalances = async function() {
  * Called internally when approving leave requests.
  */
 async function deductLeaveBalance(uid, days) {
-  const ref = db.collection('leave_balance').doc(uid);
+  const ref = col.leaveBalance().doc(uid);
   const doc = await ref.get();
   const current = doc.exists ? (doc.data().balance || 0) : 0;
   const newBalance = Math.max(current - days, 0);
@@ -2550,11 +2572,11 @@ async function deductLeaveBalance(uid, days) {
 const _origApproveLeave = window.approveLeave;
 window.approveLeave = async function(id) {
   try {
-    const doc = await db.collection('leave_requests').doc(id).get();
+    const doc = await col.leave().doc(id).get();
     if (!doc.exists) { toast('Request not found.', 'error'); return; }
     const req = doc.data();
 
-    await db.collection('leave_requests').doc(id).update({
+    await col.leave().doc(id).update({
       status: 'approved',
       approvedBy: state.userProfile.uid,
       approvedAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -2588,20 +2610,20 @@ window.generatePayroll = async function() {
   const monthEnd   = `${month}-31`;
 
   try {
-    let empQuery = db.collection('users').where('active', '==', true);
+    let empQuery = col.users().where('active', '==', true);
     if (isCountryManager()) empQuery = empQuery.where('country', '==', state.userProfile.country);
     const empSnap = await empQuery.get();
     const employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
 
     // Load all records for the month
     const [attSnap, violSnap, otSnap, holidayOTSnap] = await Promise.all([
-      db.collection('attendance_records')
+      col.attendance()
         .where('date', '>=', monthStart).where('date', '<=', monthEnd).get(),
-      db.collection('violations')
+      col.violations()
         .where('date', '>=', monthStart).where('date', '<=', monthEnd).get(),
-      db.collection('ot_records').where('otType', '==', 'normal')
+      col.ot().where('otType', '==', 'normal')
         .where('date', '>=', monthStart).where('date', '<=', monthEnd).get(),
-      db.collection('ot_records').where('otType', '==', 'holiday')
+      col.ot().where('otType', '==', 'holiday')
         .where('date', '>=', monthStart).where('date', '<=', monthEnd).get()
     ]);
 
@@ -2635,7 +2657,7 @@ window.generatePayroll = async function() {
       const allowance = e.allowance || 0;
       const net = basic + allowance + a.ot + a.holiday - a.late - a.violations;
 
-      const ref = db.collection('payroll').doc(`${month}_${e.uid}`);
+      const ref = col.payroll().doc(`${month}_${e.uid}`);
       batch.set(ref, {
         uid: e.uid,
         employeeName: e.name,
@@ -2670,7 +2692,7 @@ async function loadPolicies() {
   if (!isAdmin()) { toast('Access denied.', 'error'); return; }
   showLoader();
   try {
-    const snap = await db.collection('country_policy').get();
+    const snap = await col.policy().get();
     const policies = {};
     snap.docs.forEach(d => { policies[d.id] = d.data(); });
     renderPolicies(policies);
