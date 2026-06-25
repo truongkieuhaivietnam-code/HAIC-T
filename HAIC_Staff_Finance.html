@@ -1709,15 +1709,13 @@ function ensureStructure() {
   });
 
   // Migration: ensure every paid/settled advance has a corresponding "received" income tx
-  // Uses _migrated_advance_income flag to run ONCE only (flag saved to Firestore)
+  // Uses _migrated_advance_income flag stored IN Firestore to run ONCE only across all devices
   if (!STORE._migrated_advance_income) {
-    let _migrationAddedTx = false;
     STORE.advances.forEach(adv => {
       const needsIncomeTx = ["paid", "settled", "settlement_pending", "settlement_returned"].includes(adv.status);
       if (!needsIncomeTx) return;
-      // Remove ALL existing income txs from this advance first to avoid duplicates
-      const existing = STORE.transactions.filter(tx => tx.fromAdvanceId === adv.id && tx.type === "income");
-      if (existing.length === 0) {
+      const hasIncomeTx = STORE.transactions.some(tx => tx.fromAdvanceId === adv.id && tx.type === "income");
+      if (!hasIncomeTx) {
         const txDate = adv.paidAt ? adv.paidAt.substring(0, 10) : (adv.createdAt ? adv.createdAt.substring(0, 10) : "2026-06-01");
         STORE.transactions.push({
           id: genId("tx"),
@@ -1733,19 +1731,11 @@ function ensureStructure() {
           fromAdvanceId: adv.id,
           _autoMigrated: true,
         });
-        _migrationAddedTx = true;
       }
     });
     STORE._migrated_advance_income = true;
-    if (_migrationAddedTx) {
-      lsSaveAll(STORE);
-      if (typeof db !== "undefined" && db && firebaseReady) {
-        STORE._savedAt = nowISO();
-        STORE._savedBy = "migration";
-        db.collection(COLLECTION_NAME).doc("main").set(STORE, { merge: false })
-          .catch(err => console.warn("Migration save failed:", err));
-      }
-    }
+    // Save to localStorage only — Firestore will be updated on next user action via persistNow()
+    lsSaveAll(STORE);
   }
 
   // Migrate old per-customer "payments" (flat) into invoices structure
@@ -1810,7 +1800,8 @@ function initRealtimeSync(onUpdate) {
   }
   const docRef = db.collection(COLLECTION_NAME).doc("main");
 
-  // Pull latest data from Firestore once on load (no live listener that can overwrite our saves)
+  // ALWAYS pull from Firestore on load — Firestore is the source of truth
+  // Local storage is only a fallback when offline
   docRef.get().then(snap => {
     if (!snap.exists) {
       // First time — push local defaults to Firestore
@@ -1818,24 +1809,16 @@ function initRealtimeSync(onUpdate) {
     } else {
       const remote = snap.data();
       if (remote) {
-        // Accept remote data only if it's newer than our local copy
-        const remoteTime = remote._savedAt ? new Date(remote._savedAt).getTime() : 0;
-        const localTime  = STORE._savedAt  ? new Date(STORE._savedAt).getTime()  : 0;
-        if (remoteTime >= localTime) {
-          STORE = remote;
-          ensureStructure();
-          lsSaveAll(STORE);
-        }
-        // else: our local copy is newer (just saved), keep it
+        STORE = remote;
+        ensureStructure();
+        lsSaveAll(STORE);
       }
     }
     if (onUpdate) onUpdate();
   }).catch(err => {
-    console.warn("Firestore initial fetch failed, using local data:", err);
+    console.warn("Firestore fetch failed, using local cache:", err);
     if (onUpdate) onUpdate();
   });
-  // NOTE: No onSnapshot listener — avoids Firestore echo overwriting fresh saves.
-  // Data syncs across devices on next page load (pull-on-load pattern).
 }
 
 function genId(prefix) {
