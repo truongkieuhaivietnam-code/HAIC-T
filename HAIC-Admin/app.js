@@ -14,6 +14,24 @@ const COUNTRIES = ['Cambodia', 'Vietnam', 'Laos'];
 
 const COUNTRY_FLAG = { Cambodia: '🇰🇭', Vietnam: '🇻🇳', Laos: '🇱🇦' };
 
+// ── Currency helpers ─────────────────────────────────────────
+const CURRENCY_BY_COUNTRY = {
+  Cambodia: 'USD',
+  Vietnam:  'VND',
+  Laos:     'USD'
+};
+
+function formatCurrency(amount, currency) {
+  if (currency === 'VND') {
+    return new Intl.NumberFormat('vi-VN').format(amount) + ' ₫';
+  }
+  return '$' + (amount || 0).toLocaleString();
+}
+
+function getCurrency(country) {
+  return CURRENCY_BY_COUNTRY[country] || 'USD';
+}
+
 const DEFAULT_CAMBODIA_POLICY = {
   country: 'Cambodia',
   currency: 'USD',
@@ -1193,13 +1211,23 @@ function renderEmployeeTable(employees) {
           <div class="form-row">
             <div class="form-group">
               <label>${t('emp_basic_sal')}</label>
-              <input class="form-control" id="emp-salary" type="number" placeholder="500">
+              <div style="display:flex;gap:6px;">
+                <input class="form-control" id="emp-salary" type="number" placeholder="500" style="flex:1;">
+                <select class="form-control" id="emp-currency" style="width:90px;" onchange="onCurrencyChange()">
+                  <option value="USD">$ USD</option>
+                  <option value="VND">₫ VNĐ</option>
+                </select>
+              </div>
             </div>
             <div class="form-group">
               <label>${t('emp_allowance')}</label>
-              <input class="form-control" id="emp-allowance" type="number" placeholder="0">
+              <div style="display:flex;gap:6px;align-items:center;">
+                <input class="form-control" id="emp-allowance" type="number" placeholder="0" style="flex:1;">
+                <span id="emp-allowance-currency" style="font-size:.84rem;color:var(--text-muted);width:90px;text-align:center;">USD</span>
+              </div>
             </div>
           </div>
+          <div id="emp-salary-hint" class="form-hint" style="margin-top:-8px;margin-bottom:8px;"></div>
           <div class="form-group">
             <label>${t('emp_schedule')}</label>
             <div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;">
@@ -1252,7 +1280,7 @@ function renderEmployeeRows(list) {
       <td>${e.department || '–'}</td>
       <td>${e.position || '–'}</td>
       <td><span class="${roleBadgeClass(e.role)}" style="font-size:.70rem;">${roleLabel(e.role)}</span></td>
-      <td class="td-mono">$${(e.salary || 0).toLocaleString()}</td>
+      <td class="td-mono">${formatCurrency(e.salary || 0, e.currency || getCurrency(e.country))}</td>
       <td>${e.active !== false
         ? `<span class="badge badge-green">${t('emp_active')}</span>`
         : `<span class="badge badge-grey">${t('emp_inactive')}</span>`}</td>
@@ -1341,6 +1369,7 @@ window.saveEmployee = async function() {
         position:   $('emp-position').value.trim(),
         salary:     parseFloat($('emp-salary').value) || 0,
         allowance:  parseFloat($('emp-allowance').value) || 0,
+        currency:   $('emp-currency')?.value || getCurrency($('emp-country').value),
         schedule:   schedule.length ? schedule : [],
         active:     $('emp-active').checked,
         updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
@@ -1419,6 +1448,7 @@ window.saveEmployee = async function() {
         position:   $('emp-position').value.trim(),
         salary:     parseFloat($('emp-salary').value) || 0,
         allowance:  parseFloat($('emp-allowance').value) || 0,
+        currency:   $('emp-currency')?.value || getCurrency($('emp-country').value),
         schedule:   schedule.length ? schedule : [],
         active:     $('emp-active').checked,
         createdBy:  adminUser.uid,
@@ -1463,6 +1493,35 @@ window.toggleEmployeeStatus = async function(uid, currentlyActive) {
 };
 
 window.onEmpRoleChange = function() {};
+
+window.onCurrencyChange = function() {
+  const cur = $('emp-currency')?.value || 'USD';
+  const hint = $('emp-salary-hint');
+  const allowCur = $('emp-allowance-currency');
+  if (allowCur) allowCur.textContent = cur;
+  if (hint) {
+    if (cur === 'VND') {
+      hint.textContent = lang === 'vi'
+        ? '💡 Nhập lương theo VNĐ, ví dụ: 8000000 = 8 triệu đồng'
+        : '💡 Enter salary in VND, e.g. 8000000 = 8 million VND';
+    } else {
+      hint.textContent = '';
+    }
+  }
+};
+
+// Auto-set currency based on country selection
+document.addEventListener('change', function(e) {
+  if (e.target && e.target.id === 'emp-country') {
+    const country = e.target.value;
+    const currency = getCurrency(country);
+    const curSel = $('emp-currency');
+    if (curSel) {
+      curSel.value = currency;
+      onCurrencyChange();
+    }
+  }
+});
 
 // ── LEAVE MANAGEMENT ──────────────────────────────────────────
 async function loadLeave() {
@@ -1958,8 +2017,8 @@ function renderPayroll(employees, existing, month) {
               return `<tr>
                 <td><strong>${e.name}</strong></td>
                 <td>${COUNTRY_FLAG[e.country]||''} ${e.country}</td>
-                <td class="td-mono">$${(p.basic || e.salary || 0).toLocaleString()}</td>
-                <td class="td-mono">$${(p.allowance || e.allowance || 0).toLocaleString()}</td>
+                <td class="td-mono">${formatCurrency(p.basic || e.salary || 0, e.currency || getCurrency(e.country))}</td>
+                <td class="td-mono">${formatCurrency(p.allowance || e.allowance || 0, e.currency || getCurrency(e.country))}</td>
                 <td class="td-mono payroll-positive">+$${(p.ot || 0).toFixed(2)}</td>
                 <td class="td-mono payroll-positive">+$${(p.holiday || 0).toFixed(2)}</td>
                 <td class="td-mono payroll-negative">-$${(p.leaveDeduction || 0).toFixed(2)}</td>
@@ -2251,12 +2310,128 @@ async function loadMyProfile() {
         ${profileField(t('my_country'), `${COUNTRY_FLAG[p.country]||''} ${p.country||'–'}`)}
         ${profileField(t('my_dept'), p.department||'–')}
         ${profileField(t('my_position'), p.position||'–')}
-        ${profileField(t('my_salary'), `$${(p.salary||0).toLocaleString()}`)}
-        ${profileField(t('my_allowance'), `$${(p.allowance||0).toLocaleString()}`)}
+        ${profileField(t('my_salary'), formatCurrency(p.salary||0, p.currency||getCurrency(p.country)))}
+        ${profileField(t('my_allowance'), formatCurrency(p.allowance||0, p.currency||getCurrency(p.country)))}
+      </div>
+      <div class="card-footer" style="justify-content:flex-end;">
+        <button class="btn btn-outline" onclick="openChangePassword()">
+          🔑 ${lang==='vi' ? 'Đổi mật khẩu' : 'Change Password'}
+        </button>
+      </div>
+    </div>
+
+    <!-- Change Password Modal -->
+    <div class="modal-overlay" id="modal-change-password">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>🔑 ${lang==='vi' ? 'Đổi mật khẩu' : 'Change Password'}</h3>
+          <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${lang==='vi' ? 'Mật khẩu hiện tại' : 'Current Password'}</label>
+            <input class="form-control" type="password" id="pw-current"
+              placeholder="${lang==='vi' ? 'Nhập mật khẩu hiện tại…' : 'Enter current password…'}">
+          </div>
+          <div class="form-group">
+            <label>${lang==='vi' ? 'Mật khẩu mới' : 'New Password'}</label>
+            <input class="form-control" type="password" id="pw-new"
+              placeholder="${lang==='vi' ? 'Tối thiểu 6 ký tự' : 'Minimum 6 characters'}">
+          </div>
+          <div class="form-group">
+            <label>${lang==='vi' ? 'Xác nhận mật khẩu mới' : 'Confirm New Password'}</label>
+            <input class="form-control" type="password" id="pw-confirm"
+              placeholder="${lang==='vi' ? 'Nhập lại mật khẩu mới…' : 'Re-enter new password…'}">
+          </div>
+          <div id="pw-error" style="display:none;color:var(--red);font-size:.82rem;
+            background:var(--red-bg);padding:8px 12px;border-radius:var(--r-sm);margin-top:4px;">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">
+            ${lang==='vi' ? 'Hủy' : 'Cancel'}
+          </button>
+          <button class="btn btn-primary" onclick="submitChangePassword()">
+            ${lang==='vi' ? 'Xác nhận đổi mật khẩu' : 'Confirm Change'}
+          </button>
+        </div>
       </div>
     </div>
   `;
 }
+
+window.openChangePassword = function() {
+  // Clear fields
+  ['pw-current','pw-new','pw-confirm'].forEach(id => {
+    const el = $(id); if (el) el.value = '';
+  });
+  const errEl = $('pw-error');
+  if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
+  openModal('modal-change-password');
+};
+
+window.submitChangePassword = async function() {
+  const currentPw = $('pw-current')?.value;
+  const newPw     = $('pw-new')?.value;
+  const confirmPw = $('pw-confirm')?.value;
+  const errEl     = $('pw-error');
+
+  const showErr = (msg) => {
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  };
+
+  // Validate
+  if (!currentPw) {
+    showErr(lang==='vi' ? 'Vui lòng nhập mật khẩu hiện tại.' : 'Please enter current password.');
+    return;
+  }
+  if (!newPw || newPw.length < 6) {
+    showErr(lang==='vi' ? 'Mật khẩu mới phải có ít nhất 6 ký tự.' : 'New password must be at least 6 characters.');
+    return;
+  }
+  if (newPw !== confirmPw) {
+    showErr(lang==='vi' ? 'Mật khẩu xác nhận không khớp.' : 'Passwords do not match.');
+    return;
+  }
+  if (newPw === currentPw) {
+    showErr(lang==='vi' ? 'Mật khẩu mới phải khác mật khẩu hiện tại.' : 'New password must be different from current password.');
+    return;
+  }
+
+  showLoader();
+  try {
+    const user  = auth.currentUser;
+    const email = user.email;
+
+    // Re-authenticate với mật khẩu hiện tại trước
+    const credential = firebase.auth.EmailAuthProvider.credential(email, currentPw);
+    await user.reauthenticateWithCredential(credential);
+
+    // Đổi mật khẩu
+    await user.updatePassword(newPw);
+
+    closeModal('modal-change-password');
+    toast(
+      lang==='vi' ? '✅ Đổi mật khẩu thành công!' : '✅ Password changed successfully!',
+      'success'
+    );
+  } catch(err) {
+    let msg = err.message;
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      msg = lang==='vi' ? 'Mật khẩu hiện tại không đúng.' : 'Current password is incorrect.';
+    } else if (err.code === 'auth/weak-password') {
+      msg = lang==='vi' ? 'Mật khẩu mới quá yếu.' : 'New password is too weak.';
+    } else if (err.code === 'auth/requires-recent-login') {
+      msg = lang==='vi'
+        ? 'Phiên đăng nhập quá lâu. Vui lòng đăng xuất và đăng nhập lại.'
+        : 'Session expired. Please sign out and sign in again.';
+    }
+    const errEl = $('pw-error');
+    if (errEl) { errEl.textContent = msg; errEl.style.display = 'block'; }
+  } finally {
+    hideLoader();
+  }
+};
 
 function profileField(label, value) {
   return `<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);">
