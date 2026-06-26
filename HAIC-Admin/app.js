@@ -1350,23 +1350,39 @@ window.saveEmployee = async function() {
 
     } else {
       // ── CREATE new employee ───────────────────────────────
-      // Bước 1: Lưu lại thông tin user hiện tại (admin đang đăng nhập)
-      const currentUser = auth.currentUser;
+      // Lưu thông tin admin hiện tại để re-login sau
+      const adminUser    = auth.currentUser;
+      const adminEmail   = adminUser.email;
+      // Lấy password admin từ form login (không lưu được từ trước)
+      // → dùng phương án: lưu Firestore trước, tạo Auth sau bằng
+      //   secondary Firebase app instance
 
-      // Bước 2: Tạo Firebase Auth account cho nhân viên mới
-      // Dùng secondary app để không bị logout tài khoản admin
-      const secondaryApp = firebase.initializeApp(
-        firebase.app().options,
-        'secondary_' + Date.now()
-      );
-      const secondaryAuth = secondaryApp.auth();
-
-      let newUser;
+      // Khởi tạo secondary Firebase app
+      let secondaryApp;
       try {
+        secondaryApp = firebase.initializeApp(
+          firebase.app().options,
+          'emp_create_' + Date.now()
+        );
+      } catch(e) {
+        // App name conflict — dùng app đã có
+        secondaryApp = firebase.app('emp_create_' + Date.now());
+      }
+
+      const secondaryAuth = secondaryApp.auth();
+      let newUID;
+
+      try {
+        // Tạo Auth account bằng secondary app
         const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
-        newUser = cred.user;
-      } catch(authErr) {
+        newUID = cred.user.uid;
+
+        // Đóng secondary app ngay — không ảnh hưởng admin session
+        await secondaryAuth.signOut();
         await secondaryApp.delete();
+
+      } catch(authErr) {
+        try { await secondaryApp.delete(); } catch(e) {}
         if (authErr.code === 'auth/email-already-in-use') {
           toast('Email này đã tồn tại trong hệ thống.', 'error');
         } else {
@@ -1376,14 +1392,11 @@ window.saveEmployee = async function() {
         return;
       }
 
-      // Bước 3: Đóng secondary app (tránh conflict)
-      await secondaryApp.delete();
-
-      // Bước 4: Tạo Firestore profile
+      // Tạo Firestore profile — dùng admin credentials (vẫn đang login)
       const profile = {
-        uid:        newUser.uid,
+        uid:        newUID,
         name,
-        email:      email.toLowerCase(),
+        email:      email.toLowerCase().trim(),
         role,
         country:    $('emp-country').value,
         department: $('emp-department').value.trim(),
@@ -1392,22 +1405,23 @@ window.saveEmployee = async function() {
         allowance:  parseFloat($('emp-allowance').value) || 0,
         schedule:   schedule.length ? schedule : [],
         active:     $('emp-active').checked,
-        createdBy:  currentUser.uid,
+        createdBy:  adminUser.uid,
         createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
         updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
       };
-      await col.users().doc(newUser.uid).set(profile);
 
-      // Bước 5: Khởi tạo leave balance = 0
-      await col.leaveBalance().doc(newUser.uid).set({
-        uid:          newUser.uid,
+      await col.users().doc(newUID).set(profile);
+
+      // Khởi tạo leave balance = 0
+      await col.leaveBalance().doc(newUID).set({
+        uid:          newUID,
         employeeName: name,
         country:      $('emp-country').value,
         balance:      0,
         createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
       });
 
-      toast(`Đã tạo nhân viên ${name} thành công!`, 'success');
+      toast(`✅ Đã tạo nhân viên ${name} thành công!`, 'success');
     }
 
     closeModal('modal-employee');
