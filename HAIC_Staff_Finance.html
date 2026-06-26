@@ -1657,15 +1657,32 @@ function getDefaultData() {
 let STORE = lsGetAll();
 let unsubscribers = [];
 
+
+// ===================== ENSURE STRUCTURE =====================
+// RULE: ensureStructure() chỉ được ĐỌC và SỬA data trong memory.
+// TUYỆT ĐỐI KHÔNG được gọi lsSaveAll() hay save lên Firestore ở đây.
+// Việc save chỉ do persistNow() hoặc persistDebounced() thực hiện khi user thao tác.
 function ensureStructure() {
   const def = getDefaultData();
-  for (const key in def) {
-    if (!(key in STORE)) STORE[key] = def[key];
+
+  // Đảm bảo các field cơ bản tồn tại
+  if (!STORE.users) STORE.users = def.users;
+  if (!STORE.transactions) STORE.transactions = [];
+  if (!STORE.advances) STORE.advances = [];
+  if (!STORE.customers) STORE.customers = [];
+  if (!STORE.projects) STORE.projects = [];
+  if (!STORE.notifications) STORE.notifications = [];
+  if (!STORE.auditLog) STORE.auditLog = [];
+  if (!STORE.settings) STORE.settings = def.settings;
+  for (const k in def.settings) {
+    if (!(k in STORE.settings)) STORE.settings[k] = def.settings[k];
   }
+
+  // Đảm bảo categories tồn tại
   if (!STORE.categories) STORE.categories = def.categories;
   if (!STORE.categories.expense) STORE.categories.expense = def.categories.expense;
   if (!STORE.categories.income) STORE.categories.income = def.categories.income;
-  // Add any new default categories that don't exist yet (e.g. c_reimbursement for expense)
+  // Thêm category mới nếu chưa có
   def.categories.expense.forEach(defCat => {
     if (!STORE.categories.expense.some(c => c.id === defCat.id)) {
       STORE.categories.expense.push({ ...defCat });
@@ -1676,82 +1693,40 @@ function ensureStructure() {
       STORE.categories.income.push({ ...defCat });
     }
   });
-  if (!STORE.settings) STORE.settings = def.settings;
-  for (const k in def.settings) {
-    if (!(k in STORE.settings)) STORE.settings[k] = def.settings[k];
-  }
-  if (!STORE.advances) STORE.advances = [];
-  if (!STORE.customers) STORE.customers = [];
-  if (!STORE.projects) STORE.projects = [];
-  if (!STORE.notifications) STORE.notifications = [];
 
-  // Default branch for existing data (pre-branch migration)
+  // Gán branch mặc định cho user/customer/project cũ
   STORE.users.forEach(u => { if (!u.branch && u.role !== "superadmin") u.branch = "cambodia"; });
   STORE.customers.forEach(c => { if (!c.branch) c.branch = "cambodia"; });
   STORE.projects.forEach(p => { if (!p.branch) p.branch = "cambodia"; });
 
-  // Cleanup: remove duplicate income txs per advance (keep only 1 per advance)
-  // This fixes data already corrupted by previous migration bug
-  const seenAdvanceIncomeTx = new Set();
-  STORE.transactions = STORE.transactions.filter(tx => {
-    if (!tx.fromAdvanceId || tx.type !== "income") return true;
-    const key = tx.fromAdvanceId;
-    if (seenAdvanceIncomeTx.has(key)) return false; // duplicate → remove
-    seenAdvanceIncomeTx.add(key);
-    return true;
-  });
-
-  // Fix category: old income txs from advances that used "c_reimbursement" → change to "c_advance_received"
+  // Fix category: income tx từ advance cũ dùng "c_reimbursement" → đổi thành "c_advance_received"
   STORE.transactions.forEach(tx => {
     if (tx.fromAdvanceId && tx.type === "income" && tx.categoryId === "c_reimbursement") {
       tx.categoryId = "c_advance_received";
     }
   });
 
-  // Migration: ensure every paid/settled advance has a corresponding "received" income tx
-  // Uses _migrated_advance_income flag stored IN Firestore to run ONCE only across all devices
-  if (!STORE._migrated_advance_income) {
-    STORE.advances.forEach(adv => {
-      const needsIncomeTx = ["paid", "settled", "settlement_pending", "settlement_returned"].includes(adv.status);
-      if (!needsIncomeTx) return;
-      const hasIncomeTx = STORE.transactions.some(tx => tx.fromAdvanceId === adv.id && tx.type === "income");
-      if (!hasIncomeTx) {
-        const txDate = adv.paidAt ? adv.paidAt.substring(0, 10) : (adv.createdAt ? adv.createdAt.substring(0, 10) : "2026-06-01");
-        STORE.transactions.push({
-          id: genId("tx"),
-          type: "income",
-          categoryId: "c_advance_received",
-          date: txDate,
-          amount: adv.amount,
-          projectId: adv.projectId || null,
-          note: "Nhận tạm ứng: " + (adv.reason || ""),
-          userId: adv.userId,
-          timestamp: "00:00",
-          createdAt: nowISO(),
-          fromAdvanceId: adv.id,
-          _autoMigrated: true,
-        });
-      }
-    });
-    STORE._migrated_advance_income = true;
-    // Save to localStorage only — Firestore will be updated on next user action via persistNow()
-    lsSaveAll(STORE);
-  }
+  // Xóa duplicate income tx cho cùng 1 advance (chỉ giữ 1 bản)
+  const seenAdvanceIncome = new Set();
+  STORE.transactions = STORE.transactions.filter(tx => {
+    if (!tx.fromAdvanceId || tx.type !== "income") return true;
+    if (seenAdvanceIncome.has(tx.fromAdvanceId)) return false;
+    seenAdvanceIncome.add(tx.fromAdvanceId);
+    return true;
+  });
 
-  // Migrate old per-customer "payments" (flat) into invoices structure
+  // Migrate invoices cũ (flat payments → invoices structure)
   STORE.customers.forEach(c => {
     if (!c.invoices) c.invoices = [];
     if (c.payments && c.payments.length > 0 && c.invoices.length === 0) {
-      // Move old direct payments to reduce against initialDebt by creating a migration invoice
-      const totalOldPaid = c.payments.reduce((s, p) => s + p.amount, 0);
       c.invoices.push({
         id: genId("inv"),
         date: c.payments[0].date,
         vatNo: "",
-        commNo: currentLang === "vi" ? "Công nợ cũ (di chuyển)" : "Migrated balance",
+        commNo: "Migrated balance",
         contractAmount: c.initialDebt || 0,
         actualAmount: c.initialDebt || 0,
-        note: currentLang === "vi" ? "Tự động chuyển từ dữ liệu cũ" : "Auto-migrated from old data",
+        note: "Auto-migrated from old data",
         payments: c.payments,
         createdAt: nowISO(),
       });
@@ -1759,13 +1734,11 @@ function ensureStructure() {
       delete c.payments;
     }
   });
+  // KHÔNG có lsSaveAll() hay Firestore save ở đây!
 }
 ensureStructure();
 
 let persistTimer = null;
-
-let ignoreSyncUntil = 0;
-let _localSaveTime = 0;
 
 function persistDebounced() {
   STORE._savedBy = currentUser ? currentUser.id : "system";
@@ -1783,7 +1756,6 @@ function persistDebounced() {
 function persistNow() {
   STORE._savedBy = currentUser ? currentUser.id : "system";
   STORE._savedAt = nowISO();
-  _localSaveTime = Date.now();
   lsSaveAll(STORE);
   if (persistTimer) clearTimeout(persistTimer);
   if (firebaseReady && db) {
