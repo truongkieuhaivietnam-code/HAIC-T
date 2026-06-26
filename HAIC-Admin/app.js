@@ -1261,7 +1261,8 @@ function renderEmployeeRows(list) {
           <button class="btn btn-sm btn-outline" onclick="editEmployee('${e.uid}')">${t('emp_edit')}</button>
           <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="toggleEmployeeStatus('${e.uid}', ${e.active !== false})">
             ${e.active !== false ? t('emp_deactivate') : t('emp_activate')}
-          </button>` : '–'}
+          </button>
+          <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="resetEmployeePassword('${e.uid}', '${e.name}')">🔑</button>` : '–'}
       </td>
     </tr>
   `).join('');
@@ -1314,10 +1315,10 @@ window.editEmployee = function(uid) {
 };
 
 window.saveEmployee = async function() {
-  const uid  = $('emp-uid').value;
-  const name = $('emp-name').value.trim();
-  const email = $('emp-email').value.trim();
-  const role  = $('emp-role').value;
+  const uid      = $('emp-uid').value;
+  const name     = $('emp-name').value.trim();
+  const email    = $('emp-email').value.trim();
+  const role     = $('emp-role').value;
   const password = $('emp-password').value;
 
   if (!name || !email) { toast('Name and email are required.', 'error'); return; }
@@ -1326,47 +1327,95 @@ window.saveEmployee = async function() {
 
   const schedule = [...$$('.schedule-chk')].filter(c => c.checked).map(c => c.value);
 
-  const data = {
-    name,
-    email,
-    role,
-    country:    $('emp-country').value,
-    department: $('emp-department').value.trim(),
-    position:   $('emp-position').value.trim(),
-    salary:     parseFloat($('emp-salary').value) || 0,
-    allowance:  parseFloat($('emp-allowance').value) || 0,
-    schedule:   schedule.length ? schedule : [],
-    active:     $('emp-active').checked,
-    updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
-  };
-
   showLoader();
   try {
     if (uid) {
-      // Editing existing
-      if (isSuperAdmin() && role === ROLES.SUPER_ADMIN) {
-        // allow
-      } else if (!isSuperAdmin() && state.cache.employees?.find(x=>x.uid===uid)?.role === ROLES.SUPER_ADMIN) {
+      // ── EDIT existing employee ──────────────────────────────
+      if (!isSuperAdmin() && state.cache.employees?.find(x=>x.uid===uid)?.role === ROLES.SUPER_ADMIN) {
         toast('Cannot modify Super Admin.', 'error'); hideLoader(); return;
       }
-      await col.users().doc(uid).update(data);
-      toast('Employee updated.', 'success');
+      const updateData = {
+        name, role,
+        country:    $('emp-country').value,
+        department: $('emp-department').value.trim(),
+        position:   $('emp-position').value.trim(),
+        salary:     parseFloat($('emp-salary').value) || 0,
+        allowance:  parseFloat($('emp-allowance').value) || 0,
+        schedule:   schedule.length ? schedule : [],
+        active:     $('emp-active').checked,
+        updatedAt:  firebase.firestore.FieldValue.serverTimestamp()
+      };
+      await col.users().doc(uid).update(updateData);
+      toast('Employee updated successfully.', 'success');
+
     } else {
-      // Create via a Cloud Function would be ideal; for now use secondary auth approach
-      // We create the user record in Firestore after admin creates auth externally
-      // For full auth creation, use Firebase Admin SDK in Cloud Functions
-      // Here we store intent and admin creates auth manually (or via function)
-      data.email = email;
-      data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-      // Note: actual Firebase Auth account creation requires Admin SDK or Cloud Function
-      // This creates the Firestore profile; pair with a Cloud Function trigger
-      const ref = await col.pendingUsers().add({ ...data, password_hint: '(set by admin)' });
-      toast(`Employee profile created (ID: ${ref.id}). Create Firebase Auth account separately.`, 'info');
+      // ── CREATE new employee ───────────────────────────────
+      // Bước 1: Lưu lại thông tin user hiện tại (admin đang đăng nhập)
+      const currentUser = auth.currentUser;
+
+      // Bước 2: Tạo Firebase Auth account cho nhân viên mới
+      // Dùng secondary app để không bị logout tài khoản admin
+      const secondaryApp = firebase.initializeApp(
+        firebase.app().options,
+        'secondary_' + Date.now()
+      );
+      const secondaryAuth = secondaryApp.auth();
+
+      let newUser;
+      try {
+        const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+        newUser = cred.user;
+      } catch(authErr) {
+        await secondaryApp.delete();
+        if (authErr.code === 'auth/email-already-in-use') {
+          toast('Email này đã tồn tại trong hệ thống.', 'error');
+        } else {
+          toast('Tạo tài khoản thất bại: ' + authErr.message, 'error');
+        }
+        hideLoader();
+        return;
+      }
+
+      // Bước 3: Đóng secondary app (tránh conflict)
+      await secondaryApp.delete();
+
+      // Bước 4: Tạo Firestore profile
+      const profile = {
+        uid:        newUser.uid,
+        name,
+        email:      email.toLowerCase(),
+        role,
+        country:    $('emp-country').value,
+        department: $('emp-department').value.trim(),
+        position:   $('emp-position').value.trim(),
+        salary:     parseFloat($('emp-salary').value) || 0,
+        allowance:  parseFloat($('emp-allowance').value) || 0,
+        schedule:   schedule.length ? schedule : [],
+        active:     $('emp-active').checked,
+        createdBy:  currentUser.uid,
+        createdAt:  firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      };
+      await col.users().doc(newUser.uid).set(profile);
+
+      // Bước 5: Khởi tạo leave balance = 0
+      await col.leaveBalance().doc(newUser.uid).set({
+        uid:          newUser.uid,
+        employeeName: name,
+        country:      $('emp-country').value,
+        balance:      0,
+        createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+      });
+
+      toast(`Đã tạo nhân viên ${name} thành công!`, 'success');
     }
+
     closeModal('modal-employee');
     loadEmployees();
   } catch (err) {
-    toast('Save failed: ' + err.message, 'error');
+    // Cloud Function errors come as err.message
+    const msg = err.message || err.details || 'Save failed.';
+    toast(msg, 'error');
   } finally {
     hideLoader();
   }
@@ -2773,6 +2822,25 @@ function renderPolicies(policies) {
     </div>
   `;
 }
+
+// ═══════════════════════════════════════════════════════════════
+// RESET PASSWORD via Cloud Function
+// ═══════════════════════════════════════════════════════════════
+window.resetEmployeePassword = async function(uid, empName) {
+  // Lấy email của nhân viên từ cache
+  const emp = state.cache.employees?.find(e => e.uid === uid);
+  if (!emp?.email) { toast('Không tìm thấy email nhân viên.', 'error'); return; }
+
+  if (!confirm(`Gửi email đặt lại mật khẩu cho ${empName} (${emp.email})?`)) return;
+
+  showLoader();
+  try {
+    await auth.sendPasswordResetEmail(emp.email);
+    toast(`Đã gửi email đặt lại mật khẩu tới ${emp.email}`, 'success');
+  } catch(e) {
+    toast('Gửi email thất bại: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
 
 // ═══════════════════════════════════════════════════════════════
 // KEYBOARD SHORTCUT: Escape closes any open modal
