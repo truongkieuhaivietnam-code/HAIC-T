@@ -1383,13 +1383,29 @@ window.saveEmployee = async function() {
 
       } catch(authErr) {
         try { await secondaryApp.delete(); } catch(e) {}
+
         if (authErr.code === 'auth/email-already-in-use') {
-          toast('Email này đã tồn tại trong hệ thống.', 'error');
+          // Email đã có Auth account (từ app khác cùng project)
+          // → Hỏi admin nhập UID để chỉ tạo Firestore profile
+          hideLoader();
+          const existingUID = prompt(
+            `Email "${email}" đã có tài khoản trong hệ thống.\n\n` +
+            `Để thêm nhân viên này vào HAIC Admin:\n` +
+            `1. Vào Firebase Console → Authentication → Users\n` +
+            `2. Tìm email "${email}" → copy UID\n` +
+            `3. Paste UID vào đây:\n`
+          );
+          if (!existingUID || !existingUID.trim()) {
+            toast('Đã hủy. Vui lòng nhập UID để tiếp tục.', 'info');
+            return;
+          }
+          newUID = existingUID.trim();
+          showLoader();
         } else {
           toast('Tạo tài khoản thất bại: ' + authErr.message, 'error');
+          hideLoader();
+          return;
         }
-        hideLoader();
-        return;
       }
 
       // Tạo Firestore profile — dùng admin credentials (vẫn đang login)
