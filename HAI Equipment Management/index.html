@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAI Equipment Management System</title>
+<link rel="stylesheet" href="style.css">
+
+<!-- Firebase SDK v9 compat -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
+<!-- Export libraries -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+
+<!-- ===================== LOGIN SCREEN ===================== -->
+<div id="loginScreen" class="login-wrap">
+  <div class="login-card">
+    <div class="logo-row">
+      <div class="logo">HAI</div>
+      <div>
+        <h2 style="margin:0;font-size:16px;">Equipment Management</h2>
+        <div class="sub" style="margin:0;">HAI-CLOUD</div>
+      </div>
+    </div>
+    <h2 data-i18n="login.title">Đăng nhập / Login</h2>
+    <div class="sub" data-i18n="login.sub">Dùng tài khoản HAI-CLOUD hiện có</div>
+    <div class="field">
+      <label data-i18n="login.email">Email</label>
+      <input type="email" id="loginEmail" autocomplete="username">
+    </div>
+    <div class="field">
+      <label data-i18n="login.password">Mật khẩu / Password</label>
+      <input type="password" id="loginPassword" autocomplete="current-password">
+    </div>
+    <button class="btn btn-primary" id="btnLogin" style="width:100%;justify-content:center;">
+      <span data-i18n="login.submit">Đăng nhập</span>
+    </button>
+    <div id="loginError" class="error-text hidden"></div>
+  </div>
+</div>
+
+<!-- ===================== APP SHELL ===================== -->
+<div id="appShell" class="app-shell hidden">
+
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">HAI</div>
+      <div class="title">Equipment Mgmt<small>HAI-CLOUD</small></div>
+    </div>
+    <nav class="nav-scroll" id="navScroll">
+      <!-- Nav items injected by app.js based on role -->
+    </nav>
+    <div class="sidebar-footer">
+      <div class="user-chip">
+        <div class="avatar" id="userAvatar">?</div>
+        <div class="meta">
+          <div class="name" id="userName">-</div>
+          <div class="role" id="userRole">-</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-sm" id="btnTheme" style="flex:1;">🌓</button>
+        <button class="btn btn-sm" id="btnLang" style="flex:1;">VI/EN</button>
+        <button class="btn btn-sm" id="btnLogout" style="flex:1;">⎋</button>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <button class="icon-btn menu-toggle" id="btnMenuToggle">☰</button>
+      <div class="page-title" id="pageTitle">Dashboard</div>
+      <div class="spacer"></div>
+      <div id="topbarActions"></div>
+    </div>
+    <div class="content" id="pageContent">
+      <!-- Page content injected by app.js -->
+    </div>
+  </div>
+</div>
+
+<!-- ===================== GENERIC MODAL ===================== -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal" id="modalBox">
+    <div class="modal-header">
+      <h3 id="modalTitle">Title</h3>
+      <div class="spacer"></div>
+      <button class="icon-btn" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-footer" id="modalFooter"></div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="firebase-config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
