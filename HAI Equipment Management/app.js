@@ -2212,6 +2212,7 @@ function openUserForm(existing) {
     <div class="field"><label>${STATE.lang === "vi" ? "Họ tên" : "Name"} *</label><input id="us_name"></div>
     ${globalRoleHtml}
     ${deptSectionHtml}
+    <div id="us_emailExistsRecovery"></div>
   `;
 
   openModal({
@@ -2282,8 +2283,58 @@ function openUserForm(existing) {
         showToast(t("toast.saved"), "success");
       } catch (err) {
         console.error(err);
-        showToast(mapAuthError(err), "error");
+        if (err.code === "auth/email-already-in-use") {
+          showToast(STATE.lang === "vi"
+            ? "Email này đã có sẵn trong Firebase Auth (có thể tạo từ app HAIC-T khác). Dán UID vào ô bên dưới."
+            : "This email already exists in Firebase Auth (possibly created by another HAIC-T app). Paste its UID below.", "error");
+          showExistingAuthUidRecovery(email, name, newGlobalRole, newDeptRoles, managedDepartments);
+        } else {
+          showToast(mapAuthError(err), "error");
+        }
       }
+    }
+  };
+}
+
+// Khi tạo người dùng mới bị trùng email đã có sẵn trong Firebase Auth (do
+// dùng chung HAI-CLOUD với các app HAIC-T khác), không tạo Auth mới nữa —
+// thay vào đó cho anh dán UID có sẵn (copy từ Firebase Console ->
+// Authentication -> tìm email -> cột User UID) để tạo hồ sơ phân quyền cho
+// đúng tài khoản đó trong app Equipment. Giống cách app HAI Administration
+// đang xử lý.
+function showExistingAuthUidRecovery(email, name, newGlobalRole, newDeptRoles, managedDepartments) {
+  const container = document.getElementById("us_emailExistsRecovery");
+  if (!container) return;
+  container.innerHTML = `
+    <div class="field-hint" style="background:var(--warning-light);color:var(--warning);padding:10px;border-radius:6px;margin:10px 0;">
+      ${STATE.lang === "vi"
+        ? `Email <b>${escapeHtml(email)}</b> đã có sẵn trong Firebase Authentication. Vào Firebase Console → Authentication → Users → tìm email này → copy cột "User UID" → dán vào ô dưới.`
+        : `Email <b>${escapeHtml(email)}</b> already exists in Firebase Authentication. Go to Firebase Console → Authentication → Users → find this email → copy the "User UID" column → paste below.`}
+    </div>
+    <div class="field">
+      <label>${STATE.lang === "vi" ? "UID có sẵn trong Firebase Auth" : "Existing Firebase Auth UID"} *</label>
+      <input id="us_existingUid" placeholder="VD: aB3dEfGh12...">
+    </div>
+    <button class="btn btn-primary" id="us_useExistingUid" style="width:100%;">${STATE.lang === "vi" ? "Tạo hồ sơ phân quyền với UID này" : "Create profile with this UID"}</button>
+  `;
+  document.getElementById("us_useExistingUid").onclick = async () => {
+    const existingUid = document.getElementById("us_existingUid").value.trim();
+    if (!existingUid) { showToast(t("common.requiredField"), "error"); return; }
+    try {
+      await COLLECTIONS.users.doc(existingUid).set({
+        email, name,
+        globalRole: newGlobalRole,
+        deptRoles: newDeptRoles,
+        managedDepartments,
+        active: true,
+        createdAt: nowTs(),
+        createdBy: uid()
+      }, { merge: true });
+      closeModal();
+      showToast(t("toast.saved"), "success");
+    } catch (err) {
+      console.error(err);
+      showToast(t("toast.error"), "error");
     }
   };
 }
