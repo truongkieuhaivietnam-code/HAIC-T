@@ -297,6 +297,14 @@ function showToast(message, type = "info") {
   setTimeout(() => el.remove(), 4000);
 }
 
+// Hiện lỗi kèm message thật từ Firebase (thay vì chỉ "Có lỗi xảy ra" chung)
+// để dễ chẩn đoán khi báo lỗi cho người dùng.
+function showErrorToast(err) {
+  console.error(err);
+  const detail = (err && err.code ? `[${err.code}] ` : "") + (err && err.message ? err.message : "");
+  showToast(detail || t("toast.error"), "error");
+}
+
 function openModal({ title, bodyHtml, footerHtml, size = "" }) {
   document.getElementById("modalTitle").textContent = title;
   document.getElementById("modalBody").innerHTML = bodyHtml;
@@ -510,8 +518,7 @@ auth.onAuthStateChanged(async (fbUser) => {
       const rawProfile = await ensureUserProfile(fbUser);
       STATE.profile = normalizeProfile(rawProfile);
     } catch (err) {
-      console.error(err);
-      showToast(t("toast.error"), "error");
+      showErrorToast(err);
       return;
     }
     document.getElementById("loginScreen").classList.add("hidden");
@@ -960,7 +967,7 @@ function makeAssetModule(opts) {
             await collectionRef.doc(btn.dataset.id).delete();
             await COLLECTIONS.calibrationRecords.doc(`quick_${btn.dataset.id}`).delete().catch(() => {});
             showToast(t("toast.deleted"), "success");
-          } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+          } catch (err) { showErrorToast(err); }
         }
       );
     });
@@ -1204,8 +1211,7 @@ function makeAssetModule(opts) {
       closeModal();
       showToast(t("toast.saved"), "success");
     } catch (err) {
-      console.error(err);
-      showToast(t("toast.error"), "error");
+      showErrorToast(err);
     }
   }
 }
@@ -1406,7 +1412,7 @@ function openCalibrationRecordForm(existing) {
       else { data.createdAt = nowTs(); data.createdBy = uid(); await COLLECTIONS.calibrationRecords.add(data); }
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -1546,7 +1552,7 @@ function openInventoryForm(existing) {
       }
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -1776,7 +1782,7 @@ function openMovementForm() {
       });
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -1842,7 +1848,7 @@ function openMovementDetail(m) {
         await batch.commit();
         closeModal();
         showToast(t("toast.saved"), "success");
-      } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+      } catch (err) { showErrorToast(err); }
     };
   }
 
@@ -1891,7 +1897,7 @@ function openReturnChecklistForm(m) {
       await batch.commit();
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -1981,7 +1987,7 @@ function openMaintenanceForm(existing) {
       }
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -2096,7 +2102,7 @@ function openPurchaseForm() {
       });
       closeModal();
       showToast(t("toast.saved"), "success");
-    } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+    } catch (err) { showErrorToast(err); }
   };
 }
 
@@ -2256,7 +2262,7 @@ function openUserForm(existing) {
         });
         closeModal();
         showToast(t("toast.saved"), "success");
-      } catch (err) { console.error(err); showToast(t("toast.error"), "error"); }
+      } catch (err) { showErrorToast(err); }
     } else {
       const email = document.getElementById("us_email").value.trim();
       const password = document.getElementById("us_password").value;
@@ -2333,8 +2339,7 @@ function showExistingAuthUidRecovery(email, name, newGlobalRole, newDeptRoles, m
       closeModal();
       showToast(t("toast.saved"), "success");
     } catch (err) {
-      console.error(err);
-      showToast(t("toast.error"), "error");
+      showErrorToast(err);
     }
   };
 }
