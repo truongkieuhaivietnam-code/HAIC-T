@@ -1317,7 +1317,14 @@ window.openAddEmployee = function() {
   $('emp-allowance').value = '';
   $('emp-active').checked = true;
   $('emp-role').value = ROLES.EMPLOYEE;
-  $('emp-country').value = state.userProfile.country || 'Cambodia';
+  const defaultCountry = state.userProfile.country || 'Cambodia';
+  $('emp-country').value = defaultCountry;
+  // Auto-set currency based on country
+  const curSelNew = $('emp-currency');
+  if (curSelNew) {
+    curSelNew.value = getCurrency(defaultCountry);
+    onCurrencyChange();
+  }
   $$('.schedule-chk').forEach(c => c.checked = false);
   openModal('modal-employee');
 };
@@ -1337,6 +1344,12 @@ window.editEmployee = function(uid) {
   $('emp-allowance').value  = e.allowance || '';
   $('emp-active').checked   = e.active !== false;
   $('emp-password').value   = '';
+  // Pre-fill currency
+  const curSel = $('emp-currency');
+  if (curSel) {
+    curSel.value = e.currency || getCurrency(e.country);
+    onCurrencyChange();
+  }
   const sched = e.schedule || [];
   $$('.schedule-chk').forEach(c => { c.checked = sched.includes(c.value); });
   openModal('modal-employee');
@@ -2441,18 +2454,31 @@ function profileField(label, value) {
 }
 
 async function getLeaveBalance(uid) {
-  const snap = await col.leaveBalance().doc(uid).get();
-  if (snap.exists) return snap.data().balance ?? 0;
-  return 0;
+  try {
+    const snap = await col.leaveBalance().doc(uid).get();
+    if (snap.exists) return snap.data().balance ?? 0;
+    return 0;
+  } catch(e) {
+    console.error('getLeaveBalance error:', e);
+    return 0;
+  }
 }
 
 async function loadMyLeave() {
   const uid = state.userProfile.uid;
-  const [reqSnap, balance] = await Promise.all([
-    col.leave().where('uid','==',uid).orderBy('createdAt','desc').limit(50).get(),
-    getLeaveBalance(uid)
-  ]);
-  const requests = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+  showLoader();
+  let requests = [], balance = 0;
+  try {
+    const [reqSnap, bal] = await Promise.all([
+      col.leave().where('uid','==',uid).orderBy('createdAt','desc').limit(50).get(),
+      getLeaveBalance(uid)
+    ]);
+    requests = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    balance  = bal;
+  } catch(e) {
+    console.error('loadMyLeave error:', e);
+    toast(lang==='vi' ? 'Lỗi tải nghỉ phép: ' + e.message : 'Error loading leave: ' + e.message, 'error');
+  } finally { hideLoader(); }
 
   $('page-my-leave').innerHTML = `
     <div class="page-header">
@@ -2510,35 +2536,70 @@ window.submitLeaveRequest = async function() {
   const from   = $('leave-from')?.value;
   const to     = $('leave-to')?.value;
   const reason = $('leave-reason')?.value.trim();
-  if (!from || !to) { toast('From and To dates required.', 'error'); return; }
+
+  // Validate
+  if (!from || !to) {
+    toast(lang==='vi' ? 'Vui lòng chọn ngày bắt đầu và kết thúc.' : 'Please select from and to dates.', 'error');
+    return;
+  }
 
   const fromDate = new Date(from);
   const toDate   = new Date(to);
-  if (toDate < fromDate) { toast('To date must be after From date.', 'error'); return; }
+  if (toDate < fromDate) {
+    toast(lang==='vi' ? 'Ngày kết thúc phải sau ngày bắt đầu.' : 'End date must be after start date.', 'error');
+    return;
+  }
+  if (!reason) {
+    toast(lang==='vi' ? 'Vui lòng nhập lý do nghỉ phép.' : 'Please enter a reason.', 'error');
+    return;
+  }
 
-  const days = Math.ceil((toDate - fromDate) / 86400000) + 1;
+  const days    = Math.ceil((toDate - fromDate) / 86400000) + 1;
   const balance = await getLeaveBalance(state.userProfile.uid);
   const leaveType = balance >= days ? 'paid' : 'unpaid';
 
+  showLoader();
   try {
     await col.leave().add({
-      uid: state.userProfile.uid,
+      uid:          state.userProfile.uid,
       employeeName: state.userProfile.name,
-      country: state.userProfile.country,
+      country:      state.userProfile.country,
       from, to, days, reason, leaveType,
-      status: 'pending',
+      status:    'pending',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
-    toast('Leave request submitted.', 'success');
+    toast(
+      lang==='vi'
+        ? `✅ Đã gửi đơn xin nghỉ ${days} ngày (${leaveType==='paid'?'có lương':'không lương'}). Chờ phê duyệt.`
+        : `✅ Leave request submitted: ${days} day(s) (${leaveType}). Pending approval.`,
+      'success'
+    );
     closeModal('modal-my-leave');
     loadMyLeave();
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  } catch(e) {
+    console.error('Leave submit error:', e);
+    toast(
+      lang==='vi'
+        ? 'Gửi đơn thất bại: ' + e.message
+        : 'Submit failed: ' + e.message,
+      'error'
+    );
+  } finally {
+    hideLoader();
+  }
 };
 
 async function loadMySalary() {
   const uid = state.userProfile.uid;
-  const snap = await col.payroll().where('uid','==',uid).orderBy('month','desc').limit(12).get();
-  const records = snap.docs.map(d => d.data());
+  showLoader();
+  let records = [];
+  try {
+    const snap = await col.payroll().where('uid','==',uid).orderBy('month','desc').limit(12).get();
+    records = snap.docs.map(d => d.data());
+  } catch(e) {
+    console.error('loadMySalary error:', e);
+    toast(lang==='vi' ? 'Lỗi tải bảng lương: ' + e.message : 'Error loading salary: ' + e.message, 'error');
+  } finally { hideLoader(); }
 
   $('page-my-salary').innerHTML = `
     <div class="page-header"><div><h2>${t('page_my_salary')}</h2></div></div>
@@ -2569,14 +2630,21 @@ async function loadMySalary() {
 
 async function loadMyPenalties() {
   const uid = state.userProfile.uid;
-  const [attSnap, violSnap] = await Promise.all([
-    col.attendance().where('uid','==',uid).orderBy('date','desc').limit(50).get(),
-    col.violations().where('uid','==',uid).orderBy('date','desc').limit(50).get()
-  ]);
+  showLoader();
+  let att = [], viol = [];
+  try {
+    const [attSnap, violSnap] = await Promise.all([
+      col.attendance().where('uid','==',uid).orderBy('date','desc').limit(50).get(),
+      col.violations().where('uid','==',uid).orderBy('date','desc').limit(50).get()
+    ]);
+    att  = attSnap.docs.map(d => ({ ...d.data(), _type: 'late' }));
+    viol = violSnap.docs.map(d => ({ ...d.data(), _type: 'violation' }));
+  } catch(e) {
+    console.error('loadMyPenalties error:', e);
+    toast(lang==='vi' ? 'Lỗi tải dữ liệu phạt: ' + e.message : 'Error loading penalties: ' + e.message, 'error');
+  } finally { hideLoader(); }
 
-  const att  = attSnap.docs.map(d => ({ ...d.data(), _type: 'late' }));
-  const viol = violSnap.docs.map(d => ({ ...d.data(), _type: 'violation' }));
-  const all  = [...att, ...viol].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+  const all = [...att, ...viol].sort((a,b) => (b.date||'').localeCompare(a.date||''));
 
   const total = all.reduce((s,r) => s + (r.penalty||0), 0);
 
@@ -2823,27 +2891,34 @@ async function deductLeaveBalance(uid, days) {
 // Override approveLeave to also deduct balance
 const _origApproveLeave = window.approveLeave;
 window.approveLeave = async function(id) {
+  showLoader();
   try {
-    const doc = await col.leave().doc(id).get();
-    if (!doc.exists) { toast('Request not found.', 'error'); return; }
-    const req = doc.data();
+    const docSnap = await col.leave().doc(id).get();
+    if (!docSnap.exists) { toast(lang==='vi'?'Không tìm thấy yêu cầu.':'Request not found.', 'error'); return; }
+    const req = docSnap.data();
 
     await col.leave().doc(id).update({
-      status: 'approved',
+      status:     'approved',
       approvedBy: state.userProfile.uid,
       approvedAt: firebase.firestore.FieldValue.serverTimestamp()
     });
 
-    // If paid leave, deduct from balance
+    // Deduct leave balance if paid
     if (req.leaveType === 'paid') {
       const remaining = await deductLeaveBalance(req.uid, req.days || 1);
-      toast(`Leave approved. Remaining balance: ${remaining} days.`, 'success');
+      toast(
+        lang==='vi'
+          ? `✅ Đã duyệt. Số ngày phép còn lại: ${remaining} ngày.`
+          : `✅ Approved. Remaining balance: ${remaining} days.`,
+        'success'
+      );
     } else {
-      toast('Leave approved (unpaid).', 'success');
+      toast(lang==='vi' ? '✅ Đã duyệt nghỉ không lương.' : '✅ Approved (unpaid).', 'success');
     }
-
     loadLeave();
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  } catch(e) {
+    toast((lang==='vi'?'Lỗi: ':'Error: ') + e.message, 'error');
+  } finally { hideLoader(); }
 };
 
 // ═══════════════════════════════════════════════════════════════
