@@ -357,6 +357,51 @@ const LANGS = {
 
     // Topbar
     topbar_operations: 'operations',
+    // New modules
+    nav_allowances:   'Allowances',
+    nav_ot_manage:    'OT Management',
+    nav_site:         'Site Records',
+    page_allowances:  'Allowance Management',
+    page_ot_manage:   'OT Management',
+    page_site:        'Site Records',
+    // Allowance
+    allow_fixed:      'Fixed Allowances',
+    allow_add_fixed:  '+ Add Fixed Allowance',
+    allow_type:       'Type',
+    allow_name:       'Allowance Name',
+    allow_amount:     'Amount',
+    allow_freq:       'Frequency',
+    allow_monthly:    'Monthly',
+    allow_employee:   'Employee',
+    allow_no_data:    'No allowances configured',
+    // Site
+    site_add:         '+ Log Site Visit',
+    site_project:     'Project',
+    site_location:    'Location',
+    site_start:       'Start Time',
+    site_end:         'End Time',
+    site_eligible:    'Eligible',
+    site_not_eligible:'Not eligible',
+    site_pp:          'Phnom Penh',
+    site_province:    'Province',
+    site_no_data:     'No site records',
+    site_log_title:   'Log Site Visit',
+    site_logic_hint:  'Eligible if: start ≤ 08:00 AND end ≥ 13:00',
+    // OT
+    ot_request:       '+ Submit OT',
+    ot_start:         'Start Time',
+    ot_end:           'End Time',
+    ot_reason:        'Reason',
+    ot_status:        'Status',
+    ot_pending:       'Pending',
+    ot_approved:      'Approved',
+    ot_rejected:      'Rejected',
+    ot_approve:       'Approve',
+    ot_reject:        'Reject',
+    ot_no_data:       'No OT records',
+    ot_submit_title:  'Submit OT Request',
+    ot_add_title:     'Log OT (Admin)',
+    ot_calc_hint:     'Rate: Basic ÷ (26 days × 8h) × 2',
   },
 
   vi: {
@@ -632,6 +677,51 @@ const LANGS = {
 
     // Topbar
     topbar_operations: 'hoạt động',
+    // New modules
+    nav_allowances:   'Phụ cấp',
+    nav_ot_manage:    'Quản lý OT',
+    nav_site:         'Đi công trường',
+    page_allowances:  'Quản lý phụ cấp',
+    page_ot_manage:   'Quản lý tăng ca',
+    page_site:        'Bản ghi đi công trường',
+    // Allowance
+    allow_fixed:      'Phụ cấp cố định',
+    allow_add_fixed:  '+ Thêm phụ cấp',
+    allow_type:       'Loại',
+    allow_name:       'Tên phụ cấp',
+    allow_amount:     'Số tiền',
+    allow_freq:       'Chu kỳ',
+    allow_monthly:    'Hàng tháng',
+    allow_employee:   'Nhân viên',
+    allow_no_data:    'Chưa có phụ cấp',
+    // Site
+    site_add:         '+ Ghi nhận đi công trường',
+    site_project:     'Dự án',
+    site_location:    'Địa điểm',
+    site_start:       'Giờ vào',
+    site_end:         'Giờ ra',
+    site_eligible:    'Được hưởng',
+    site_not_eligible:'Không đủ điều kiện',
+    site_pp:          'Phnom Penh',
+    site_province:    'Tỉnh khác',
+    site_no_data:     'Chưa có bản ghi công trường',
+    site_log_title:   'Ghi nhận đi công trường',
+    site_logic_hint:  'Đủ điều kiện nếu: vào ≤ 08:00 VÀ ra ≥ 13:00',
+    // OT
+    ot_request:       '+ Đăng ký OT',
+    ot_start:         'Giờ bắt đầu',
+    ot_end:           'Giờ kết thúc',
+    ot_reason:        'Lý do',
+    ot_status:        'Trạng thái',
+    ot_pending:       'Chờ duyệt',
+    ot_approved:      'Đã duyệt',
+    ot_rejected:      'Từ chối',
+    ot_approve:       'Duyệt',
+    ot_reject:        'Từ chối',
+    ot_no_data:       'Chưa có bản ghi OT',
+    ot_submit_title:  'Đăng ký tăng ca',
+    ot_add_title:     'Ghi OT (Admin)',
+    ot_calc_hint:     'Công thức: Lương ÷ (26 ngày × 8h) × số giờ × 2',
   }
 };
 
@@ -685,17 +775,21 @@ function updateTopbarLang() {
 
 // Shorthand helpers — returns CollectionReference
 const col = {
-  users:       () => db.collection('apps').doc('hr').collection('users'),
-  leave:       () => db.collection('apps').doc('hr').collection('leave'),
-  payroll:     () => db.collection('apps').doc('hr').collection('payroll'),
-  attendance:  () => db.collection('apps').doc('hr').collection('attendance'),
-  violations:  () => db.collection('apps').doc('hr').collection('violations'),
-  violTypes:   () => db.collection('apps').doc('hr').collection('violation_types'),
-  leaveBalance:() => db.collection('apps').doc('hr').collection('leave_balance'),
-  ot:          () => db.collection('apps').doc('hr').collection('ot'),
-  policy:      () => db.collection('apps').doc('hr').collection('country_policy'),
-  holidays:    () => db.collection('apps').doc('hr').collection('holidays'),
-  pendingUsers:() => db.collection('apps').doc('hr').collection('pending_users'),
+  users:        () => db.collection('apps').doc('hr').collection('users'),
+  leave:        () => db.collection('apps').doc('hr').collection('leave'),
+  payroll:      () => db.collection('apps').doc('hr').collection('payroll'),
+  attendance:   () => db.collection('apps').doc('hr').collection('attendance'),
+  violations:   () => db.collection('apps').doc('hr').collection('violations'),
+  violTypes:    () => db.collection('apps').doc('hr').collection('violation_types'),
+  leaveBalance: () => db.collection('apps').doc('hr').collection('leave_balance'),
+  ot:           () => db.collection('apps').doc('hr').collection('ot'),
+  policy:       () => db.collection('apps').doc('hr').collection('country_policy'),
+  holidays:     () => db.collection('apps').doc('hr').collection('holidays'),
+  pendingUsers: () => db.collection('apps').doc('hr').collection('pending_users'),
+  // ── New modules ─────────────────────────────────────────────
+  empAllowances:() => db.collection('apps').doc('hr').collection('employee_allowances'),
+  siteRecords:  () => db.collection('apps').doc('hr').collection('site_records'),
+  otRequests:   () => db.collection('apps').doc('hr').collection('ot_requests'),
 };
 
 // ── App State ─────────────────────────────────────────────────
@@ -822,6 +916,9 @@ function getNavItems(role) {
       { section: t('nav_people'),    page: 'leave',      icon: '🌴', label: t('nav_leave'), badge: '' },
       { section: t('nav_people'),    page: 'attendance', icon: '⏱️', label: t('nav_attendance') },
       { section: t('nav_people'),    page: 'violations', icon: '⚠️', label: t('nav_violations') },
+      { section: t('nav_finance'),   page: 'allowances', icon: '🎁', label: t('nav_allowances') },
+      { section: t('nav_finance'),   page: 'ot-manage',  icon: '⏰', label: t('nav_ot_manage') },
+      { section: t('nav_finance'),   page: 'site',       icon: '🏗️', label: t('nav_site') },
       { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') },
       { section: t('nav_finance'),   page: 'reports',    icon: '📑', label: t('nav_reports') },
       { section: t('nav_settings'),  page: 'policies',   icon: '⚙️', label: t('nav_policies') }
@@ -834,6 +931,9 @@ function getNavItems(role) {
       { section: t('nav_people'),    page: 'leave',      icon: '🌴', label: t('nav_leave'), badge: '' },
       { section: t('nav_people'),    page: 'attendance', icon: '⏱️', label: t('nav_attendance') },
       { section: t('nav_people'),    page: 'violations', icon: '⚠️', label: t('nav_violations') },
+      { section: t('nav_finance'),   page: 'allowances', icon: '🎁', label: t('nav_allowances') },
+      { section: t('nav_finance'),   page: 'ot-manage',  icon: '⏰', label: t('nav_ot_manage') },
+      { section: t('nav_finance'),   page: 'site',       icon: '🏗️', label: t('nav_site') },
       { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') }
     ];
   }
@@ -841,7 +941,8 @@ function getNavItems(role) {
     { section: t('nav_me'), page: 'my-profile',   icon: '👤', label: t('nav_my_profile') },
     { section: t('nav_me'), page: 'my-leave',     icon: '🌴', label: t('nav_my_leave') },
     { section: t('nav_me'), page: 'my-salary',    icon: '💵', label: t('nav_my_salary') },
-    { section: t('nav_me'), page: 'my-penalties', icon: '⚠️', label: t('nav_my_penalties') }
+    { section: t('nav_me'), page: 'my-penalties', icon: '⚠️', label: t('nav_my_penalties') },
+    { section: t('nav_me'), page: 'ot-manage',    icon: '⏰', label: t('nav_ot_manage') }
   ];
 }
 
@@ -965,6 +1066,9 @@ function loadPageData(page) {
     case 'my-leave':    loadMyLeave();     break;
     case 'my-salary':   loadMySalary();    break;
     case 'my-penalties':loadMyPenalties(); break;
+    case 'allowances':  loadAllowances();   break;
+    case 'ot-manage':   loadOTManage();     break;
+    case 'site':        loadSiteRecords();  break;
   }
 }
 
@@ -2010,7 +2114,16 @@ function renderPayroll(employees, existing, month) {
     <div class="page-header">
       <div><h2>Payroll</h2><p>Month: ${month}</p></div>
       <div class="page-actions">
-        ${!isLocked ? `<button class="btn btn-gold" onclick="generatePayroll()">${t('pay_generate')}</button>` : ''}
+        ${!isLocked ? `
+          <button class="btn btn-gold" onclick="generatePayroll()">${t('pay_generate')}</button>
+          <button class="btn btn-outline" onclick="unlockPayroll()" style="display:${Object.values(existing).some(p=>p.locked)?'inline-flex':'none'}">
+            🔓 ${lang==='vi'?'Mở khóa':'Unlock'}
+          </button>
+        ` : `
+          <button class="btn btn-outline" onclick="unlockPayroll()">
+            🔓 ${lang==='vi'?'Mở khóa để sửa':'Unlock to Edit'}
+          </button>
+        `}
         <button class="btn btn-outline" onclick="exportPayrollCSV()">${t('pay_export')}</button>
         ${isAdmin() && !isLocked ? `<button class="btn btn-primary" onclick="lockPayroll()">${t('pay_lock')}</button>` : ''}
       </div>
@@ -2108,6 +2221,30 @@ window.generatePayroll = async function() {
   } finally { hideLoader(); }
 };
 
+window.unlockPayroll = async function() {
+  if (!isSuperAdmin()) {
+    toast(lang==='vi'?'Chỉ Super Admin mới có thể mở khóa.':'Only Super Admin can unlock payroll.', 'error');
+    return;
+  }
+  if (!confirm(lang==='vi'?'Mở khóa bảng lương để chỉnh sửa?':'Unlock payroll for editing?')) return;
+  const now   = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  showLoader();
+  try {
+    const snap  = await col.payroll().where('month','==',month).get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.update(d.ref, {
+      locked:     false,
+      unlockedBy: state.userProfile.uid,
+      unlockedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }));
+    await batch.commit();
+    toast(lang==='vi'?'✅ Đã mở khóa bảng lương.':'✅ Payroll unlocked.', 'success');
+    loadPayroll();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
 window.lockPayroll = async function() {
   if (!confirm(t('pay_confirm_lock'))) return;
   const now = new Date();
@@ -2134,8 +2271,291 @@ window.exportPayrollCSV = function() {
   a.click();
 };
 
-window.editPayrollLine = function(uid) {
-  toast('Manual payroll adjustment – coming soon.', 'info');
+window.editPayrollLine = async function(uid) {
+  const now   = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const docId = `${month}_${uid}`;
+
+  showLoader();
+  try {
+    const snap = await col.payroll().doc(docId).get();
+    const p    = snap.exists ? snap.data() : {};
+    const emp  = state.cache.employees?.find(e => e.uid === uid);
+    const cur  = emp?.currency || getCurrency(emp?.country) || 'USD';
+    hideLoader();
+
+    // Build modal
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay open';
+    overlay.id = 'modal-edit-payroll';
+    overlay.innerHTML = `
+      <div class="modal modal-lg">
+        <div class="modal-header">
+          <h3>✏️ ${lang==='vi'?'Chỉnh sửa lương':'Edit Payroll'} — ${emp?.name || uid} (${month})</h3>
+          <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <div style="background:var(--amber-bg);border-radius:var(--r-sm);padding:10px 14px;
+            font-size:.82rem;color:var(--amber);margin-bottom:var(--gap);">
+            ⚠️ ${lang==='vi'
+              ? 'Chỉnh sửa thủ công sẽ ghi đè giá trị tự tính. Net Salary sẽ tự cập nhật.'
+              : 'Manual edits override auto-calculated values. Net Salary updates automatically.'}
+          </div>
+
+          <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);
+            text-transform:uppercase;letter-spacing:.05em;margin-bottom:10px;">
+            ${lang==='vi'?'Khoản cộng':'Additions'}
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>${t('pay_basic')} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-basic"
+                value="${p.basic ?? emp?.salary ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>${lang==='vi'?'PC cố định':'Fixed Allow.'} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-fixed"
+                value="${p.fixedAllowance ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>${lang==='vi'?'PC công trường':'Site Allow.'} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-site"
+                value="${p.siteAllowance ?? 0}" oninput="recalcNetPreview()">
+            </div>
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>${lang==='vi'?'PC điện thoại':'Phone Allow.'} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-phone"
+                value="${p.phoneAllowance ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>OT ${lang==='vi'?'thường':'Normal'} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-ot"
+                value="${p.otNormal ?? p.ot ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>OT ${lang==='vi'?'ngày lễ':'Holiday'} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-holiday"
+                value="${p.otHoliday ?? p.holiday ?? 0}" oninput="recalcNetPreview()">
+            </div>
+          </div>
+
+          <div style="font-size:.78rem;font-weight:700;color:var(--text-muted);
+            text-transform:uppercase;letter-spacing:.05em;margin:var(--gap) 0 10px;">
+            ${lang==='vi'?'Khoản trừ':'Deductions'}
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>${t('pay_leave_ded')} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-leave"
+                value="${p.leaveDeduction ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>${t('pay_late_ded')} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-late"
+                value="${p.lateDeduction ?? 0}" oninput="recalcNetPreview()">
+            </div>
+            <div class="form-group">
+              <label>${t('pay_penalties')} (${cur})</label>
+              <input class="form-control ep-field" type="number" id="ep-penalty"
+                value="${p.penalties ?? 0}" oninput="recalcNetPreview()">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>${lang==='vi'?'Ghi chú điều chỉnh':'Adjustment Notes'}</label>
+            <textarea class="form-control" id="ep-notes" rows="2"
+              placeholder="${lang==='vi'?'Lý do chỉnh sửa…':'Reason for adjustment…'}">${p.adjustmentNotes||''}</textarea>
+          </div>
+
+          <!-- Net preview -->
+          <div style="margin-top:var(--gap);padding:var(--gap);background:var(--bg);
+            border-radius:var(--r);border:1.5px solid var(--border);">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span style="font-size:.84rem;color:var(--text-muted);">
+                ${lang==='vi'?'Lương thực nhận (preview)':'Net Salary (preview)'}
+              </span>
+              <span id="ep-net-preview" style="font-size:1.3rem;font-weight:800;color:var(--navy);">
+                ${formatCurrency(p.net ?? 0, cur)}
+              </span>
+            </div>
+            <div id="ep-formula" style="font-size:.74rem;color:var(--text-muted);margin-top:6px;"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-outline" onclick="regenerateOneEmployee('${uid}','${month}')">
+            🔄 ${lang==='vi'?'Tính lại tự động':'Re-calculate Auto'}
+          </button>
+          <button class="btn btn-primary" onclick="savePayrollEdit('${uid}','${month}','${cur}')">
+            💾 ${lang==='vi'?'Lưu chỉnh sửa':'Save Changes'}
+          </button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+    recalcNetPreview();
+  } catch(e) {
+    hideLoader();
+    toast('Error: ' + e.message, 'error');
+  }
+};
+
+// Live net preview inside edit modal
+window.recalcNetPreview = function() {
+  const get = id => parseFloat($(id)?.value || 0);
+  const basic   = get('ep-basic');
+  const fixed   = get('ep-fixed');
+  const site    = get('ep-site');
+  const phone   = get('ep-phone');
+  const ot      = get('ep-ot');
+  const holiday = get('ep-holiday');
+  const leave   = get('ep-leave');
+  const late    = get('ep-late');
+  const penalty = get('ep-penalty');
+
+  const additions   = basic + fixed + site + phone + ot + holiday;
+  const deductions  = leave + late + penalty;
+  const net         = Math.max(additions - deductions, 0);
+
+  const previewEl = $('ep-net-preview');
+  const formulaEl = $('ep-formula');
+
+  // Get currency from the select inside the modal (use USD fallback)
+  if (previewEl) {
+    previewEl.textContent = `$${net.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+    previewEl.style.color = net > 0 ? 'var(--navy)' : 'var(--red)';
+  }
+  if (formulaEl) {
+    formulaEl.innerHTML = `
+      ${lang==='vi'?'Cộng':'Add'}: ${basic} + ${fixed} + ${site} + ${phone} + ${ot} + ${holiday}
+      = <strong>${additions.toFixed(2)}</strong> &nbsp;|&nbsp;
+      ${lang==='vi'?'Trừ':'Deduct'}: ${leave} + ${late} + ${penalty}
+      = <strong style="color:var(--red)">${deductions.toFixed(2)}</strong> &nbsp;|&nbsp;
+      <strong style="color:var(--green)">Net = ${net.toFixed(2)}</strong>
+    `;
+  }
+};
+
+// Save manual edits to payroll
+window.savePayrollEdit = async function(uid, month, cur) {
+  const get = id => parseFloat($(id)?.value || 0);
+
+  const basic      = get('ep-basic');
+  const fixedAllow = get('ep-fixed');
+  const siteAllow  = get('ep-site');
+  const phoneAllow = get('ep-phone');
+  const otNormal   = get('ep-ot');
+  const otHoliday  = get('ep-holiday');
+  const leaveDed   = get('ep-leave');
+  const lateDed    = get('ep-late');
+  const penalties  = get('ep-penalty');
+  const notes      = $('ep-notes')?.value.trim() || '';
+
+  const net = Math.max(
+    basic + fixedAllow + siteAllow + phoneAllow + otNormal + otHoliday
+    - leaveDed - lateDed - penalties,
+    0
+  );
+
+  showLoader();
+  try {
+    await col.payroll().doc(`${month}_${uid}`).set({
+      uid, month, currency: cur || 'USD',
+      basic,
+      fixedAllowance:  fixedAllow,
+      siteAllowance:   siteAllow,
+      phoneAllowance:  phoneAllow,
+      otNormal,
+      otHoliday,
+      leaveDeduction:  leaveDed,
+      lateDeduction:   lateDed,
+      penalties,
+      net,
+      adjustmentNotes: notes,
+      manuallyEdited:  true,
+      editedBy:        state.userProfile.uid,
+      editedAt:        firebase.firestore.FieldValue.serverTimestamp(),
+      locked:          false,
+    }, { merge: true });
+
+    toast(
+      lang==='vi'
+        ? `✅ Đã lưu. Lương thực nhận: ${formatCurrency(net, cur)}`
+        : `✅ Saved. Net salary: ${formatCurrency(net, cur)}`,
+      'success'
+    );
+    document.getElementById('modal-edit-payroll')?.remove();
+    loadPayroll();
+  } catch(e) {
+    toast('Save failed: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// Re-calculate one employee automatically (pull fresh from all sources)
+window.regenerateOneEmployee = async function(uid, month) {
+  if (!confirm(lang==='vi'
+    ? 'Tính lại lương tự động từ dữ liệu Attendance, OT, Allowance, Site? Sẽ ghi đè chỉnh sửa thủ công.'
+    : 'Re-calculate from Attendance, OT, Allowance, Site data? Manual edits will be overwritten.')) return;
+
+  showLoader();
+  const monthStart = `${month}-01`;
+  const monthEnd   = `${month}-31`;
+
+  try {
+    const emp = state.cache.employees?.find(e => e.uid === uid);
+    if (!emp) { toast('Employee not found.', 'error'); return; }
+
+    const now = new Date(month + '-01');
+    const weeksInMonth = countWeeksInMonth(now.getFullYear(), now.getMonth());
+
+    const [attSnap, violSnap, otSnap, allowSnap, siteSnap] = await Promise.all([
+      col.attendance().where('uid','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).get(),
+      col.violations().where('uid','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).get(),
+      col.otRequests().where('employeeId','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).where('status','==','approved').get(),
+      col.empAllowances().where('employeeId','==',uid).get(),
+      col.siteRecords().where('employeeId','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).get(),
+    ]);
+
+    const lateDed    = attSnap.docs.reduce((s,d) => s + (d.data().penalty||0), 0);
+    const penalties  = violSnap.docs.reduce((s,d) => s + (d.data().penalty||0), 0);
+    let otNormal = 0, otHoliday = 0;
+    otSnap.docs.forEach(d => {
+      const r = d.data();
+      if (r.otType === 'holiday') otHoliday += r.otPay||0;
+      else otNormal += r.otPay||0;
+    });
+    const fixedAllow  = allowSnap.docs.filter(d=>d.data().frequency==='monthly').reduce((s,d)=>s+(d.data().amount||0),0);
+    const siteAllow   = siteSnap.docs.reduce((s,d)=>s+(d.data().amount||0),0);
+    const cur         = emp.currency || getCurrency(emp.country);
+    const phoneAllow  = cur === 'USD' ? weeksInMonth : 0;
+    const basic       = emp.salary || 0;
+    const net         = Math.max(basic + fixedAllow + siteAllow + phoneAllow + otNormal + otHoliday - lateDed - penalties, 0);
+
+    await col.payroll().doc(`${month}_${uid}`).set({
+      uid, month, currency: cur,
+      employeeName: emp.name, country: emp.country,
+      basic, fixedAllowance: fixedAllow, siteAllowance: siteAllow,
+      phoneAllowance: phoneAllow, otNormal, otHoliday,
+      leaveDeduction: 0, lateDeduction: lateDed, penalties, net,
+      weeksInMonth, manuallyEdited: false, locked: false,
+      generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+
+    toast(
+      lang==='vi'
+        ? `✅ Đã tính lại lương cho ${emp.name}: ${formatCurrency(net, cur)}`
+        : `✅ Re-calculated for ${emp.name}: ${formatCurrency(net, cur)}`,
+      'success'
+    );
+    document.getElementById('modal-edit-payroll')?.remove();
+    loadPayroll();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
 };
 
 // ── POLICIES ──────────────────────────────────────────────────
@@ -3140,3 +3560,972 @@ function checkResponsive() {
   }
 }
 window.addEventListener('resize', checkResponsive);
+
+// ════════════════════════════════════════════════════════════════
+// MODULE: ALLOWANCE MANAGEMENT
+// Collections: apps/hr/employee_allowances
+// Types: fixed (monthly), phone (auto-calculated), site (per record)
+// ════════════════════════════════════════════════════════════════
+
+async function loadAllowances() {
+  showLoader();
+  try {
+    let query = col.empAllowances().orderBy('createdAt','desc');
+    if (isCountryManager()) query = col.empAllowances()
+      .where('country','==', state.userProfile.country)
+      .orderBy('createdAt','desc');
+
+    const [snap, empSnap] = await Promise.all([
+      query.get(),
+      (isCountryManager()
+        ? col.users().where('country','==',state.userProfile.country)
+        : col.users()
+      ).where('active','==',true).get()
+    ]);
+
+    const allowances = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const employees  = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    state.cache.employees = employees;
+    renderAllowances(allowances, employees);
+  } catch(e) {
+    toast((lang==='vi'?'Lỗi tải phụ cấp: ':'Error loading allowances: ') + e.message, 'error');
+  } finally { hideLoader(); }
+}
+
+function renderAllowances(allowances, employees) {
+  // Group by employee
+  const byEmp = {};
+  allowances.forEach(a => {
+    if (!byEmp[a.employeeId]) byEmp[a.employeeId] = [];
+    byEmp[a.employeeId].push(a);
+  });
+
+  $('page-allowances').innerHTML = `
+    <div class="page-header">
+      <div><h2>${t('page_allowances')}</h2>
+        <p>${lang==='vi'?'Phụ cấp cố định theo nhân viên':'Fixed allowances per employee'}</p>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-primary" onclick="openAddAllowance()">${t('allow_add_fixed')}</button>
+      </div>
+    </div>
+
+    ${employees.length === 0 ? `<div class="empty-state"><div class="empty-icon">🎁</div><h4>${t('allow_no_data')}</h4></div>` :
+      employees.filter(e => byEmp[e.uid]?.length > 0 || true).map(e => {
+        const empAllows = byEmp[e.uid] || [];
+        const total = empAllows.reduce((s,a) => s + (a.amount||0), 0);
+        const cur = e.currency || getCurrency(e.country);
+        return `
+        <div class="card" style="margin-bottom:var(--gap);">
+          <div class="card-header">
+            <div>
+              <h3>${e.name}</h3>
+              <span style="font-size:.78rem;color:var(--text-muted);">
+                ${e.position||''} · ${COUNTRY_FLAG[e.country]||''} ${e.country||''}
+                · ${lang==='vi'?'Tổng phụ cấp':'Total allowances'}:
+                <strong>${formatCurrency(total, cur)}/tháng</strong>
+              </span>
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="openAddAllowance('${e.uid}')">
+              + ${lang==='vi'?'Thêm':'Add'}
+            </button>
+          </div>
+          ${empAllows.length > 0 ? `
+          <div class="table-wrap">
+            <table>
+              <thead><tr>
+                <th>${t('allow_name')}</th>
+                <th>${t('allow_type')}</th>
+                <th>${t('allow_freq')}</th>
+                <th>${t('allow_amount')}</th>
+                <th>${t('emp_actions')}</th>
+              </tr></thead>
+              <tbody>
+                ${empAllows.map(a => `
+                  <tr>
+                    <td>${a.name||'–'}</td>
+                    <td><span class="badge badge-blue">${a.allowanceType||'fixed'}</span></td>
+                    <td>${a.frequency==='monthly'?t('allow_monthly'):a.frequency||'–'}</td>
+                    <td class="td-mono payroll-positive">+${formatCurrency(a.amount||0, cur)}</td>
+                    <td>
+                      <button class="btn btn-sm btn-danger" onclick="deleteAllowance('${a.id}')">
+                        ${lang==='vi'?'Xóa':'Delete'}
+                      </button>
+                    </td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>` : `
+          <div class="card-body" style="color:var(--text-muted);font-size:.84rem;">
+            ${lang==='vi'?'Chưa có phụ cấp cố định':'No fixed allowances yet'}
+          </div>`}
+        </div>`;
+      }).join('')}
+
+    <!-- Add Allowance Modal -->
+    <div class="modal-overlay" id="modal-allowance">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>${t('allow_add_fixed')}</h3>
+          <button class="modal-close">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${t('allow_employee')}</label>
+            <select class="form-control" id="allow-emp">
+              <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
+              ${employees.map(e=>`<option value="${e.uid}" data-country="${e.country}" data-currency="${e.currency||getCurrency(e.country)}">${e.name} (${e.country})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('allow_name')}</label>
+              <input class="form-control" id="allow-name" placeholder="${lang==='vi'?'VD: Phụ cấp điện thoại':'e.g. Phone Allowance'}">
+            </div>
+            <div class="form-group">
+              <label>${t('allow_type')}</label>
+              <select class="form-control" id="allow-type">
+                <option value="position">${lang==='vi'?'Phụ cấp chức vụ':'Position Allowance'}</option>
+                <option value="phone">${lang==='vi'?'Phụ cấp điện thoại':'Phone Allowance'}</option>
+                <option value="transport">${lang==='vi'?'Phụ cấp xăng xe':'Transport Allowance'}</option>
+                <option value="responsibility">${lang==='vi'?'Phụ cấp trách nhiệm':'Responsibility Allowance'}</option>
+                <option value="other">${lang==='vi'?'Khác':'Other'}</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('allow_amount')} (USD)</label>
+              <input class="form-control" type="number" id="allow-amount" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>${t('allow_freq')}</label>
+              <select class="form-control" id="allow-freq">
+                <option value="monthly">${t('allow_monthly')}</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="saveAllowance()">${t('btn_save')}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+window.openAddAllowance = function(presetUid = '') {
+  const sel = $('allow-emp');
+  if (sel && presetUid) sel.value = presetUid;
+  openModal('modal-allowance');
+};
+
+window.saveAllowance = async function() {
+  const empId = $('allow-emp')?.value;
+  const name  = $('allow-name')?.value.trim();
+  const amount= parseFloat($('allow-amount')?.value) || 0;
+  if (!empId || !name) {
+    toast(lang==='vi'?'Vui lòng chọn nhân viên và nhập tên phụ cấp.':'Employee and name required.', 'error');
+    return;
+  }
+  const emp = state.cache.employees?.find(e => e.uid === empId);
+  showLoader();
+  try {
+    await col.empAllowances().add({
+      employeeId:    empId,
+      employeeName:  emp?.name || '',
+      country:       emp?.country || '',
+      name,
+      allowanceType: $('allow-type')?.value || 'other',
+      amount,
+      currency:      emp?.currency || getCurrency(emp?.country),
+      frequency:     $('allow-freq')?.value || 'monthly',
+      createdBy:     state.userProfile.uid,
+      createdAt:     firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã thêm phụ cấp.':'✅ Allowance added.', 'success');
+    closeModal('modal-allowance');
+    loadAllowances();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+window.deleteAllowance = async function(id) {
+  if (!confirm(lang==='vi'?'Xóa phụ cấp này?':'Delete this allowance?')) return;
+  try {
+    await col.empAllowances().doc(id).delete();
+    toast(lang==='vi'?'Đã xóa.':'Deleted.', 'success');
+    loadAllowances();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+};
+
+// ════════════════════════════════════════════════════════════════
+// MODULE: OT MANAGEMENT (Request → Approve → Payroll)
+// Collection: apps/hr/ot_requests
+// ════════════════════════════════════════════════════════════════
+
+async function loadOTManage() {
+  showLoader();
+  try {
+    let query = col.otRequests().orderBy('date','desc').limit(100);
+    if (isCountryManager()) query = col.otRequests()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(100);
+
+    const snap = await query.get();
+    const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Load employees for admin add form
+    if (!state.cache.employees) {
+      const es = await col.users().where('active','==',true).get();
+      state.cache.employees = es.docs.map(d => ({ uid: d.id, ...d.data() }));
+    }
+    renderOTManage(records);
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+}
+
+function renderOTManage(records) {
+  const canAdmin = isAdmin() || isCountryManager();
+  const isEmp    = isEmployee();
+  const employees = state.cache.employees || [];
+
+  $('page-ot-manage').innerHTML = `
+    <div class="page-header">
+      <div><h2>${t('page_ot_manage')}</h2><p>${records.length} ${lang==='vi'?'bản ghi':'records'}</p></div>
+      <div class="page-actions">
+        ${isEmp ? `<button class="btn btn-primary" onclick="openSubmitOT()">${t('ot_request')}</button>` : ''}
+        ${canAdmin ? `<button class="btn btn-outline" onclick="openAdminAddOT()">📋 ${t('ot_add_title')}</button>` : ''}
+      </div>
+    </div>
+
+    <div class="filter-bar">
+      <select class="form-control" id="ot-filter-status" onchange="filterOTRecords()">
+        <option value="">${lang==='vi'?'Tất cả trạng thái':'All Status'}</option>
+        <option value="pending">${t('ot_pending')}</option>
+        <option value="approved">${t('ot_approved')}</option>
+        <option value="rejected">${t('ot_rejected')}</option>
+      </select>
+      <select class="form-control" id="ot-filter-type" onchange="filterOTRecords()">
+        <option value="">${lang==='vi'?'Tất cả loại':'All Types'}</option>
+        <option value="normal">Normal OT</option>
+        <option value="holiday">Holiday OT</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table id="ot-table">
+          <thead><tr>
+            <th>${t('allow_employee')}</th>
+            <th>${t('att_date')}</th>
+            <th>${t('ot_start')}</th>
+            <th>${t('ot_end')}</th>
+            <th>${lang==='vi'?'Số giờ':'Hours'}</th>
+            <th>${lang==='vi'?'Loại':'Type'}</th>
+            <th>${lang==='vi'?'Tiền OT':'OT Pay'}</th>
+            <th>${t('ot_reason')}</th>
+            <th>${t('ot_status')}</th>
+            ${canAdmin ? `<th>${t('emp_actions')}</th>` : ''}
+          </tr></thead>
+          <tbody id="ot-tbody">
+            ${renderOTRows(records, canAdmin)}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Employee Submit OT Modal -->
+    <div class="modal-overlay" id="modal-submit-ot">
+      <div class="modal">
+        <div class="modal-header"><h3>${t('ot_submit_title')}</h3><button class="modal-close">×</button></div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${t('att_date')}</label>
+            <input class="form-control" type="date" id="ot-req-date" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('ot_start')}</label>
+              <input class="form-control" type="time" id="ot-req-start" value="17:00" oninput="calcOTHours('req')">
+            </div>
+            <div class="form-group">
+              <label>${t('ot_end')}</label>
+              <input class="form-control" type="time" id="ot-req-end" value="20:00" oninput="calcOTHours('req')">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${lang==='vi'?'Loại OT':'OT Type'}</label>
+            <select class="form-control" id="ot-req-type">
+              <option value="normal">Normal OT (×2)</option>
+              <option value="holiday">Holiday OT (×2)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>${t('ot_reason')}</label>
+            <textarea class="form-control" id="ot-req-reason" rows="2" placeholder="${lang==='vi'?'Lý do tăng ca…':'Reason for OT…'}"></textarea>
+          </div>
+          <div class="form-hint" id="ot-req-calc" style="margin-top:8px;"></div>
+          <p class="form-hint">${t('ot_calc_hint')}</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="submitOTRequest()">${lang==='vi'?'Gửi đăng ký':'Submit Request'}</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Admin Add OT Modal -->
+    <div class="modal-overlay" id="modal-admin-ot">
+      <div class="modal">
+        <div class="modal-header"><h3>${t('ot_add_title')}</h3><button class="modal-close">×</button></div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${t('allow_employee')}</label>
+            <select class="form-control" id="ot-adm-emp" onchange="calcOTHours('adm')">
+              <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
+              ${employees.filter(e=>canManageCountry(e.country)&&e.active!==false)
+                .map(e=>`<option value="${e.uid}" data-salary="${e.salary||0}" data-name="${e.name}" data-country="${e.country}" data-currency="${e.currency||getCurrency(e.country)}">${e.name} (${e.country})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group">
+            <label>${t('att_date')}</label>
+            <input class="form-control" type="date" id="ot-adm-date" value="${new Date().toISOString().split('T')[0]}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('ot_start')}</label>
+              <input class="form-control" type="time" id="ot-adm-start" value="17:00" oninput="calcOTHours('adm')">
+            </div>
+            <div class="form-group">
+              <label>${t('ot_end')}</label>
+              <input class="form-control" type="time" id="ot-adm-end" value="20:00" oninput="calcOTHours('adm')">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${lang==='vi'?'Loại OT':'OT Type'}</label>
+            <select class="form-control" id="ot-adm-type">
+              <option value="normal">Normal OT (×2)</option>
+              <option value="holiday">Holiday OT (×2)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>${t('ot_reason')}</label>
+            <textarea class="form-control" id="ot-adm-reason" rows="2"></textarea>
+          </div>
+          <div class="form-hint" id="ot-adm-calc" style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="adminSaveOT()">${lang==='vi'?'Lưu & Duyệt':'Save & Approve'}</button>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // Initial calc
+  calcOTHours('req');
+}
+
+function renderOTRows(records, canAdmin) {
+  if (!records.length) return `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">⏰</div><h4>${t('ot_no_data')}</h4></div></td></tr>`;
+  return records.map(r => {
+    const statusBadge = {
+      pending:  `<span class="badge badge-amber">${t('ot_pending')}</span>`,
+      approved: `<span class="badge badge-green">${t('ot_approved')}</span>`,
+      rejected: `<span class="badge badge-red">${t('ot_rejected')}</span>`,
+    }[r.status] || '';
+    const canAct = canAdmin && r.status === 'pending';
+    return `<tr>
+      <td><strong>${r.employeeName||'–'}</strong></td>
+      <td class="td-mono">${r.date||'–'}</td>
+      <td class="td-mono">${r.startTime||'–'}</td>
+      <td class="td-mono">${r.endTime||'–'}</td>
+      <td class="td-mono">${(r.hours||0).toFixed(1)}h</td>
+      <td><span class="badge badge-${r.otType==='holiday'?'amber':'blue'}">${r.otType||'normal'}</span></td>
+      <td class="td-mono payroll-positive">+${formatCurrency(r.otPay||0, r.currency||'USD')}</td>
+      <td style="max-width:160px;white-space:normal;font-size:.80rem;">${r.reason||'–'}</td>
+      <td>${statusBadge}</td>
+      ${canAdmin ? `<td>
+        ${canAct ? `
+          <button class="btn btn-sm btn-success" onclick="approveOT('${r.id}')">${t('ot_approve')}</button>
+          <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectOT('${r.id}')">${t('ot_reject')}</button>
+        ` : '–'}
+      </td>` : ''}
+    </tr>`;
+  }).join('');
+}
+
+window.filterOTRecords = function() { loadOTManage(); };
+
+window.openSubmitOT = function() {
+  calcOTHours('req');
+  openModal('modal-submit-ot');
+};
+
+window.openAdminAddOT = function() {
+  openModal('modal-admin-ot');
+};
+
+window.calcOTHours = function(prefix) {
+  const startEl = $(`ot-${prefix}-start`);
+  const endEl   = $(`ot-${prefix}-end`);
+  const calcEl  = $(`ot-${prefix}-calc`);
+  if (!startEl || !endEl || !calcEl) return;
+
+  const [sh, sm] = (startEl.value||'17:00').split(':').map(Number);
+  const [eh, em] = (endEl.value||'20:00').split(':').map(Number);
+  const totalMins = (eh * 60 + em) - (sh * 60 + sm);
+  if (totalMins <= 0) { calcEl.textContent = ''; return; }
+  const hours = totalMins / 60;
+
+  // Get salary from employee selection (admin) or current user (employee)
+  let salary = 0;
+  let cur = 'USD';
+  if (prefix === 'adm') {
+    const sel = $('ot-adm-emp');
+    salary = parseFloat(sel?.selectedOptions[0]?.dataset.salary || 0);
+    cur    = sel?.selectedOptions[0]?.dataset.currency || 'USD';
+  } else {
+    salary = state.userProfile?.salary || 0;
+    cur    = state.userProfile?.currency || getCurrency(state.userProfile?.country);
+  }
+
+  const dailyRate  = salary / 26;
+  const hourlyRate = dailyRate / 8;
+  const otPay      = hourlyRate * hours * 2;
+
+  calcEl.innerHTML = `
+    <strong>${hours.toFixed(1)}h OT</strong> →
+    ${formatCurrency(salary, cur)} ÷ 26 ÷ 8 × ${hours.toFixed(1)} × 2 =
+    <strong class="payroll-positive">+${formatCurrency(otPay, cur)}</strong>
+  `;
+  calcEl.dataset.hours   = hours;
+  calcEl.dataset.pay     = otPay;
+  calcEl.dataset.daily   = dailyRate;
+  calcEl.dataset.hourly  = hourlyRate;
+};
+
+window.submitOTRequest = async function() {
+  const date    = $('ot-req-date')?.value;
+  const start   = $('ot-req-start')?.value;
+  const end     = $('ot-req-end')?.value;
+  const reason  = $('ot-req-reason')?.value.trim();
+  const otType  = $('ot-req-type')?.value || 'normal';
+  const calcEl  = $('ot-req-calc');
+
+  if (!date || !start || !end) {
+    toast(lang==='vi'?'Vui lòng điền đầy đủ thông tin.':'Please fill all fields.', 'error');
+    return;
+  }
+  const hours  = parseFloat(calcEl?.dataset.hours || 0);
+  const otPay  = parseFloat(calcEl?.dataset.pay   || 0);
+  if (hours <= 0) {
+    toast(lang==='vi'?'Giờ kết thúc phải sau giờ bắt đầu.':'End time must be after start time.', 'error');
+    return;
+  }
+
+  const p = state.userProfile;
+  showLoader();
+  try {
+    await col.otRequests().add({
+      employeeId:   p.uid,
+      employeeName: p.name,
+      country:      p.country,
+      currency:     p.currency || getCurrency(p.country),
+      date, startTime: start, endTime: end,
+      hours, otPay, otType, reason,
+      salary:       p.salary || 0,
+      status:       'pending',
+      submittedBy:  p.uid,
+      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã gửi đăng ký OT. Chờ duyệt.':'✅ OT request submitted. Pending approval.', 'success');
+    closeModal('modal-submit-ot');
+    loadOTManage();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+window.adminSaveOT = async function() {
+  const sel    = $('ot-adm-emp');
+  const empId  = sel?.value;
+  const date   = $('ot-adm-date')?.value;
+  const start  = $('ot-adm-start')?.value;
+  const end    = $('ot-adm-end')?.value;
+  const otType = $('ot-adm-type')?.value || 'normal';
+  const reason = $('ot-adm-reason')?.value.trim();
+  const calcEl = $('ot-adm-calc');
+
+  if (!empId || !date) {
+    toast(lang==='vi'?'Vui lòng chọn nhân viên và ngày.':'Employee and date required.', 'error');
+    return;
+  }
+
+  calcOTHours('adm');
+  const hours  = parseFloat(calcEl?.dataset.hours || 0);
+  const otPay  = parseFloat(calcEl?.dataset.pay   || 0);
+  const emp    = state.cache.employees?.find(e => e.uid === empId);
+  const cur    = sel?.selectedOptions[0]?.dataset.currency || 'USD';
+
+  showLoader();
+  try {
+    await col.otRequests().add({
+      employeeId:   empId,
+      employeeName: emp?.name || '',
+      country:      emp?.country || '',
+      currency:     cur,
+      date, startTime: start, endTime: end,
+      hours, otPay, otType, reason,
+      salary:       emp?.salary || 0,
+      status:       'approved', // admin adds = auto-approved
+      approvedBy:   state.userProfile.uid,
+      approvedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      submittedBy:  state.userProfile.uid,
+      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã lưu và duyệt OT.':'✅ OT saved and approved.', 'success');
+    closeModal('modal-admin-ot');
+    loadOTManage();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+window.approveOT = async function(id) {
+  showLoader();
+  try {
+    await col.otRequests().doc(id).update({
+      status:     'approved',
+      approvedBy: state.userProfile.uid,
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã duyệt OT.':'✅ OT approved.', 'success');
+    loadOTManage();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
+window.rejectOT = async function(id) {
+  const reason = prompt(lang==='vi'?'Lý do từ chối (không bắt buộc):':'Rejection reason (optional):') || '';
+  showLoader();
+  try {
+    await col.otRequests().doc(id).update({
+      status:     'rejected',
+      rejectedBy: state.userProfile.uid,
+      rejectedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: reason,
+    });
+    toast(lang==='vi'?'Đã từ chối OT.':'OT rejected.', 'success');
+    loadOTManage();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
+// ════════════════════════════════════════════════════════════════
+// MODULE: SITE RECORDS (Allowance công trường)
+// Collection: apps/hr/site_records
+// Logic: eligible if startTime <= 08:00 AND endTime >= 13:00
+// ════════════════════════════════════════════════════════════════
+
+const SITE_RATES = { 'Phnom Penh': 5, 'Province': 6 };
+
+function calcSiteEligible(startTime, endTime) {
+  if (!startTime || !endTime) return false;
+  const [sh, sm] = startTime.split(':').map(Number);
+  const [eh, em] = endTime.split(':').map(Number);
+  const startMins = sh * 60 + sm;
+  const endMins   = eh * 60 + em;
+  return startMins <= 8 * 60 && endMins >= 13 * 60;
+}
+
+async function loadSiteRecords() {
+  showLoader();
+  try {
+    let query = col.siteRecords().orderBy('date','desc').limit(100);
+    if (isCountryManager()) query = col.siteRecords()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(100);
+
+    const snap = await query.get();
+    const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    if (!state.cache.employees) {
+      const es = await col.users().where('active','==',true).get();
+      state.cache.employees = es.docs.map(d => ({ uid: d.id, ...d.data() }));
+    }
+    renderSiteRecords(records);
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+}
+
+function renderSiteRecords(records) {
+  const employees = state.cache.employees || [];
+  const canAdd    = isAdmin() || isCountryManager();
+  const totalEligible = records.filter(r => r.eligible).reduce((s,r) => s + (r.amount||0), 0);
+
+  $('page-site').innerHTML = `
+    <div class="page-header">
+      <div>
+        <h2>${t('page_site')}</h2>
+        <p>${lang==='vi'?'Tổng phụ cấp công trường tháng này':'Total site allowance this month'}:
+          <strong class="payroll-positive">$${totalEligible.toFixed(2)}</strong>
+        </p>
+      </div>
+      <div class="page-actions">
+        ${canAdd ? `<button class="btn btn-primary" onclick="openLogSite()">${t('site_add')}</button>` : ''}
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:var(--gap);background:var(--amber-bg);border-color:var(--amber);">
+      <div class="card-body" style="font-size:.84rem;color:var(--amber);">
+        ℹ️ <strong>${lang==='vi'?'Điều kiện hưởng phụ cấp':'Eligibility rule'}:</strong>
+        ${lang==='vi'
+          ? 'Vào ≤ 08:00 VÀ ra ≥ 13:00 → Phnom Penh: $5/ngày · Tỉnh: $6/ngày'
+          : 'Start ≤ 08:00 AND End ≥ 13:00 → Phnom Penh: $5/day · Province: $6/day'}
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>${t('allow_employee')}</th>
+            <th>${t('att_date')}</th>
+            <th>${t('site_project')}</th>
+            <th>${t('site_location')}</th>
+            <th>${t('site_start')}</th>
+            <th>${t('site_end')}</th>
+            <th>${t('site_eligible')}</th>
+            <th>${lang==='vi'?'Phụ cấp':'Allowance'}</th>
+            ${canAdd ? `<th>${t('emp_actions')}</th>` : ''}
+          </tr></thead>
+          <tbody>
+            ${records.length ? records.map(r => `
+              <tr>
+                <td><strong>${r.employeeName||'–'}</strong></td>
+                <td class="td-mono">${r.date||'–'}</td>
+                <td>${r.project||'–'}</td>
+                <td>${r.location||'–'}</td>
+                <td class="td-mono">${r.startTime||'–'}</td>
+                <td class="td-mono">${r.endTime||'–'}</td>
+                <td>${r.eligible
+                  ? `<span class="badge badge-green">✓ ${t('site_eligible')}</span>`
+                  : `<span class="badge badge-grey">✗ ${t('site_not_eligible')}</span>`}
+                </td>
+                <td class="td-mono ${r.eligible?'payroll-positive':''}">
+                  ${r.eligible ? `+$${(r.amount||0).toFixed(2)}` : '–'}
+                </td>
+                ${canAdd ? `<td>
+                  <button class="btn btn-sm btn-danger" onclick="deleteSiteRecord('${r.id}')">
+                    ${lang==='vi'?'Xóa':'Del'}
+                  </button>
+                </td>` : ''}
+              </tr>`).join('')
+            : `<tr><td colspan="9"><div class="empty-state">
+                <div class="empty-icon">🏗️</div>
+                <h4>${t('site_no_data')}</h4>
+              </div></td></tr>`}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Log Site Modal -->
+    <div class="modal-overlay" id="modal-site">
+      <div class="modal">
+        <div class="modal-header"><h3>${t('site_log_title')}</h3><button class="modal-close">×</button></div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${t('allow_employee')}</label>
+            <select class="form-control" id="site-emp">
+              <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
+              ${employees.filter(e=>canManageCountry(e.country)&&e.active!==false)
+                .map(e=>`<option value="${e.uid}" data-name="${e.name}" data-country="${e.country}">${e.name} (${e.country})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('att_date')}</label>
+              <input class="form-control" type="date" id="site-date" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="form-group">
+              <label>${t('site_location')}</label>
+              <select class="form-control" id="site-location" onchange="calcSiteAllowance()">
+                <option value="Phnom Penh">${t('site_pp')} ($5)</option>
+                <option value="Province">${t('site_province')} ($6)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${t('site_project')}</label>
+            <input class="form-control" id="site-project" placeholder="${lang==='vi'?'Tên dự án':'Project name'}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('site_start')}</label>
+              <input class="form-control" type="time" id="site-start" value="07:30" oninput="calcSiteAllowance()">
+            </div>
+            <div class="form-group">
+              <label>${t('site_end')}</label>
+              <input class="form-control" type="time" id="site-end" value="14:00" oninput="calcSiteAllowance()">
+            </div>
+          </div>
+          <div id="site-calc-result" style="margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:.84rem;"></div>
+          <p class="form-hint">${t('site_logic_hint')}</p>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="saveSiteRecord()">${t('btn_save')}</button>
+        </div>
+      </div>
+    </div>
+  `;
+  calcSiteAllowance();
+}
+
+window.calcSiteAllowance = function() {
+  const start    = $('site-start')?.value || '';
+  const end      = $('site-end')?.value   || '';
+  const location = $('site-location')?.value || 'Phnom Penh';
+  const eligible = calcSiteEligible(start, end);
+  const rate     = SITE_RATES[location] || 5;
+  const resultEl = $('site-calc-result');
+  if (!resultEl) return;
+  if (eligible) {
+    resultEl.innerHTML = `✅ <strong>${lang==='vi'?'Đủ điều kiện':'Eligible'}</strong> →
+      <strong class="payroll-positive">+$${rate}/day</strong>
+      (${location === 'Phnom Penh' ? 'Phnom Penh rate' : 'Province rate'})`;
+  } else {
+    resultEl.innerHTML = `❌ <span style="color:var(--text-muted)">
+      ${lang==='vi'
+        ? 'Không đủ điều kiện — cần vào ≤ 08:00 VÀ ra ≥ 13:00'
+        : 'Not eligible — need start ≤ 08:00 AND end ≥ 13:00'}
+    </span>`;
+  }
+};
+
+window.openLogSite = function() {
+  calcSiteAllowance();
+  openModal('modal-site');
+};
+
+window.saveSiteRecord = async function() {
+  const sel      = $('site-emp');
+  const empId    = sel?.value;
+  const date     = $('site-date')?.value;
+  const location = $('site-location')?.value || 'Phnom Penh';
+  const start    = $('site-start')?.value;
+  const end      = $('site-end')?.value;
+  const project  = $('site-project')?.value.trim();
+
+  if (!empId || !date) {
+    toast(lang==='vi'?'Vui lòng chọn nhân viên và ngày.':'Employee and date required.', 'error');
+    return;
+  }
+
+  const eligible = calcSiteEligible(start, end);
+  const amount   = eligible ? (SITE_RATES[location] || 5) : 0;
+  const emp      = state.cache.employees?.find(e => e.uid === empId);
+
+  showLoader();
+  try {
+    await col.siteRecords().add({
+      employeeId:   empId,
+      employeeName: emp?.name || '',
+      country:      emp?.country || '',
+      date, location, project,
+      startTime: start, endTime: end,
+      eligible, amount,
+      createdBy: state.userProfile.uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(eligible
+      ? (lang==='vi'?`✅ Đã ghi nhận. Phụ cấp: +$${amount}`:`✅ Saved. Allowance: +$${amount}`)
+      : (lang==='vi'?'Đã ghi nhận (không đủ điều kiện hưởng phụ cấp).':'Saved (not eligible for allowance).'),
+      eligible ? 'success' : 'info'
+    );
+    closeModal('modal-site');
+    loadSiteRecords();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+window.deleteSiteRecord = async function(id) {
+  if (!confirm(lang==='vi'?'Xóa bản ghi này?':'Delete this record?')) return;
+  try {
+    await col.siteRecords().doc(id).delete();
+    toast(lang==='vi'?'Đã xóa.':'Deleted.', 'success');
+    loadSiteRecords();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+};
+
+// ════════════════════════════════════════════════════════════════
+// PAYROLL ENGINE v2 — 5 sources: Basic + Allowance + OT + Site + Phone
+//                              − Leave − Late − Violation
+// ════════════════════════════════════════════════════════════════
+
+window.generatePayroll = async function() {
+  if (!confirm(t('pay_confirm_gen'))) return;
+  showLoader();
+
+  const now   = new Date();
+  const month = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  const monthStart = `${month}-01`;
+  const monthEnd   = `${month}-31`;
+
+  // Count weeks in month for phone allowance
+  const weeksInMonth = countWeeksInMonth(now.getFullYear(), now.getMonth());
+
+  try {
+    let empQuery = col.users().where('active','==',true);
+    if (isCountryManager()) empQuery = empQuery.where('country','==',state.userProfile.country);
+    const empSnap = await empQuery.get();
+    const employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+
+    // Load all 5 data sources for the month
+    const [attSnap, violSnap, otSnap, allowSnap, siteSnap] = await Promise.all([
+      col.attendance().where('date','>=',monthStart).where('date','<=',monthEnd).get(),
+      col.violations().where('date','>=',monthStart).where('date','<=',monthEnd).get(),
+      col.otRequests().where('date','>=',monthStart).where('date','<=',monthEnd).where('status','==','approved').get(),
+      col.empAllowances().get(),
+      col.siteRecords().where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).get(),
+    ]);
+
+    // Aggregate per UID
+    const agg = {};
+    const ensure = uid => {
+      if (!agg[uid]) agg[uid] = { late: 0, violations: 0, otNormal: 0, otHoliday: 0, siteAllowance: 0, fixedAllowance: 0, phoneAllowance: 0 };
+    };
+
+    attSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].late += r.penalty||0; });
+    violSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].violations += r.penalty||0; });
+    otSnap.docs.forEach(d => {
+      const r=d.data(); ensure(r.uid);
+      if (r.otType === 'holiday') agg[r.uid].otHoliday += r.otPay||0;
+      else agg[r.uid].otNormal += r.otPay||0;
+    });
+    siteSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].siteAllowance += r.amount||0; });
+
+    // Fixed allowances (monthly, all employees)
+    allowSnap.docs.forEach(d => {
+      const r=d.data(); ensure(r.employeeId);
+      if (r.frequency === 'monthly') agg[r.employeeId].fixedAllowance += r.amount||0;
+    });
+
+    const batch = db.batch();
+    for (const e of employees) {
+      ensure(e.uid);
+      const a = agg[e.uid];
+      const basic     = e.salary || 0;
+      const currency  = e.currency || getCurrency(e.country);
+
+      // Phone allowance: $1/week × weeks in month (from policy)
+      // For non-USD, scale proportionally
+      const phoneRate = currency === 'USD' ? 1 : 0; // only USD for now
+      a.phoneAllowance = phoneRate * weeksInMonth;
+
+      const totalAdditions  = basic + a.fixedAllowance + a.siteAllowance + a.phoneAllowance + a.otNormal + a.otHoliday;
+      const totalDeductions = a.late + a.violations;
+      const net = Math.max(totalAdditions - totalDeductions, 0);
+
+      const ref = col.payroll().doc(`${month}_${e.uid}`);
+      batch.set(ref, {
+        uid: e.uid, employeeName: e.name, country: e.country, currency, month,
+        basic,
+        fixedAllowance:  a.fixedAllowance,
+        siteAllowance:   a.siteAllowance,
+        phoneAllowance:  a.phoneAllowance,
+        otNormal:        a.otNormal,
+        otHoliday:       a.otHoliday,
+        lateDeduction:   a.late,
+        penalties:       a.violations,
+        leaveDeduction:  0,
+        net,
+        weeksInMonth,
+        locked:  false,
+        generatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    }
+
+    await batch.commit();
+    toast(t('pay_generated', { n: employees.length, month }), 'success');
+    loadPayroll();
+  } catch(e) {
+    toast('Error generating payroll: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+function countWeeksInMonth(year, month) {
+  // Count ISO weeks that have Monday in the given month
+  const firstDay = new Date(year, month, 1);
+  const lastDay  = new Date(year, month + 1, 0);
+  let weeks = 0;
+  const d = new Date(firstDay);
+  while (d <= lastDay) {
+    if (d.getDay() === 1) weeks++; // Monday
+    d.setDate(d.getDate() + 1);
+  }
+  return weeks || 4; // fallback to 4
+}
+
+// ── Update payroll table to show new columns ──────────────────
+function renderPayroll(employees, existing, month) {
+  const isLocked = Object.values(existing).some(p => p.locked);
+  $('page-payroll').innerHTML = `
+    <div class="page-header">
+      <div><h2>${t('page_payroll')}</h2><p>${lang==='vi'?'Tháng':'Month'}: ${month}</p></div>
+      <div class="page-actions">
+        ${!isLocked ? `<button class="btn btn-gold" onclick="generatePayroll()">${t('pay_generate')}</button>` : ''}
+        <button class="btn btn-outline" onclick="exportPayrollCSV()">${t('pay_export')}</button>
+        ${isAdmin() && !isLocked ? `<button class="btn btn-primary" onclick="lockPayroll()">${t('pay_lock')}</button>` : ''}
+      </div>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table id="payroll-table">
+          <thead><tr>
+            <th>${t('pay_employee')}</th>
+            <th>${t('pay_country')}</th>
+            <th>${t('pay_basic')}</th>
+            <th>${lang==='vi'?'PC cố định':'Fixed Allow.'}</th>
+            <th>${lang==='vi'?'PC công trường':'Site Allow.'}</th>
+            <th>${lang==='vi'?'PC điện thoại':'Phone Allow.'}</th>
+            <th>OT</th>
+            <th>${lang==='vi'?'OT ngày lễ':'Holiday OT'}</th>
+            <th>${t('pay_late_ded')}</th>
+            <th>${t('pay_penalties')}</th>
+            <th class="payroll-total">${t('pay_net')}</th>
+            ${!isLocked ? '<th></th>' : ''}
+          </tr></thead>
+          <tbody>
+            ${employees.map(e => {
+              const p   = existing[e.uid] || {};
+              const cur = e.currency || getCurrency(e.country);
+              return `<tr>
+                <td><strong>${e.name}</strong></td>
+                <td>${COUNTRY_FLAG[e.country]||''} ${e.country}</td>
+                <td class="td-mono">${formatCurrency(p.basic||e.salary||0, cur)}</td>
+                <td class="td-mono payroll-positive">+${formatCurrency(p.fixedAllowance||0, cur)}</td>
+                <td class="td-mono payroll-positive">+${formatCurrency(p.siteAllowance||0, cur)}</td>
+                <td class="td-mono payroll-positive">+${formatCurrency(p.phoneAllowance||0, cur)}</td>
+                <td class="td-mono payroll-positive">+${formatCurrency(p.otNormal||0, cur)}</td>
+                <td class="td-mono payroll-positive">+${formatCurrency(p.otHoliday||0, cur)}</td>
+                <td class="td-mono payroll-negative">-${formatCurrency(p.lateDeduction||0, cur)}</td>
+                <td class="td-mono payroll-negative">-${formatCurrency(p.penalties||0, cur)}</td>
+                <td class="td-mono payroll-total">${formatCurrency(p.net||(e.salary||0), cur)}</td>
+                ${!isLocked ? `<td><button class="btn btn-sm btn-outline" onclick="editPayrollLine('${e.uid}')">${t('pay_edit')}</button></td>` : ''}
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
