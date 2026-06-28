@@ -40,8 +40,8 @@ const DEFAULT_CAMBODIA_POLICY = {
   leave_days_per_month: 1,
   max_annual_leave: 12,
   unauthorized_multiplier: 2,
-  holiday_multiplier: 2,
-  ot_multiplier: 2,
+  holiday_multiplier: 1.5,
+  ot_multiplier: 1.5,
   late_tiers: [
     { min: 0,  max: 15, penalty: 5,   type: 'fixed', label: '0–<15 min' },
     { min: 15, max: 60, penalty: 10,  type: 'fixed', label: '15–<60 min' },
@@ -245,7 +245,7 @@ const LANGS = {
     ot_log_title:   'Log Overtime',
     ot_hours_lbl:   'OT Hours',
     ot_type_lbl:    'OT Type',
-    ot_normal:      'Normal OT (×2)',
+    ot_normal:      'Normal OT (×1.5)',
     ot_holiday:     'Public Holiday (×2)',
     ot_calc:        'Calculated OT Pay',
     ot_notes_ph:    'Project / task…',
@@ -401,7 +401,7 @@ const LANGS = {
     ot_no_data:       'No OT records',
     ot_submit_title:  'Submit OT Request',
     ot_add_title:     'Log OT (Admin)',
-    ot_calc_hint:     'Rate: Basic ÷ (26 days × 8h) × 2',
+    ot_calc_hint:     'Rate: Basic ÷ (26 days × 8h) × hours × 1.5',
   },
 
   vi: {
@@ -565,8 +565,8 @@ const LANGS = {
     ot_log_title:   'Ghi nhận tăng ca',
     ot_hours_lbl:   'Số giờ OT',
     ot_type_lbl:    'Loại OT',
-    ot_normal:      'Tăng ca thường (×2)',
-    ot_holiday:     'Ngày lễ (×2)',
+    ot_normal:      'Tăng ca thường (×1.5)',
+    ot_holiday:     'Ngày lễ (×1.5)',
     ot_calc:        'Tiền OT tính được',
     ot_notes_ph:    'Dự án / công việc…',
     ot_no_records:  'Chưa có bản ghi OT',
@@ -721,7 +721,7 @@ const LANGS = {
     ot_no_data:       'Chưa có bản ghi OT',
     ot_submit_title:  'Đăng ký tăng ca',
     ot_add_title:     'Ghi OT (Admin)',
-    ot_calc_hint:     'Công thức: Lương ÷ (26 ngày × 8h) × số giờ × 2',
+    ot_calc_hint:     'Công thức: Lương ÷ (26 ngày × 8h) × số giờ × 1.5',
   }
 };
 
@@ -2687,11 +2687,14 @@ function loadReports() {
     <div class="page-header"><div><h2>${t('rep_title')}</h2><p>${t('rep_sub')}</p></div></div>
     <div class="card card-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:var(--gap);">
       ${[
-        { icon:'👥', label:t('rep_employees'), action:'rptEmployees' },
-        { icon:'💰', label:t('rep_payroll'),   action:'rptPayroll' },
-        { icon:'🌴', label:t('rep_leave'),     action:'rptLeave' },
-        { icon:'⚠️', label:t('rep_violations'),action:'rptViolations' },
-        { icon:'📅', label:t('rep_holidays'),  action:'rptHolidays' }
+        { icon:'👥', label:t('rep_employees'),                                      action:'rptEmployees' },
+        { icon:'💰', label:t('rep_payroll'),                                        action:'rptPayroll' },
+        { icon:'🌴', label:t('rep_leave'),                                          action:'rptLeave' },
+        { icon:'⚠️', label:t('rep_violations'),                                    action:'rptViolations' },
+        { icon:'⏰', label:(lang==='vi'?'Báo cáo OT':'OT Report'),                 action:'rptOT' },
+        { icon:'⏱️', label:(lang==='vi'?'Báo cáo chuyên cần':'Attendance Report'), action:'rptAttendance' },
+        { icon:'🏗️', label:(lang==='vi'?'Báo cáo công trường':'Site Report'),      action:'rptSite' },
+        { icon:'📅', label:t('rep_holidays'),                                       action:'rptHolidays' }
       ].map(r => `
         <div class="stat-card navy" style="cursor:pointer;" onclick="${r.action}()">
           <div class="stat-icon">${r.icon}</div>
@@ -2709,8 +2712,185 @@ window.rptEmployees = function() {
   downloadCSV(rows, 'employees_report');
 };
 window.rptPayroll = function() { exportPayrollCSV(); };
-window.rptLeave = function() { toast('Export leave – run loadLeave() then export.', 'info'); };
-window.rptViolations = function() { toast('Export violations – coming soon.', 'info'); };
+window.rptLeave = async function() {
+  showLoader();
+  try {
+    let query = col.leave().orderBy('createdAt','desc').limit(500);
+    if (isCountryManager()) query = col.leave()
+      .where('country','==',state.userProfile.country)
+      .orderBy('createdAt','desc').limit(500);
+    const snap = await query.get();
+    const rows = [[
+      lang==='vi'?'Nhân viên':'Employee',
+      lang==='vi'?'Quốc gia':'Country',
+      lang==='vi'?'Từ ngày':'From',
+      lang==='vi'?'Đến ngày':'To',
+      lang==='vi'?'Số ngày':'Days',
+      lang==='vi'?'Loại':'Type',
+      lang==='vi'?'Lý do':'Reason',
+      lang==='vi'?'Trạng thái':'Status',
+    ]];
+    snap.docs.forEach(d => {
+      const r = d.data();
+      rows.push([
+        r.employeeName || '',
+        r.country || '',
+        r.from || '',
+        r.to || '',
+        r.days || 1,
+        r.leaveType === 'paid'
+          ? (lang==='vi'?'Có lương':'Paid')
+          : (lang==='vi'?'Không lương':'Unpaid'),
+        r.reason || '',
+        r.status || '',
+      ]);
+    });
+    downloadCSV(rows, lang==='vi'?'bao_cao_nghi_phep':'leave_report');
+    toast(lang==='vi'?`✅ Xuất ${snap.size} bản ghi nghỉ phép.`:`✅ Exported ${snap.size} leave records.`, 'success');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+window.rptViolations = async function() {
+  showLoader();
+  try {
+    let query = col.violations().orderBy('date','desc').limit(500);
+    if (isCountryManager()) query = col.violations()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(500);
+    const snap = await query.get();
+    const rows = [[
+      lang==='vi'?'Nhân viên':'Employee',
+      lang==='vi'?'Quốc gia':'Country',
+      lang==='vi'?'Ngày':'Date',
+      lang==='vi'?'Vi phạm':'Violation',
+      lang==='vi'?'Tiền phạt':'Penalty',
+      lang==='vi'?'Trạng thái':'Status',
+      lang==='vi'?'Ghi chú':'Notes',
+    ]];
+    snap.docs.forEach(d => {
+      const r = d.data();
+      rows.push([
+        r.employeeName || '',
+        r.country || '',
+        r.date || '',
+        r.violationType || '',
+        r.penalty || 0,
+        r.status || '',
+        r.notes || '',
+      ]);
+    });
+    downloadCSV(rows, lang==='vi'?'bao_cao_vi_pham':'violations_report');
+    toast(lang==='vi'?`✅ Xuất ${snap.size} bản ghi vi phạm.`:`✅ Exported ${snap.size} violation records.`, 'success');
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+window.rptOT = async function() {
+  showLoader();
+  try {
+    let query = col.otRequests().orderBy('date','desc').limit(500);
+    if (isCountryManager()) query = col.otRequests()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(500);
+    const snap = await query.get();
+    const rows = [[
+      lang==='vi'?'Nhân viên':'Employee',
+      lang==='vi'?'Quốc gia':'Country',
+      lang==='vi'?'Ngày':'Date',
+      lang==='vi'?'Giờ bắt đầu':'Start',
+      lang==='vi'?'Giờ kết thúc':'End',
+      lang==='vi'?'Số giờ':'Hours',
+      lang==='vi'?'Loại OT':'OT Type',
+      lang==='vi'?'Tiền OT':'OT Pay',
+      lang==='vi'?'Lý do':'Reason',
+      lang==='vi'?'Trạng thái':'Status',
+    ]];
+    snap.docs.forEach(d => {
+      const r = d.data();
+      rows.push([
+        r.employeeName||'', r.country||'', r.date||'',
+        r.startTime||'', r.endTime||'',
+        (r.hours||0).toFixed(1),
+        r.otType||'normal',
+        (r.otPay||0).toFixed(2),
+        r.reason||'', r.status||'',
+      ]);
+    });
+    downloadCSV(rows, lang==='vi'?'bao_cao_ot':'ot_report');
+    toast(lang==='vi'?`✅ Xuất ${snap.size} bản ghi OT.`:`✅ Exported ${snap.size} OT records.`, 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
+window.rptAttendance = async function() {
+  showLoader();
+  try {
+    let query = col.attendance().orderBy('date','desc').limit(500);
+    if (isCountryManager()) query = col.attendance()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(500);
+    const snap = await query.get();
+    const rows = [[
+      lang==='vi'?'Nhân viên':'Employee',
+      lang==='vi'?'Quốc gia':'Country',
+      lang==='vi'?'Ngày':'Date',
+      lang==='vi'?'Loại':'Type',
+      lang==='vi'?'Số phút trễ':'Minutes Late',
+      lang==='vi'?'Tiền phạt':'Penalty',
+      lang==='vi'?'Ghi chú':'Notes',
+    ]];
+    snap.docs.forEach(d => {
+      const r = d.data();
+      rows.push([
+        r.employeeName||'', r.country||'', r.date||'',
+        r.type||'', r.minutesLate||0,
+        (r.penalty||0).toFixed(2),
+        r.notes||'',
+      ]);
+    });
+    downloadCSV(rows, lang==='vi'?'bao_cao_chuyen_can':'attendance_report');
+    toast(lang==='vi'?`✅ Xuất ${snap.size} bản ghi chuyên cần.`:`✅ Exported ${snap.size} attendance records.`, 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
+window.rptSite = async function() {
+  showLoader();
+  try {
+    let query = col.siteRecords().orderBy('date','desc').limit(500);
+    if (isCountryManager()) query = col.siteRecords()
+      .where('country','==',state.userProfile.country)
+      .orderBy('date','desc').limit(500);
+    const snap = await query.get();
+    const rows = [[
+      lang==='vi'?'Nhân viên':'Employee',
+      lang==='vi'?'Quốc gia':'Country',
+      lang==='vi'?'Ngày':'Date',
+      lang==='vi'?'Dự án':'Project',
+      lang==='vi'?'Địa điểm':'Location',
+      lang==='vi'?'Giờ vào':'Start',
+      lang==='vi'?'Giờ ra':'End',
+      lang==='vi'?'Đủ điều kiện':'Eligible',
+      lang==='vi'?'Phụ cấp':'Allowance',
+    ]];
+    snap.docs.forEach(d => {
+      const r = d.data();
+      rows.push([
+        r.employeeName||'', r.country||'', r.date||'',
+        r.project||'', r.location||'',
+        r.startTime||'', r.endTime||'',
+        r.eligible ? (lang==='vi'?'Có':'Yes') : (lang==='vi'?'Không':'No'),
+        (r.amount||0).toFixed(2),
+      ]);
+    });
+    downloadCSV(rows, lang==='vi'?'bao_cao_cong_truong':'site_report');
+    toast(lang==='vi'?`✅ Xuất ${snap.size} bản ghi công trường.`:`✅ Exported ${snap.size} site records.`, 'success');
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
 window.rptHolidays = function() {
   const rows = [['Date','Holiday','Country','Paid']];
   CAMBODIA_HOLIDAYS_2025.forEach(h => rows.push([h.date, h.name, 'Cambodia', 'Yes']));
@@ -3182,7 +3362,7 @@ function renderOT(records) {
           <div class="form-group">
             <label>OT Type</label>
             <select class="form-control" id="ot-type" onchange="calcOTPay()">
-              <option value="normal">Normal OT (×2)</option>
+              <option value="normal">Normal OT (×1.5)</option>
               <option value="holiday">Public Holiday (×2)</option>
             </select>
           </div>
@@ -3217,8 +3397,8 @@ window.calcOTPay = function() {
   const hours  = parseFloat($('ot-hours')?.value) || 0;
   const dailyRate = salary / 26;        // 26 working days
   const hourlyRate = dailyRate / 8;     // 8h work day
-  const multiplier = 2;                 // OT always ×2
-  const otPay = hourlyRate * hours * multiplier;
+  const multiplier = 1.5;               // OT always ×1.5
+  const otPay = hourlyRate * hours * 1.5;
   const payEl = $('ot-pay');
   if (payEl) payEl.value = `$${otPay.toFixed(2)} (Daily rate: $${dailyRate.toFixed(2)} | Hourly: $${hourlyRate.toFixed(2)})`;
 };
@@ -3235,7 +3415,7 @@ window.saveOT = async function() {
   const emp = state.cache.employees?.find(e => e.uid === uid);
   const dailyRate = salary / 26;
   const hourlyRate = dailyRate / 8;
-  const otPay = hourlyRate * hours * 2;
+  const otPay = hourlyRate * hours * 1.5;
 
   try {
     await col.ot().add({
@@ -3486,7 +3666,7 @@ function renderPolicies(policies) {
             </div>
             <div>
               <div class="form-hint" style="margin-bottom:4px;">OT Multiplier</div>
-              <strong>${p.ot_multiplier || 2}×</strong>
+              <strong>${p.ot_multiplier || 1.5}×</strong>
             </div>
             <div>
               <div class="form-hint" style="margin-bottom:4px;">Holiday Multiplier</div>
@@ -3860,8 +4040,8 @@ function renderOTManage(records) {
           <div class="form-group">
             <label>${lang==='vi'?'Loại OT':'OT Type'}</label>
             <select class="form-control" id="ot-req-type">
-              <option value="normal">Normal OT (×2)</option>
-              <option value="holiday">Holiday OT (×2)</option>
+              <option value="normal">Normal OT (×1.5)</option>
+              <option value="holiday">Holiday OT (×1.5)</option>
             </select>
           </div>
           <div class="form-group">
@@ -3908,8 +4088,8 @@ function renderOTManage(records) {
           <div class="form-group">
             <label>${lang==='vi'?'Loại OT':'OT Type'}</label>
             <select class="form-control" id="ot-adm-type">
-              <option value="normal">Normal OT (×2)</option>
-              <option value="holiday">Holiday OT (×2)</option>
+              <option value="normal">Normal OT (×1.5)</option>
+              <option value="holiday">Holiday OT (×1.5)</option>
             </select>
           </div>
           <div class="form-group">
@@ -3996,11 +4176,11 @@ window.calcOTHours = function(prefix) {
 
   const dailyRate  = salary / 26;
   const hourlyRate = dailyRate / 8;
-  const otPay      = hourlyRate * hours * 2;
+  const otPay      = hourlyRate * hours * 1.5;
 
   calcEl.innerHTML = `
     <strong>${hours.toFixed(1)}h OT</strong> →
-    ${formatCurrency(salary, cur)} ÷ 26 ÷ 8 × ${hours.toFixed(1)} × 2 =
+    ${formatCurrency(salary, cur)} ÷ 26 ÷ 8 × ${hours.toFixed(1)} × 1.5 =
     <strong class="payroll-positive">+${formatCurrency(otPay, cur)}</strong>
   `;
   calcEl.dataset.hours   = hours;
@@ -4068,7 +4248,7 @@ window.adminSaveOT = async function() {
 
   calcOTHours('adm');
   const hours  = parseFloat(calcEl?.dataset.hours || 0);
-  const otPay  = parseFloat(calcEl?.dataset.pay   || 0);
+  const otPay  = parseFloat(calcEl?.dataset.pay || 0);
   const emp    = state.cache.employees?.find(e => e.uid === empId);
   const cur    = sel?.selectedOptions[0]?.dataset.currency || 'USD';
 
