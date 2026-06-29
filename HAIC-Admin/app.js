@@ -4596,7 +4596,12 @@ function renderOTManage(records) {
             <select class="form-control" id="ot-adm-emp" onchange="calcOTHours('adm')">
               <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
               ${employees.filter(e=>canManageCountry(e.country)&&e.active!==false)
-                .map(e=>`<option value="${e.uid}" data-salary="${e.salary||0}" data-name="${e.name}" data-country="${e.country}" data-currency="${e.currency||getCurrency(e.country)}">${e.name} (${e.country})</option>`).join('')}
+                .map(e=>`<option value="${e.uid}"
+                  data-salary="${e.salary||0}"
+                  data-name="${e.name}"
+                  data-country="${e.country}"
+                  data-currency="${e.currency||getCurrency(e.country)}"
+                  >${e.name} — ${formatCurrency(e.salary||0, e.currency||getCurrency(e.country))} (${e.country})</option>`).join('')}
             </select>
           </div>
           <div class="form-group">
@@ -4682,37 +4687,71 @@ window.openAdminAddOT = function() {
 };
 
 window.calcOTHours = function(prefix) {
-  const startEl = $(`ot-${prefix}-start`);
-  const endEl   = $(`ot-${prefix}-end`);
-  const calcEl  = $(`ot-${prefix}-calc`);
+  const startEl = document.getElementById(`ot-${prefix}-start`);
+  const endEl   = document.getElementById(`ot-${prefix}-end`);
+  const calcEl  = document.getElementById(`ot-${prefix}-calc`);
   if (!startEl || !endEl || !calcEl) return;
 
-  const [sh, sm] = (startEl.value||'17:00').split(':').map(Number);
-  const [eh, em] = (endEl.value||'20:00').split(':').map(Number);
+  const startVal = startEl.value || '17:00';
+  const endVal   = endEl.value   || '20:00';
+  const [sh, sm] = startVal.split(':').map(Number);
+  const [eh, em] = endVal.split(':').map(Number);
   const totalMins = (eh * 60 + em) - (sh * 60 + sm);
-  if (totalMins <= 0) { calcEl.textContent = ''; return; }
+
+  if (totalMins <= 0) {
+    calcEl.innerHTML = `<span style="color:var(--red)">${lang==='vi'?'Giờ kết thúc phải sau giờ bắt đầu':'End time must be after start time'}</span>`;
+    calcEl.dataset.hours = 0;
+    calcEl.dataset.pay   = 0;
+    return;
+  }
   const hours = totalMins / 60;
 
-  // Get salary from employee selection (admin) or current user (employee)
+  // Get salary — admin mode reads from employee dropdown data attributes
   let salary = 0;
-  let cur = 'USD';
+  let cur    = 'USD';
+  let empName = '';
+
   if (prefix === 'adm') {
-    const sel = $('ot-adm-emp');
-    salary = parseFloat(sel?.selectedOptions[0]?.dataset.salary || 0);
-    cur    = sel?.selectedOptions[0]?.dataset.currency || 'USD';
+    const sel = document.getElementById('ot-adm-emp');
+    if (sel && sel.selectedIndex > 0) {
+      const opt = sel.options[sel.selectedIndex];
+      salary  = parseFloat(opt.dataset.salary || 0);
+      cur     = opt.dataset.currency || 'USD';
+      empName = opt.dataset.name || '';
+    }
   } else {
-    salary = state.userProfile?.salary || 0;
-    cur    = state.userProfile?.currency || getCurrency(state.userProfile?.country);
+    salary  = parseFloat(state.userProfile?.salary) || 0;
+    cur     = state.userProfile?.currency || getCurrency(state.userProfile?.country);
+    empName = state.userProfile?.name || '';
   }
 
-  const dailyRate  = salary / 26;
-  const hourlyRate = dailyRate / 8;
+  const workDays   = 26;
+  const workHours  = 8;
+  const dailyRate  = salary / workDays;
+  const hourlyRate = dailyRate / workHours;
   const otPay      = hourlyRate * hours * 1.5;
 
+  if (salary === 0 && prefix === 'adm') {
+    calcEl.innerHTML = `<span style="color:var(--amber)">
+      ⚠️ ${lang==='vi'?'Vui lòng chọn nhân viên để tính tiền OT':'Please select an employee to calculate OT pay'}
+    </span>`;
+    calcEl.dataset.hours = hours;
+    calcEl.dataset.pay   = 0;
+    return;
+  }
+
   calcEl.innerHTML = `
-    <strong>${hours.toFixed(1)}h OT</strong> →
-    ${formatCurrency(salary, cur)} ÷ 26 ÷ 8 × ${hours.toFixed(1)} × 1.5 =
-    <strong class="payroll-positive">+${formatCurrency(otPay, cur)}</strong>
+    <div style="line-height:1.8;">
+      <span style="color:var(--text-muted);font-size:.78rem;">
+        ${empName ? `<strong>${empName}</strong> · ` : ''}
+        ${lang==='vi'?'Lương':'Salary'}: ${formatCurrency(salary, cur)} ÷ ${workDays} ${lang==='vi'?'ngày':'days'} ÷ ${workHours}h
+        = ${formatCurrency(hourlyRate, cur)}/${lang==='vi'?'giờ':'h'}
+      </span><br>
+      <strong>${hours.toFixed(1)}h</strong> × ${formatCurrency(hourlyRate, cur)} × 1.5 =
+      <strong class="payroll-positive" style="font-size:1rem;">
+        +${formatCurrency(otPay, cur)}
+      </strong>
+    </div>
   `;
   calcEl.dataset.hours   = hours;
   calcEl.dataset.pay     = otPay;
