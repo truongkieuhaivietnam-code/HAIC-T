@@ -1995,18 +1995,38 @@ function renderViolations(violations, vtypes) {
     <div class="card">
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Employee</th><th>Date</th><th>Violation</th><th>Penalty</th><th>Status</th><th>Notes</th></tr></thead>
+          <thead><tr>
+            <th>${t('viol_employee')}</th>
+            <th>${t('viol_date')}</th>
+            <th>${t('viol_type')}</th>
+            <th>${t('viol_penalty')}</th>
+            <th>${t('viol_status')}</th>
+            <th>${t('viol_notes')}</th>
+            <th>${t('emp_actions')}</th>
+          </tr></thead>
           <tbody>
             ${violations.length ? violations.map(v => `
               <tr>
-                <td>${v.employeeName || v.uid}</td>
+                <td><strong>${v.employeeName || v.uid}</strong></td>
                 <td class="td-mono">${v.date || ''}</td>
                 <td>${v.violationType || ''}</td>
                 <td class="td-mono payroll-negative">$${(v.penalty || 0).toFixed(2)}</td>
-                <td><span class="badge badge-${v.status==='processed'?'grey':'amber'}">${v.status||'logged'}</span></td>
+                <td><span class="badge badge-${v.status==='processed'?'grey':'amber'}">
+                  ${v.status==='processed'
+                    ? (lang==='vi'?'Đã xử lý':'Processed')
+                    : (lang==='vi'?'Đã ghi':'Logged')}
+                </span></td>
                 <td>${v.notes || ''}</td>
+                <td style="white-space:nowrap;">
+                  <button class="btn btn-sm btn-outline" onclick="editViolation('${v.id}')">✏️</button>
+                  <button class="btn btn-sm btn-danger" style="margin-left:4px"
+                    onclick="deleteRecord('violations','${v.id}')">🗑️</button>
+                </td>
               </tr>`).join('')
-            : `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">⚠️</div><h4>No violations recorded</h4></div></td></tr>`}
+            : `<tr><td colspan="7"><div class="empty-state">
+                <div class="empty-icon">⚠️</div>
+                <h4>${t('viol_no_records')}</h4>
+              </div></td></tr>`}
           </tbody>
         </table>
       </div>
@@ -2682,16 +2702,66 @@ window.editPolicy = async function(country) {
   $('modal-policy-body').innerHTML = `
     <input type="hidden" id="policy-country" value="${country}">
     <div class="form-row">
-      <div class="form-group"><label>Currency</label>
-        <input class="form-control" id="policy-currency" value="${p.currency||'USD'}"></div>
-      <div class="form-group"><label>Leave Days Per Month</label>
-        <input class="form-control" type="number" id="policy-leave" value="${p.leave_days_per_month??1}"></div>
+      <div class="form-group">
+        <label>${lang==='vi'?'Đơn vị tiền tệ':'Currency'}</label>
+        <input class="form-control" id="policy-currency" value="${p.currency||'USD'}">
+      </div>
+      <div class="form-group">
+        <label>${lang==='vi'?'Số ngày phép/tháng':'Leave Days Per Month'}</label>
+        <input class="form-control" type="number" id="policy-leave" value="${p.leave_days_per_month??1}">
+      </div>
     </div>
-    <div class="form-group"><label>Working Days (comma-separated)</label>
+    <div class="form-group">
+      <label>${lang==='vi'?'Ngày làm việc (cách nhau bởi dấu phẩy)':'Working Days (comma-separated)'}</label>
       <input class="form-control" id="policy-working" value="${(p.working_days||[]).join(', ')}">
     </div>
-    <div class="form-group"><label>Weekly Off Days</label>
+    <div class="form-group">
+      <label>${lang==='vi'?'Ngày nghỉ hàng tuần':'Weekly Off Days'}</label>
       <input class="form-control" id="policy-off" value="${(p.weekly_off||[]).join(', ')}">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>${lang==='vi'?'Hệ số OT (ngoài giờ)':'OT Multiplier'}</label>
+        <select class="form-control" id="policy-ot-mult">
+          <option value="1.5" ${(p.ot_multiplier||1.5)==1.5?'selected':''}>×1.5</option>
+          <option value="2"   ${(p.ot_multiplier||1.5)==2?'selected':''}>×2</option>
+        </select>
+        <p class="form-hint">${lang==='vi'?'Áp dụng cho OT thường':'Applied to normal OT'}</p>
+      </div>
+      <div class="form-group">
+        <label>${lang==='vi'?'Hệ số ngày lễ/nghỉ':'Holiday Multiplier'}</label>
+        <select class="form-control" id="policy-holiday-mult">
+          <option value="1.5" ${(p.holiday_multiplier||1.5)==1.5?'selected':''}>×1.5</option>
+          <option value="2"   ${(p.holiday_multiplier||1.5)==2?'selected':''}>×2</option>
+        </select>
+        <p class="form-hint">${lang==='vi'?'Làm việc ngày lễ/ngày nghỉ':'Working on holidays/days off'}</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>${lang==='vi'?'Phụ cấp điện thoại ($/tuần)':'Phone Allowance ($/week)'}</label>
+        <input class="form-control" type="number" id="policy-phone" 
+          value="${p.phone_allowance_per_week??1}" step="0.5">
+        <p class="form-hint">${lang==='vi'?'Tự động tính vào bảng lương':'Auto-calculated in payroll'}</p>
+      </div>
+      <div class="form-group">
+        <label>${lang==='vi'?'Số ngày công/tháng':'Working Days Per Month'}</label>
+        <input class="form-control" type="number" id="policy-work-days" 
+          value="${p.working_days_per_month??26}">
+        <p class="form-hint">${lang==='vi'?'Dùng để tính lương ngày':'Used for daily rate calculation'}</p>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>${lang==='vi'?'Phụ cấp công trường Phnom Penh ($/ngày)':'Site Allowance Phnom Penh ($/day)'}</label>
+        <input class="form-control" type="number" id="policy-site-pp" 
+          value="${p.site_allowance_pp??5}" step="0.5">
+      </div>
+      <div class="form-group">
+        <label>${lang==='vi'?'Phụ cấp công trường Tỉnh ($/ngày)':'Site Allowance Province ($/day)'}</label>
+        <input class="form-control" type="number" id="policy-site-prov" 
+          value="${p.site_allowance_province??6}" step="0.5">
+      </div>
     </div>
   `;
   openModal('modal-policy');
@@ -2700,20 +2770,31 @@ window.editPolicy = async function(country) {
 window.savePolicy = async function() {
   const country = $('policy-country')?.value;
   if (!country) return;
+
   const data = {
     country,
-    currency: $('policy-currency')?.value || 'USD',
-    leave_days_per_month: parseInt($('policy-leave')?.value) || 1,
-    working_days: ($('policy-working')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
-    weekly_off:   ($('policy-off')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+    currency:              $('policy-currency')?.value || 'USD',
+    leave_days_per_month:  parseInt($('policy-leave')?.value) || 1,
+    working_days:          ($('policy-working')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+    weekly_off:            ($('policy-off')?.value || '').split(',').map(s=>s.trim()).filter(Boolean),
+    ot_multiplier:         parseFloat($('policy-ot-mult')?.value) || 1.5,
+    holiday_multiplier:    parseFloat($('policy-holiday-mult')?.value) || 1.5,
+    phone_allowance_per_week: parseFloat($('policy-phone')?.value) || 1,
+    working_days_per_month:   parseInt($('policy-work-days')?.value) || 26,
+    site_allowance_pp:        parseFloat($('policy-site-pp')?.value) || 5,
+    site_allowance_province:  parseFloat($('policy-site-prov')?.value) || 6,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
   };
+
+  showLoader();
   try {
     await col.policy().doc(country).set(data, { merge: true });
-    toast('Policy saved.', 'success');
+    toast(lang==='vi'?'✅ Đã lưu chính sách.':'✅ Policy saved.', 'success');
     closeModal('modal-policy');
     loadPolicies();
-  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
 };
 
 window.seedDefaultPolicies = async function() {
@@ -3700,28 +3781,44 @@ function renderPolicies(policies) {
         <div class="card-body">
           <div class="form-row three">
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">Currency</div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Tiền tệ':'Currency'}</div>
               <strong>${p.currency || '–'}</strong>
             </div>
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">Working Days</div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Ngày làm việc':'Working Days'}</div>
               <strong style="font-size:.82rem;">${(p.working_days || []).join(', ') || '–'}</strong>
             </div>
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">Weekly Off</div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Ngày nghỉ':'Weekly Off'}</div>
               <strong>${(p.weekly_off || []).join(', ') || '–'}</strong>
             </div>
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">Leave Days/Month</div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Ngày phép/tháng':'Leave Days/Month'}</div>
               <strong>${p.leave_days_per_month ?? '–'}</strong>
             </div>
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">OT Multiplier</div>
-              <strong>${p.ot_multiplier || 1.5}×</strong>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Hệ số OT':'OT Multiplier'}</div>
+              <strong style="color:var(--green)">×${p.ot_multiplier || 1.5}</strong>
             </div>
             <div>
-              <div class="form-hint" style="margin-bottom:4px;">Holiday Multiplier</div>
-              <strong>${p.holiday_multiplier || 2}×</strong>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Hệ số ngày lễ':'Holiday Multiplier'}</div>
+              <strong style="color:var(--green)">×${p.holiday_multiplier || 1.5}</strong>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'PC điện thoại':'Phone Allow.'}</div>
+              <strong>$${p.phone_allowance_per_week ?? 1}/${lang==='vi'?'tuần':'week'}</strong>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'Ngày công/tháng':'Work Days/Month'}</div>
+              <strong>${p.working_days_per_month ?? 26} ${lang==='vi'?'ngày':'days'}</strong>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'PC site Phnom Penh':'Site PP'}</div>
+              <strong>$${p.site_allowance_pp ?? 5}/${lang==='vi'?'ngày':'day'}</strong>
+            </div>
+            <div>
+              <div class="form-hint" style="margin-bottom:4px;">${lang==='vi'?'PC site Tỉnh':'Site Province'}</div>
+              <strong>$${p.site_allowance_province ?? 6}/${lang==='vi'?'ngày':'day'}</strong>
             </div>
           </div>
         </div>
@@ -4226,6 +4323,138 @@ window.saveAllowance = async function() {
     toast(lang==='vi'?'✅ Đã thêm phụ cấp.':'✅ Allowance added.', 'success');
     closeModal('modal-allowance');
     loadAllowances();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// ── Edit Violation ───────────────────────────────────────────
+window.editViolation = async function(id) {
+  showLoader();
+  let rec;
+  try {
+    const snap = await col.violations().doc(id).get();
+    if (!snap.exists) { hideLoader(); toast('Not found.','error'); return; }
+    rec = snap.data();
+  } catch(e) { hideLoader(); toast('Error: '+e.message,'error'); return; }
+  hideLoader();
+
+  // Load violation types for dropdown
+  let vtypes = [];
+  try {
+    const vtSnap = await col.violTypes().get();
+    vtypes = vtSnap.docs.length
+      ? vtSnap.docs.map(d => ({ id: d.id, ...d.data() }))
+      : DEFAULT_VIOLATIONS;
+  } catch(e) { vtypes = DEFAULT_VIOLATIONS; }
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'modal-edit-viol';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ ${lang==='vi'?'Sửa vi phạm':'Edit Violation'} — ${rec.employeeName||''}</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>${lang==='vi'?'Ngày':'Date'}</label>
+            <input class="form-control" type="date" id="ev-date" value="${rec.date||''}">
+          </div>
+          <div class="form-group">
+            <label>${t('viol_type')}</label>
+            <select class="form-control" id="ev-type" onchange="onEvTypeChange()">
+              ${vtypes.map(v =>
+                `<option value="${v.name}" data-penalty="${v.penalty}"
+                  ${rec.violationType===v.name?'selected':''}>
+                  ${v.name} ($${v.penalty})
+                </option>`
+              ).join('')}
+              <option value="__custom__" ${!vtypes.find(v=>v.name===rec.violationType)?'selected':''}>
+                ${lang==='vi'?'Khác (nhập tay)':'Other (manual)'}
+              </option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group" id="ev-custom-group"
+          style="display:${!vtypes.find(v=>v.name===rec.violationType)?'block':'none'}">
+          <label>${lang==='vi'?'Tên vi phạm (nhập tay)':'Violation name (manual)'}</label>
+          <input class="form-control" id="ev-custom-name" value="${rec.violationType||''}">
+        </div>
+        <div class="form-group">
+          <label>${t('viol_penalty')} (USD)</label>
+          <input class="form-control" type="number" id="ev-penalty" value="${rec.penalty||0}">
+        </div>
+        <div class="form-group">
+          <label>${lang==='vi'?'Trạng thái':'Status'}</label>
+          <select class="form-control" id="ev-status">
+            <option value="logged" ${rec.status==='logged'||!rec.status?'selected':''}>
+              ${lang==='vi'?'Đã ghi':'Logged'}
+            </option>
+            <option value="processed" ${rec.status==='processed'?'selected':''}>
+              ${lang==='vi'?'Đã xử lý':'Processed'}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>${t('viol_notes')}</label>
+          <textarea class="form-control" id="ev-notes" rows="2">${rec.notes||''}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+        <button class="btn btn-primary" onclick="saveViolationEdit('${id}')">
+          💾 ${lang==='vi'?'Lưu':'Save'}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+};
+
+window.onEvTypeChange = function() {
+  const sel = $('ev-type');
+  const isCustom = sel?.value === '__custom__';
+  const customGroup = $('ev-custom-group');
+  const penEl = $('ev-penalty');
+  if (customGroup) customGroup.style.display = isCustom ? 'block' : 'none';
+  if (!isCustom && penEl && sel?.selectedOptions[0]) {
+    penEl.value = sel.selectedOptions[0].dataset.penalty || 0;
+  }
+};
+
+window.saveViolationEdit = async function(id) {
+  const typeSel   = $('ev-type');
+  const isCustom  = typeSel?.value === '__custom__';
+  const typeName  = isCustom
+    ? ($('ev-custom-name')?.value.trim() || 'Other')
+    : (typeSel?.value || '');
+  const penalty   = parseFloat($('ev-penalty')?.value) || 0;
+  const status    = $('ev-status')?.value || 'logged';
+  const notes     = $('ev-notes')?.value.trim() || '';
+
+  if (!typeName) {
+    toast(lang==='vi'?'Vui lòng chọn hoặc nhập loại vi phạm.':'Please select or enter violation type.', 'error');
+    return;
+  }
+
+  showLoader();
+  try {
+    await col.violations().doc(id).update({
+      date:          $('ev-date')?.value,
+      violationType: typeName,
+      penalty,
+      status,
+      notes,
+      editedBy:  state.userProfile.uid,
+      editedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã cập nhật vi phạm.':'✅ Violation updated.', 'success');
+    document.getElementById('modal-edit-viol')?.remove();
+    loadViolations();
   } catch(e) {
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
