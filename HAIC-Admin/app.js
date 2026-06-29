@@ -226,7 +226,8 @@ const LANGS = {
     att_penalty:    'Penalty',
     att_status:     'Status',
     att_notes:      'Notes',
-    att_late:       'Late Arrival',
+    att_late:       'Late (Approved)',
+    att_late_approved: 'Late (Approved)',
     att_unauth:     'Unauthorized Absence',
     att_log_title:  'Log Attendance Record',
     att_select_emp: 'Select employee…',
@@ -546,7 +547,8 @@ const LANGS = {
     att_penalty:    'Phạt',
     att_status:     'Trạng thái',
     att_notes:      'Ghi chú',
-    att_late:       'Đi trễ',
+    att_late:       'Đi trễ có xin phép',
+    att_late_approved: 'Đi trễ có xin phép',
     att_unauth:     'Vắng không phép',
     att_log_title:  'Ghi nhận chuyên cần',
     att_select_emp: 'Chọn nhân viên…',
@@ -1698,6 +1700,7 @@ function leaveRow(r) {
   }[r.status] || '';
 
   const canAct = r.status === 'pending' && canManageCountry(r.country);
+  const canEdit = isSuperAdmin() || (isAdmin() && canManageCountry(r.country));
   return `<tr>
     <td><strong>${r.employeeName || '–'}</strong></td>
     <td>${COUNTRY_FLAG[r.country] || ''} ${r.country || ''}</td>
@@ -1707,11 +1710,15 @@ function leaveRow(r) {
     <td>${r.leaveType === 'paid' ? `🟢 ${t('leave_paid')}` : `🔴 ${t('leave_unpaid')}`}</td>
     <td style="max-width:200px;white-space:normal;">${r.reason || ''}</td>
     <td>${statusBadge}</td>
-    <td>
+    <td style="white-space:nowrap;">
       ${canAct ? `
         <button class="btn btn-sm btn-success" onclick="approveLeave('${r.id}')">${t('leave_approve')}</button>
         <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectLeave('${r.id}')">${t('leave_reject')}</button>
-      ` : '–'}
+      ` : ''}
+      ${canEdit ? `
+        <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="editLeaveRecord('${r.id}','${r.status}','${r.leaveType}')">✏️</button>
+        <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('leave','${r.id}')">🗑️</button>
+      ` : (!canAct ? '–' : '')}
     </td>
   </tr>`;
 }
@@ -1792,8 +1799,14 @@ function renderAttendance(records) {
                 <td class="td-mono payroll-negative">$${(r.penalty || 0).toFixed(2)}</td>
                 <td><span class="badge badge-${r.status === 'processed' ? 'grey' : 'amber'}">${r.status || 'logged'}</span></td>
                 <td>${r.notes || ''}</td>
+                <td style="white-space:nowrap;">
+                  ${(isSuperAdmin() || isAdmin() || isCountryManager()) ? `
+                    <button class="btn btn-sm btn-outline" onclick="editAttendanceRecord('${r.id}')">✏️</button>
+                    <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('attendance','${r.id}')">🗑️</button>
+                  ` : '–'}
+                </td>
               </tr>`) .join('')
-            : `<tr><td colspan="7"><div class="empty-state"><div class="empty-icon">⏱️</div><h4>No attendance records</h4></div></td></tr>`}
+            : `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">⏱️</div><h4>${lang==='vi'?'Chưa có bản ghi chuyên cần':'No attendance records'}</h4></div></td></tr>`}
           </tbody>
         </table>
       </div>
@@ -1820,23 +1833,37 @@ function renderAttendance(records) {
             </div>
             <div class="form-group">
               <label>Type</label>
-              <select class="form-control" id="att-type">
-                <option value="late">Late Arrival</option>
-                <option value="unauthorized_absence">Unauthorized Absence</option>
+              <select class="form-control" id="att-type" onchange="calcLatePenalty()">
+                <option value="late_approved">${lang==='vi'?'Đi trễ có xin phép':'Late (Approved)'}</option>
+                <option value="unauthorized_absence">${lang==='vi'?'Vắng mặt không phép':'Unauthorized Absence'}</option>
               </select>
             </div>
           </div>
-          <div class="form-group" id="att-late-group">
-            <label>Minutes Late</label>
-            <input class="form-control" type="number" id="att-minutes" placeholder="e.g. 20" oninput="calcLatePenalty()">
+          <div class="form-group">
+            <label>${lang==='vi'?'Số phút':'Minutes'}</label>
+            <input class="form-control" type="number" id="att-minutes"
+              placeholder="${lang==='vi'?'VD: 20':'e.g. 20'}" oninput="calcLatePenalty()">
+            <p class="form-hint" id="att-penalty-desc" style="margin-top:4px;color:var(--amber);"></p>
           </div>
           <div class="form-group">
-            <label>Calculated Penalty</label>
-            <input class="form-control" id="att-penalty" readonly placeholder="Auto-calculated">
+            <label>${lang==='vi'?'Tiền phạt tính được':'Calculated Penalty'}</label>
+            <input class="form-control" id="att-penalty" readonly placeholder="${lang==='vi'?'Tự động tính':'Auto-calculated'}">
+          </div>
+          <div class="card" style="margin-bottom:var(--gap);background:var(--bg);">
+            <div class="card-body" style="font-size:.78rem;color:var(--text-muted);padding:10px 14px;">
+              <strong>${lang==='vi'?'Quy định:':'Policy:'}</strong><br>
+              🟡 ${lang==='vi'?'Trễ có xin phép':'Late (approved)'}:
+                ${lang==='vi'?'Trừ lương theo tỉ lệ thời gian trễ':'Deduct proportional to late time'}<br>
+              🔴 ${lang==='vi'?'Vắng không phép 0–15 phút':'Unauth 0–15 min'}: $5<br>
+              🔴 ${lang==='vi'?'Vắng không phép 16–60 phút':'Unauth 16–60 min'}: $10<br>
+              🔴 ${lang==='vi'?'Vắng không phép ≥61 phút':'Unauth ≥61 min'}:
+                ${lang==='vi'?'Trừ 1 ngày lương':'1 day deduction'}
+            </div>
           </div>
           <div class="form-group">
-            <label>Notes</label>
-            <textarea class="form-control" id="att-notes" rows="2" placeholder="Optional notes…"></textarea>
+            <label>${lang==='vi'?'Ghi chú':'Notes'}</label>
+            <textarea class="form-control" id="att-notes" rows="2"
+              placeholder="${lang==='vi'?'Ghi chú (không bắt buộc)…':'Optional notes…'}"></textarea>
           </div>
         </div>
         <div class="modal-footer">
@@ -1854,22 +1881,41 @@ window.openAddAttendance = function() {
 };
 
 window.calcLatePenalty = function() {
-  const mins = parseInt($('att-minutes')?.value) || 0;
-  const type = $('att-type')?.value;
-  const sel  = $('att-uid');
+  const mins   = parseInt($('att-minutes')?.value) || 0;
+  const type   = $('att-type')?.value;
+  const sel    = $('att-uid');
   const salary = parseFloat(sel?.selectedOptions[0]?.dataset.salary || 0);
-  const dailyRate = salary / 26; // ~26 working days
+  const dailyRate = salary / 26; // 26 working days
 
   let penalty = 0;
-  if (type === 'late') {
-    if (mins >= 60)      penalty = dailyRate;
-    else if (mins >= 15) penalty = 10;
-    else if (mins >= 1)  penalty = 5;
+  let desc    = '';
+
+  if (type === 'late_approved') {
+    // Đi trễ có xin phép → trừ lương × 1 (theo số phút thực tế)
+    penalty = (mins / (8 * 60)) * dailyRate; // tỉ lệ thời gian trễ × lương ngày
+    desc = lang==='vi'
+      ? `Trễ có phép: ${mins} phút × (lương ngày ÷ 480) = $${penalty.toFixed(2)}`
+      : `Approved late: ${mins} min × (daily rate ÷ 480) = $${penalty.toFixed(2)}`;
   } else if (type === 'unauthorized_absence') {
-    penalty = dailyRate * 2;
+    // Vắng mặt không phép: theo tier
+    if (mins >= 61) {
+      penalty = dailyRate;
+      desc = lang==='vi'
+        ? `≥61 phút: trừ 1 ngày lương = $${penalty.toFixed(2)}`
+        : `≥61 min: 1 day deduction = $${penalty.toFixed(2)}`;
+    } else if (mins >= 16) {
+      penalty = 10;
+      desc = lang==='vi' ? '16–60 phút: phạt $10' : '16–60 min: $10 penalty';
+    } else if (mins >= 1) {
+      penalty = 5;
+      desc = lang==='vi' ? '0–15 phút: phạt $5' : '0–15 min: $5 penalty';
+    }
   }
-  const penEl = $('att-penalty');
-  if (penEl) penEl.value = '$' + penalty.toFixed(2);
+
+  const penEl  = $('att-penalty');
+  const descEl = $('att-penalty-desc');
+  if (penEl)  penEl.value = '$' + penalty.toFixed(2);
+  if (descEl) descEl.textContent = desc;
 };
 
 window.saveAttendance = async function() {
@@ -1885,11 +1931,16 @@ window.saveAttendance = async function() {
   const dailyRate = salary / 26;
 
   let penalty = 0;
-  if (type === 'late') {
-    if (mins >= 60) penalty = dailyRate;
-    else if (mins >= 15) penalty = 10;
+  if (type === 'late_approved') {
+    // Trễ có phép: trừ theo tỉ lệ
+    penalty = (mins / (8 * 60)) * dailyRate;
+  } else {
+    // Vắng không phép: theo tier
+    if (mins >= 61)      penalty = dailyRate;
+    else if (mins >= 16) penalty = 10;
     else if (mins >= 1)  penalty = 5;
-  } else penalty = dailyRate * 2;
+    else                 penalty = dailyRate; // không nhập phút = tính cả ngày
+  }
 
   try {
     await col.attendance().add({
@@ -3704,6 +3755,254 @@ function renderPolicies(policies) {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// GENERIC DELETE RECORD
+// ═══════════════════════════════════════════════════════════════
+window.deleteRecord = async function(colName, id) {
+  if (!confirm(lang==='vi'?'Xóa bản ghi này?':'Delete this record?')) return;
+  showLoader();
+  try {
+    await col[colName]().doc(id).delete();
+    toast(lang==='vi'?'✅ Đã xóa.':'✅ Deleted.', 'success');
+    // Reload current page
+    loadPageData(state.activePage);
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// ── Edit Leave Record ─────────────────────────────────────────
+window.editLeaveRecord = async function(id, currentStatus, currentType) {
+  const newStatus = prompt(
+    (lang==='vi'?'Trạng thái mới (pending/approved/rejected):':'New status (pending/approved/rejected):'),
+    currentStatus
+  );
+  if (!newStatus) return;
+  if (!['pending','approved','rejected'].includes(newStatus)) {
+    toast(lang==='vi'?'Trạng thái không hợp lệ.':'Invalid status.', 'error');
+    return;
+  }
+  const newType = prompt(
+    (lang==='vi'?'Loại nghỉ (paid/unpaid):':'Leave type (paid/unpaid):'),
+    currentType
+  );
+  if (!newType) return;
+  showLoader();
+  try {
+    await col.leave().doc(id).update({
+      status:    newStatus,
+      leaveType: newType,
+      editedBy:  state.userProfile.uid,
+      editedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã cập nhật.':'✅ Updated.', 'success');
+    loadLeave();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// ── Edit Attendance Record ────────────────────────────────────
+window.editAttendanceRecord = async function(id) {
+  showLoader();
+  let rec;
+  try {
+    const snap = await col.attendance().doc(id).get();
+    if (!snap.exists) { toast('Not found.', 'error'); hideLoader(); return; }
+    rec = snap.data();
+  } catch(e) { hideLoader(); toast('Error: ' + e.message, 'error'); return; }
+  hideLoader();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'modal-edit-att';
+  const salary = state.cache.employees?.find(e=>e.uid===rec.uid)?.salary || 0;
+  const dailyRate = salary / 26;
+
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ ${lang==='vi'?'Sửa bản ghi chuyên cần':'Edit Attendance'} — ${rec.employeeName||''}</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>${lang==='vi'?'Ngày':'Date'}</label>
+          <input class="form-control" type="date" id="ea-date" value="${rec.date||''}">
+        </div>
+        <div class="form-group">
+          <label>${lang==='vi'?'Loại':'Type'}</label>
+          <select class="form-control" id="ea-type" onchange="recalcAttPenalty(${dailyRate})">
+            <option value="late_approved" ${rec.type==='late_approved'?'selected':''}>${lang==='vi'?'Đi trễ có xin phép':'Late (Approved)'}</option>
+            <option value="unauthorized_absence" ${rec.type==='unauthorized_absence'?'selected':''}>${lang==='vi'?'Vắng không phép':'Unauthorized Absence'}</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>${lang==='vi'?'Số phút':'Minutes'}</label>
+          <input class="form-control" type="number" id="ea-minutes" value="${rec.minutesLate||0}"
+            oninput="recalcAttPenalty(${dailyRate})">
+        </div>
+        <div class="form-group">
+          <label>${lang==='vi'?'Tiền phạt':'Penalty'} ($)</label>
+          <input class="form-control" type="number" id="ea-penalty" value="${(rec.penalty||0).toFixed(2)}">
+          <p class="form-hint" id="ea-hint"></p>
+        </div>
+        <div class="form-group">
+          <label>${lang==='vi'?'Ghi chú':'Notes'}</label>
+          <textarea class="form-control" id="ea-notes" rows="2">${rec.notes||''}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+        <button class="btn btn-primary" onclick="saveAttendanceEdit('${id}')">
+          💾 ${lang==='vi'?'Lưu':'Save'}
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  recalcAttPenalty(dailyRate);
+};
+
+window.recalcAttPenalty = function(dailyRate) {
+  const type = $('ea-type')?.value;
+  const mins = parseInt($('ea-minutes')?.value) || 0;
+  let penalty = 0, hint = '';
+
+  if (type === 'late_approved') {
+    penalty = (mins / 480) * dailyRate;
+    hint = lang==='vi' ? `Trễ có phép × tỉ lệ = $${penalty.toFixed(2)}` : `Approved late rate = $${penalty.toFixed(2)}`;
+  } else {
+    if (mins >= 61)      { penalty = dailyRate; hint = lang==='vi'?`≥61 phút = 1 ngày lương ($${dailyRate.toFixed(2)})`:`≥61 min = 1 day ($${dailyRate.toFixed(2)})`; }
+    else if (mins >= 16) { penalty = 10; hint = lang==='vi'?'16–60 phút = $10':'16–60 min = $10'; }
+    else if (mins >= 1)  { penalty = 5;  hint = lang==='vi'?'0–15 phút = $5':'0–15 min = $5'; }
+    else                 { penalty = dailyRate; hint = lang==='vi'?`Vắng cả ngày = $${dailyRate.toFixed(2)}`:`Full day absence = $${dailyRate.toFixed(2)}`; }
+  }
+  const penEl  = $('ea-penalty');
+  const hintEl = $('ea-hint');
+  if (penEl)  penEl.value = penalty.toFixed(2);
+  if (hintEl) hintEl.textContent = hint;
+};
+
+window.saveAttendanceEdit = async function(id) {
+  showLoader();
+  try {
+    await col.attendance().doc(id).update({
+      date:        $('ea-date')?.value,
+      type:        $('ea-type')?.value,
+      minutesLate: parseInt($('ea-minutes')?.value) || 0,
+      penalty:     parseFloat($('ea-penalty')?.value) || 0,
+      notes:       $('ea-notes')?.value.trim(),
+      editedBy:    state.userProfile.uid,
+      editedAt:    firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã cập nhật.':'✅ Updated.', 'success');
+    document.getElementById('modal-edit-att')?.remove();
+    loadAttendance();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// ── Edit Site Record ──────────────────────────────────────────
+window.editSiteRecord = async function(id) {
+  showLoader();
+  let rec;
+  try {
+    const snap = await col.siteRecords().doc(id).get();
+    if (!snap.exists) { hideLoader(); toast('Not found.','error'); return; }
+    rec = snap.data();
+  } catch(e) { hideLoader(); toast('Error: '+e.message,'error'); return; }
+  hideLoader();
+
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay open';
+  overlay.id = 'modal-edit-site';
+  overlay.innerHTML = `
+    <div class="modal">
+      <div class="modal-header">
+        <h3>✏️ ${lang==='vi'?'Sửa bản ghi công trường':'Edit Site Record'} — ${rec.employeeName||''}</h3>
+        <button class="modal-close">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-row">
+          <div class="form-group">
+            <label>${lang==='vi'?'Ngày':'Date'}</label>
+            <input class="form-control" type="date" id="es-date" value="${rec.date||''}">
+          </div>
+          <div class="form-group">
+            <label>${t('site_location')}</label>
+            <select class="form-control" id="es-location" onchange="recalcSiteEdit()">
+              <option value="Phnom Penh" ${rec.location==='Phnom Penh'?'selected':''}>${t('site_pp')} ($5)</option>
+              <option value="Province" ${rec.location==='Province'?'selected':''}>${t('site_province')} ($6)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>${t('site_project')}</label>
+          <input class="form-control" id="es-project" value="${rec.project||''}">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>${t('site_start')}</label>
+            <input class="form-control" type="time" id="es-start" value="${rec.startTime||'07:30'}" oninput="recalcSiteEdit()">
+          </div>
+          <div class="form-group">
+            <label>${t('site_end')}</label>
+            <input class="form-control" type="time" id="es-end" value="${rec.endTime||'14:00'}" oninput="recalcSiteEdit()">
+          </div>
+        </div>
+        <div id="es-result" style="padding:10px;background:var(--bg);border-radius:6px;font-size:.84rem;margin-top:8px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+        <button class="btn btn-primary" onclick="saveSiteEdit('${id}')">💾 ${lang==='vi'?'Lưu':'Save'}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.querySelector('.modal-close').addEventListener('click', () => overlay.remove());
+  overlay.addEventListener('click', e => { if (e.target===overlay) overlay.remove(); });
+  recalcSiteEdit();
+};
+
+window.recalcSiteEdit = function() {
+  const start    = $('es-start')?.value || '';
+  const end      = $('es-end')?.value   || '';
+  const location = $('es-location')?.value || 'Phnom Penh';
+  const eligible = calcSiteEligible(start, end);
+  const rate     = SITE_RATES[location] || 5;
+  const el       = $('es-result');
+  if (!el) return;
+  el.innerHTML = eligible
+    ? `✅ <strong>${lang==='vi'?'Đủ điều kiện':'Eligible'}</strong> → <strong class="payroll-positive">+$${rate}</strong>`
+    : `❌ <span style="color:var(--text-muted)">${lang==='vi'?'Không đủ điều kiện':'Not eligible'}</span>`;
+};
+
+window.saveSiteEdit = async function(id) {
+  const start    = $('es-start')?.value;
+  const end      = $('es-end')?.value;
+  const location = $('es-location')?.value || 'Phnom Penh';
+  const eligible = calcSiteEligible(start, end);
+  const amount   = eligible ? (SITE_RATES[location]||5) : 0;
+  showLoader();
+  try {
+    await col.siteRecords().doc(id).update({
+      date:      $('es-date')?.value,
+      location,
+      project:   $('es-project')?.value.trim(),
+      startTime: start, endTime: end,
+      eligible, amount,
+      editedBy:  state.userProfile.uid,
+      editedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã cập nhật.':'✅ Updated.', 'success');
+    document.getElementById('modal-edit-site')?.remove();
+    loadSiteRecords();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+  finally { hideLoader(); }
+};
+
+// ═══════════════════════════════════════════════════════════════
 // RESET PASSWORD via Cloud Function
 // ═══════════════════════════════════════════════════════════════
 window.resetEmployeePassword = async function(uid, empName) {
@@ -4129,11 +4428,14 @@ function renderOTRows(records, canAdmin) {
       <td class="td-mono payroll-positive">+${formatCurrency(r.otPay||0, r.currency||'USD')}</td>
       <td style="max-width:160px;white-space:normal;font-size:.80rem;">${r.reason||'–'}</td>
       <td>${statusBadge}</td>
-      ${canAdmin ? `<td>
+      ${canAdmin ? `<td style="white-space:nowrap;">
         ${canAct ? `
           <button class="btn btn-sm btn-success" onclick="approveOT('${r.id}')">${t('ot_approve')}</button>
           <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectOT('${r.id}')">${t('ot_reject')}</button>
-        ` : '–'}
+        ` : ''}
+        ${isSuperAdmin() || isAdmin() ? `
+          <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('otRequests','${r.id}')">🗑️</button>
+        ` : (!canAct ? '–' : '')}
       </td>` : ''}
     </tr>`;
   }).join('');
@@ -4401,10 +4703,9 @@ function renderSiteRecords(records) {
                 <td class="td-mono ${r.eligible?'payroll-positive':''}">
                   ${r.eligible ? `+$${(r.amount||0).toFixed(2)}` : '–'}
                 </td>
-                ${canAdd ? `<td>
-                  <button class="btn btn-sm btn-danger" onclick="deleteSiteRecord('${r.id}')">
-                    ${lang==='vi'?'Xóa':'Del'}
-                  </button>
+                ${canAdd ? `<td style="white-space:nowrap;">
+                  <button class="btn btn-sm btn-outline" onclick="editSiteRecord('${r.id}')">✏️</button>
+                  <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('siteRecords','${r.id}')">🗑️</button>
                 </td>` : ''}
               </tr>`).join('')
             : `<tr><td colspan="9"><div class="empty-state">
