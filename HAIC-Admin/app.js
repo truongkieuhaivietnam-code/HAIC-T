@@ -944,7 +944,8 @@ function getNavItems(role) {
     { section: t('nav_me'), page: 'my-leave',     icon: '🌴', label: t('nav_my_leave') },
     { section: t('nav_me'), page: 'my-salary',    icon: '💵', label: t('nav_my_salary') },
     { section: t('nav_me'), page: 'my-penalties', icon: '⚠️', label: t('nav_my_penalties') },
-    { section: t('nav_me'), page: 'ot-manage',    icon: '⏰', label: t('nav_ot_manage') }
+    { section: t('nav_me'), page: 'ot-manage',    icon: '⏰', label: t('nav_ot_manage') },
+    { section: t('nav_me'), page: 'site',         icon: '🏗️', label: t('nav_site') }
   ];
 }
 
@@ -2588,7 +2589,7 @@ window.regenerateOneEmployee = async function(uid, month) {
       col.violations().where('uid','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).get(),
       col.otRequests().where('employeeId','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).where('status','==','approved').get(),
       col.empAllowances().where('employeeId','==',uid).get(),
-      col.siteRecords().where('employeeId','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).get(),
+      col.siteRecords().where('employeeId','==',uid).where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).where('status','==','approved').get(),
     ]);
 
     const lateDed    = attSnap.docs.reduce((s,d) => s + (d.data().penalty||0), 0);
@@ -3006,6 +3007,7 @@ window.rptSite = async function() {
       lang==='vi'?'Giờ ra':'End',
       lang==='vi'?'Đủ điều kiện':'Eligible',
       lang==='vi'?'Phụ cấp':'Allowance',
+      lang==='vi'?'Trạng thái':'Status',
     ]];
     snap.docs.forEach(d => {
       const r = d.data();
@@ -3015,6 +3017,7 @@ window.rptSite = async function() {
         r.startTime||'', r.endTime||'',
         r.eligible ? (lang==='vi'?'Có':'Yes') : (lang==='vi'?'Không':'No'),
         (r.amount||0).toFixed(2),
+        r.status||'approved',
       ]);
     });
     downloadCSV(rows, lang==='vi'?'bao_cao_cong_truong':'site_report');
@@ -4900,6 +4903,9 @@ async function loadSiteRecords() {
     if (isCountryManager()) query = col.siteRecords()
       .where('country','==',state.userProfile.country)
       .orderBy('date','desc').limit(100);
+    if (isEmployee()) query = col.siteRecords()
+      .where('employeeId','==',state.userProfile.uid)
+      .orderBy('date','desc').limit(100);
 
     const snap = await query.get();
     const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -4915,20 +4921,24 @@ async function loadSiteRecords() {
 }
 
 function renderSiteRecords(records) {
-  const employees = state.cache.employees || [];
-  const canAdd    = isAdmin() || isCountryManager();
-  const totalEligible = records.filter(r => r.eligible).reduce((s,r) => s + (r.amount||0), 0);
+  const employees   = state.cache.employees || [];
+  const canApprove   = isAdmin() || isCountryManager();
+  const isEmp        = isEmployee();
+  const totalEligible = records.filter(r => r.eligible && r.status==='approved').reduce((s,r) => s + (r.amount||0), 0);
+  const pendingCount  = records.filter(r => r.status === 'pending').length;
 
   $('page-site').innerHTML = `
     <div class="page-header">
       <div>
         <h2>${t('page_site')}</h2>
-        <p>${lang==='vi'?'Tổng phụ cấp công trường tháng này':'Total site allowance this month'}:
+        <p>${lang==='vi'?'Tổng phụ cấp đã duyệt tháng này':'Total approved allowance this month'}:
           <strong class="payroll-positive">$${totalEligible.toFixed(2)}</strong>
+          ${pendingCount > 0 ? ` &nbsp;·&nbsp; <span style="color:var(--amber)">${pendingCount} ${lang==='vi'?'chờ duyệt':'pending'}</span>` : ''}
         </p>
       </div>
       <div class="page-actions">
-        ${canAdd ? `<button class="btn btn-primary" onclick="openLogSite()">${t('site_add')}</button>` : ''}
+        ${isEmp ? `<button class="btn btn-primary" onclick="openLogSite()">${t('site_add')}</button>` : ''}
+        ${canApprove ? `<button class="btn btn-outline" onclick="openAdminLogSite()">📋 ${lang==='vi'?'Ghi hộ (Admin)':'Log for Employee'}</button>` : ''}
       </div>
     </div>
 
@@ -4939,6 +4949,15 @@ function renderSiteRecords(records) {
           ? 'Vào ≤ 08:00 VÀ ra ≥ 13:00 → Phnom Penh: $5/ngày · Tỉnh: $6/ngày'
           : 'Start ≤ 08:00 AND End ≥ 13:00 → Phnom Penh: $5/day · Province: $6/day'}
       </div>
+    </div>
+
+    <div class="filter-bar">
+      <select class="form-control" id="site-filter-status" onchange="filterSiteRecords()">
+        <option value="">${lang==='vi'?'Tất cả trạng thái':'All Status'}</option>
+        <option value="pending">${lang==='vi'?'Chờ duyệt':'Pending'}</option>
+        <option value="approved">${lang==='vi'?'Đã duyệt':'Approved'}</option>
+        <option value="rejected">${lang==='vi'?'Từ chối':'Rejected'}</option>
+      </select>
     </div>
 
     <div class="card">
@@ -4953,51 +4972,21 @@ function renderSiteRecords(records) {
             <th>${t('site_end')}</th>
             <th>${t('site_eligible')}</th>
             <th>${lang==='vi'?'Phụ cấp':'Allowance'}</th>
-            ${canAdd ? `<th>${t('emp_actions')}</th>` : ''}
+            <th>${lang==='vi'?'Trạng thái':'Status'}</th>
+            <th>${t('emp_actions')}</th>
           </tr></thead>
           <tbody>
-            ${records.length ? records.map(r => `
-              <tr>
-                <td><strong>${r.employeeName||'–'}</strong></td>
-                <td class="td-mono">${r.date||'–'}</td>
-                <td>${r.project||'–'}</td>
-                <td>${r.location||'–'}</td>
-                <td class="td-mono">${r.startTime||'–'}</td>
-                <td class="td-mono">${r.endTime||'–'}</td>
-                <td>${r.eligible
-                  ? `<span class="badge badge-green">✓ ${t('site_eligible')}</span>`
-                  : `<span class="badge badge-grey">✗ ${t('site_not_eligible')}</span>`}
-                </td>
-                <td class="td-mono ${r.eligible?'payroll-positive':''}">
-                  ${r.eligible ? `+$${(r.amount||0).toFixed(2)}` : '–'}
-                </td>
-                ${canAdd ? `<td style="white-space:nowrap;">
-                  <button class="btn btn-sm btn-outline" onclick="editSiteRecord('${r.id}')">✏️</button>
-                  <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('siteRecords','${r.id}')">🗑️</button>
-                </td>` : ''}
-              </tr>`).join('')
-            : `<tr><td colspan="9"><div class="empty-state">
-                <div class="empty-icon">🏗️</div>
-                <h4>${t('site_no_data')}</h4>
-              </div></td></tr>`}
+            ${renderSiteRows(records, canApprove)}
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Log Site Modal -->
+    <!-- Employee: Log Site Visit Modal -->
     <div class="modal-overlay" id="modal-site">
       <div class="modal">
         <div class="modal-header"><h3>${t('site_log_title')}</h3><button class="modal-close">×</button></div>
         <div class="modal-body">
-          <div class="form-group">
-            <label>${t('allow_employee')}</label>
-            <select class="form-control" id="site-emp">
-              <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
-              ${employees.filter(e=>canManageCountry(e.country)&&e.active!==false)
-                .map(e=>`<option value="${e.uid}" data-name="${e.name}" data-country="${e.country}">${e.name} (${e.country})</option>`).join('')}
-            </select>
-          </div>
           <div class="form-row">
             <div class="form-group">
               <label>${t('att_date')}</label>
@@ -5030,13 +5019,116 @@ function renderSiteRecords(records) {
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
-          <button class="btn btn-primary" onclick="saveSiteRecord()">${t('btn_save')}</button>
+          <button class="btn btn-primary" onclick="saveSiteRecord()">
+            ${lang==='vi'?'Gửi ghi nhận':'Submit Record'}
+          </button>
         </div>
       </div>
     </div>
+
+    <!-- Admin: Log for Employee Modal -->
+    <div class="modal-overlay" id="modal-admin-site">
+      <div class="modal">
+        <div class="modal-header"><h3>📋 ${lang==='vi'?'Ghi nhận đi công trường (Admin)':'Log Site Visit (Admin)'}</h3><button class="modal-close">×</button></div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>${t('allow_employee')}</label>
+            <select class="form-control" id="adm-site-emp">
+              <option value="">${lang==='vi'?'Chọn nhân viên…':'Select employee…'}</option>
+              ${employees.filter(e=>canManageCountry(e.country)&&e.active!==false)
+                .map(e=>`<option value="${e.uid}" data-name="${e.name}" data-country="${e.country}">${e.name} (${e.country})</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('att_date')}</label>
+              <input class="form-control" type="date" id="adm-site-date" value="${new Date().toISOString().split('T')[0]}">
+            </div>
+            <div class="form-group">
+              <label>${t('site_location')}</label>
+              <select class="form-control" id="adm-site-location" onchange="calcAdminSiteAllowance()">
+                <option value="Phnom Penh">${t('site_pp')} ($5)</option>
+                <option value="Province">${t('site_province')} ($6)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>${t('site_project')}</label>
+            <input class="form-control" id="adm-site-project" placeholder="${lang==='vi'?'Tên dự án':'Project name'}">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>${t('site_start')}</label>
+              <input class="form-control" type="time" id="adm-site-start" value="07:30" oninput="calcAdminSiteAllowance()">
+            </div>
+            <div class="form-group">
+              <label>${t('site_end')}</label>
+              <input class="form-control" type="time" id="adm-site-end" value="14:00" oninput="calcAdminSiteAllowance()">
+            </div>
+          </div>
+          <div id="adm-site-calc-result" style="margin-top:8px;padding:10px;background:var(--bg);border-radius:6px;font-size:.84rem;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline modal-close">${t('btn_cancel')}</button>
+          <button class="btn btn-primary" onclick="adminSaveSiteRecord()">
+            ${lang==='vi'?'Lưu & Duyệt':'Save & Approve'}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View Photo Modal (placeholder for future GPS/photo evidence) -->
   `;
   calcSiteAllowance();
 }
+
+function renderSiteRows(records, canApprove) {
+  if (!records.length) {
+    return `<tr><td colspan="10"><div class="empty-state">
+      <div class="empty-icon">🏗️</div>
+      <h4>${t('site_no_data')}</h4>
+    </div></td></tr>`;
+  }
+  return records.map(r => {
+    const statusBadge = {
+      pending:  `<span class="badge badge-amber">${lang==='vi'?'Chờ duyệt':'Pending'}</span>`,
+      approved: `<span class="badge badge-green">${lang==='vi'?'Đã duyệt':'Approved'}</span>`,
+      rejected: `<span class="badge badge-red">${lang==='vi'?'Từ chối':'Rejected'}</span>`,
+    }[r.status || 'approved'] || `<span class="badge badge-green">${lang==='vi'?'Đã duyệt':'Approved'}</span>`;
+
+    const canAct = canApprove && r.status === 'pending';
+    const canEdit = canApprove;
+
+    return `<tr>
+      <td><strong>${r.employeeName||'–'}</strong></td>
+      <td class="td-mono">${r.date||'–'}</td>
+      <td>${r.project||'–'}</td>
+      <td>${r.location||'–'}</td>
+      <td class="td-mono">${r.startTime||'–'}</td>
+      <td class="td-mono">${r.endTime||'–'}</td>
+      <td>${r.eligible
+        ? `<span class="badge badge-green">✓ ${t('site_eligible')}</span>`
+        : `<span class="badge badge-grey">✗ ${t('site_not_eligible')}</span>`}
+      </td>
+      <td class="td-mono ${r.eligible && r.status!=='rejected' ?'payroll-positive':''}">
+        ${r.eligible && r.status!=='rejected' ? `+$${(r.amount||0).toFixed(2)}` : '–'}
+      </td>
+      <td>${statusBadge}</td>
+      <td style="white-space:nowrap;">
+        ${canAct ? `
+          <button class="btn btn-sm btn-success" onclick="approveSiteRecord('${r.id}')">${lang==='vi'?'Duyệt':'Approve'}</button>
+          <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="rejectSiteRecord('${r.id}')">${lang==='vi'?'Từ chối':'Reject'}</button>
+        ` : ''}
+        ${canEdit ? `
+          <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="editSiteRecord('${r.id}')">✏️</button>
+          <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="deleteRecord('siteRecords','${r.id}')">🗑️</button>
+        ` : (!canAct ? '–' : '')}
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+window.filterSiteRecords = function() { loadSiteRecords(); };
 
 window.calcSiteAllowance = function() {
   const start    = $('site-start')?.value || '';
@@ -5048,8 +5140,8 @@ window.calcSiteAllowance = function() {
   if (!resultEl) return;
   if (eligible) {
     resultEl.innerHTML = `✅ <strong>${lang==='vi'?'Đủ điều kiện':'Eligible'}</strong> →
-      <strong class="payroll-positive">+$${rate}/day</strong>
-      (${location === 'Phnom Penh' ? 'Phnom Penh rate' : 'Province rate'})`;
+      <strong class="payroll-positive">+$${rate}/${lang==='vi'?'ngày':'day'}</strong>
+      (${location === 'Phnom Penh' ? (lang==='vi'?'Mức Phnom Penh':'Phnom Penh rate') : (lang==='vi'?'Mức tỉnh':'Province rate')})`;
   } else {
     resultEl.innerHTML = `❌ <span style="color:var(--text-muted)">
       ${lang==='vi'
@@ -5059,19 +5151,86 @@ window.calcSiteAllowance = function() {
   }
 };
 
+window.calcAdminSiteAllowance = function() {
+  const start    = $('adm-site-start')?.value || '';
+  const end      = $('adm-site-end')?.value   || '';
+  const location = $('adm-site-location')?.value || 'Phnom Penh';
+  const eligible = calcSiteEligible(start, end);
+  const rate     = SITE_RATES[location] || 5;
+  const resultEl = $('adm-site-calc-result');
+  if (!resultEl) return;
+  if (eligible) {
+    resultEl.innerHTML = `✅ <strong>${lang==='vi'?'Đủ điều kiện':'Eligible'}</strong> →
+      <strong class="payroll-positive">+$${rate}/${lang==='vi'?'ngày':'day'}</strong>`;
+  } else {
+    resultEl.innerHTML = `❌ <span style="color:var(--text-muted)">
+      ${lang==='vi'?'Không đủ điều kiện':'Not eligible'}
+    </span>`;
+  }
+};
+
 window.openLogSite = function() {
   calcSiteAllowance();
   openModal('modal-site');
 };
 
+window.openAdminLogSite = function() {
+  calcAdminSiteAllowance();
+  openModal('modal-admin-site');
+};
+
+// ── Employee submits site visit (status: pending) ──────────────
 window.saveSiteRecord = async function() {
-  const sel      = $('site-emp');
-  const empId    = sel?.value;
   const date     = $('site-date')?.value;
   const location = $('site-location')?.value || 'Phnom Penh';
   const start    = $('site-start')?.value;
   const end      = $('site-end')?.value;
   const project  = $('site-project')?.value.trim();
+
+  if (!date) {
+    toast(lang==='vi'?'Vui lòng chọn ngày.':'Date required.', 'error');
+    return;
+  }
+
+  const eligible = calcSiteEligible(start, end);
+  const amount   = eligible ? (SITE_RATES[location] || 5) : 0;
+  const p        = state.userProfile;
+
+  showLoader();
+  try {
+    await col.siteRecords().add({
+      employeeId:   p.uid,
+      employeeName: p.name,
+      country:      p.country,
+      date, location, project,
+      startTime: start, endTime: end,
+      eligible, amount,
+      status:      'pending',
+      submittedBy: p.uid,
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(
+      lang==='vi'
+        ? `✅ Đã gửi ghi nhận đi công trường. Chờ duyệt.${eligible ? ` (Dự kiến: +$${amount})` : ''}`
+        : `✅ Site visit submitted. Pending approval.${eligible ? ` (Estimated: +$${amount})` : ''}`,
+      'success'
+    );
+    closeModal('modal-site');
+    loadSiteRecords();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
+// ── Admin logs on behalf of employee (auto-approved) ────────────
+window.adminSaveSiteRecord = async function() {
+  const sel      = $('adm-site-emp');
+  const empId    = sel?.value;
+  const date     = $('adm-site-date')?.value;
+  const location = $('adm-site-location')?.value || 'Phnom Penh';
+  const start    = $('adm-site-start')?.value;
+  const end      = $('adm-site-end')?.value;
+  const project  = $('adm-site-project')?.value.trim();
 
   if (!empId || !date) {
     toast(lang==='vi'?'Vui lòng chọn nhân viên và ngày.':'Employee and date required.', 'error');
@@ -5091,19 +5250,54 @@ window.saveSiteRecord = async function() {
       date, location, project,
       startTime: start, endTime: end,
       eligible, amount,
-      createdBy: state.userProfile.uid,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      status:      'approved', // admin-logged = auto-approved
+      submittedBy: state.userProfile.uid,
+      approvedBy:  state.userProfile.uid,
+      approvedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
     });
-    toast(eligible
-      ? (lang==='vi'?`✅ Đã ghi nhận. Phụ cấp: +$${amount}`:`✅ Saved. Allowance: +$${amount}`)
-      : (lang==='vi'?'Đã ghi nhận (không đủ điều kiện hưởng phụ cấp).':'Saved (not eligible for allowance).'),
+    toast(
+      eligible
+        ? (lang==='vi'?`✅ Đã lưu và duyệt. Phụ cấp: +$${amount}`:`✅ Saved & approved. Allowance: +$${amount}`)
+        : (lang==='vi'?'Đã lưu (không đủ điều kiện hưởng phụ cấp).':'Saved (not eligible for allowance).'),
       eligible ? 'success' : 'info'
     );
-    closeModal('modal-site');
+    closeModal('modal-admin-site');
     loadSiteRecords();
   } catch(e) {
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
+};
+
+// ── Admin/Manager approve/reject pending submissions ────────────
+window.approveSiteRecord = async function(id) {
+  showLoader();
+  try {
+    await col.siteRecords().doc(id).update({
+      status:     'approved',
+      approvedBy: state.userProfile.uid,
+      approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
+    toast(lang==='vi'?'✅ Đã duyệt.':'✅ Approved.', 'success');
+    loadSiteRecords();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
+};
+
+window.rejectSiteRecord = async function(id) {
+  const reason = prompt(lang==='vi'?'Lý do từ chối (không bắt buộc):':'Rejection reason (optional):') || '';
+  showLoader();
+  try {
+    await col.siteRecords().doc(id).update({
+      status:          'rejected',
+      rejectedBy:      state.userProfile.uid,
+      rejectedAt:      firebase.firestore.FieldValue.serverTimestamp(),
+      rejectionReason: reason,
+    });
+    toast(lang==='vi'?'Đã từ chối.':'Rejected.', 'success');
+    loadSiteRecords();
+  } catch(e) { toast('Error: ' + e.message, 'error'); }
+  finally { hideLoader(); }
 };
 
 window.deleteSiteRecord = async function(id) {
@@ -5144,7 +5338,7 @@ window.generatePayroll = async function() {
       col.violations().where('date','>=',monthStart).where('date','<=',monthEnd).get(),
       col.otRequests().where('date','>=',monthStart).where('date','<=',monthEnd).where('status','==','approved').get(),
       col.empAllowances().get(),
-      col.siteRecords().where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).get(),
+      col.siteRecords().where('date','>=',monthStart).where('date','<=',monthEnd).where('eligible','==',true).where('status','==','approved').get(),
     ]);
 
     // Aggregate per UID
@@ -5153,19 +5347,29 @@ window.generatePayroll = async function() {
       if (!agg[uid]) agg[uid] = { late: 0, violations: 0, otNormal: 0, otHoliday: 0, siteAllowance: 0, fixedAllowance: 0, phoneAllowance: 0 };
     };
 
-    attSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].late += r.penalty||0; });
-    violSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].violations += r.penalty||0; });
-    otSnap.docs.forEach(d => {
-      const r=d.data(); ensure(r.uid);
-      if (r.otType === 'holiday') agg[r.uid].otHoliday += r.otPay||0;
-      else agg[r.uid].otNormal += r.otPay||0;
-    });
-    siteSnap.docs.forEach(d => { const r=d.data(); ensure(r.uid); agg[r.uid].siteAllowance += r.amount||0; });
+    console.log(`[Payroll] Data: att=${attSnap.size} viol=${violSnap.size} ot=${otSnap.size} allow=${allowSnap.size} site=${siteSnap.size}`);
 
-    // Fixed allowances (monthly, all employees)
+    attSnap.docs.forEach(d => {
+      const r = d.data(); ensure(r.uid);
+      agg[r.uid].late += r.penalty || 0;
+    });
+    violSnap.docs.forEach(d => {
+      const r = d.data(); ensure(r.uid);
+      agg[r.uid].violations += r.penalty || 0;
+    });
+    otSnap.docs.forEach(d => {
+      const r = d.data(); ensure(r.uid);
+      if (r.otType === 'holiday') agg[r.uid].otHoliday += r.otPay || 0;
+      else agg[r.uid].otNormal += r.otPay || 0;
+    });
+    siteSnap.docs.forEach(d => {
+      const r = d.data(); ensure(r.uid);
+      agg[r.uid].siteAllowance += r.amount || 0;
+    });
+    // Fixed allowances — monthly frequency only
     allowSnap.docs.forEach(d => {
-      const r=d.data(); ensure(r.employeeId);
-      if (r.frequency === 'monthly') agg[r.employeeId].fixedAllowance += r.amount||0;
+      const r = d.data(); ensure(r.employeeId);
+      if (r.frequency === 'monthly') agg[r.employeeId].fixedAllowance += r.amount || 0;
     });
 
     const batch = db.batch();
@@ -5175,10 +5379,12 @@ window.generatePayroll = async function() {
       const basic     = e.salary || 0;
       const currency  = e.currency || getCurrency(e.country);
 
-      // Phone allowance: $1/week × weeks in month (from policy)
-      // For non-USD, scale proportionally
-      const phoneRate = currency === 'USD' ? 1 : 0; // only USD for now
+      // Phone allowance: from policy (default $1/week × weeks in month)
+      // Works for both USD and VND employees per their profile currency
+      const phoneRate = currency === 'USD' ? 1 : 0;
       a.phoneAllowance = phoneRate * weeksInMonth;
+
+      console.log(`[Payroll] ${e.name}: basic=${basic} fixed=${a.fixedAllowance} site=${a.siteAllowance} phone=${a.phoneAllowance} ot=${a.otNormal}/${a.otHoliday} late=${a.late} viol=${a.violations}`);
 
       const totalAdditions  = basic + a.fixedAllowance + a.siteAllowance + a.phoneAllowance + a.otNormal + a.otHoliday;
       const totalDeductions = a.late + a.violations;
@@ -5255,21 +5461,52 @@ function renderPayroll(employees, existing, month) {
           </tr></thead>
           <tbody>
             ${employees.map(e => {
-              const p   = existing[e.uid] || {};
-              const cur = e.currency || getCurrency(e.country);
-              return `<tr>
-                <td><strong>${e.name}</strong></td>
+              const p      = existing[e.uid] || {};
+              const cur    = p.currency || e.currency || getCurrency(e.country);
+              const hasGen = !!existing[e.uid]; // has been generated
+              return `<tr style="${!hasGen?'opacity:.7':''}">
+                <td>
+                  <strong>${e.name}</strong>
+                  ${!hasGen ? `<br><span style="font-size:.72rem;color:var(--amber);">
+                    ⚠️ ${lang==='vi'?'Chưa tạo bảng lương':'Not generated yet'}
+                  </span>` : ''}
+                </td>
                 <td>${COUNTRY_FLAG[e.country]||''} ${e.country}</td>
-                <td class="td-mono">${formatCurrency(p.basic||e.salary||0, cur)}</td>
-                <td class="td-mono payroll-positive">+${formatCurrency(p.fixedAllowance||0, cur)}</td>
-                <td class="td-mono payroll-positive">+${formatCurrency(p.siteAllowance||0, cur)}</td>
-                <td class="td-mono payroll-positive">+${formatCurrency(p.phoneAllowance||0, cur)}</td>
-                <td class="td-mono payroll-positive">+${formatCurrency(p.otNormal||0, cur)}</td>
-                <td class="td-mono payroll-positive">+${formatCurrency(p.otHoliday||0, cur)}</td>
-                <td class="td-mono payroll-negative">-${formatCurrency(p.lateDeduction||0, cur)}</td>
-                <td class="td-mono payroll-negative">-${formatCurrency(p.penalties||0, cur)}</td>
-                <td class="td-mono payroll-total">${formatCurrency(p.net||(e.salary||0), cur)}</td>
-                ${!isLocked ? `<td><button class="btn btn-sm btn-outline" onclick="editPayrollLine('${e.uid}')">${t('pay_edit')}</button></td>` : ''}
+                <td class="td-mono">${formatCurrency(p.basic ?? e.salary ?? 0, cur)}</td>
+                <td class="td-mono ${p.fixedAllowance>0?'payroll-positive':''}">
+                  ${hasGen ? `+${formatCurrency(p.fixedAllowance||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.siteAllowance>0?'payroll-positive':''}">
+                  ${hasGen ? `+${formatCurrency(p.siteAllowance||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.phoneAllowance>0?'payroll-positive':''}">
+                  ${hasGen ? `+${formatCurrency(p.phoneAllowance||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.otNormal>0?'payroll-positive':''}">
+                  ${hasGen ? `+${formatCurrency(p.otNormal||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.otHoliday>0?'payroll-positive':''}">
+                  ${hasGen ? `+${formatCurrency(p.otHoliday||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.lateDeduction>0?'payroll-negative':''}">
+                  ${hasGen ? `-${formatCurrency(p.lateDeduction||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono ${p.penalties>0?'payroll-negative':''}">
+                  ${hasGen ? `-${formatCurrency(p.penalties||0, cur)}` : '–'}
+                </td>
+                <td class="td-mono payroll-total">
+                  ${hasGen
+                    ? formatCurrency(p.net ?? 0, cur)
+                    : `<span style="color:var(--text-muted);font-size:.80rem;">${lang==='vi'?'Chưa tạo':'Pending'}</span>`}
+                </td>
+                ${!isLocked ? `<td>
+                  ${hasGen
+                    ? `<button class="btn btn-sm btn-outline" onclick="editPayrollLine('${e.uid}')">${t('pay_edit')}</button>`
+                    : `<button class="btn btn-sm btn-gold" onclick="regenerateOneEmployee('${e.uid}','${new Date().getFullYear()}-${String(new Date().getMonth()+1).padStart(2,'0')}')"
+                        title="${lang==='vi'?'Tạo lương cho nhân viên này':'Generate for this employee'}">
+                        ⚡
+                      </button>`}
+                </td>` : ''}
               </tr>`;
             }).join('')}
           </tbody>
