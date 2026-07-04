@@ -4480,16 +4480,27 @@ window.deleteAllowance = async function(id) {
 async function loadOTManage() {
   showLoader();
   try {
-    let query = col.otRequests().orderBy('date','desc').limit(100);
-    if (isCountryManager()) query = col.otRequests()
-      .where('country','==',state.userProfile.country)
-      .orderBy('date','desc').limit(100);
+    let query;
+
+    if (isEmployee()) {
+      // Employee chỉ xem OT của chính mình
+      query = col.otRequests()
+        .where('employeeId','==',state.userProfile.uid)
+        .orderBy('date','desc').limit(100);
+    } else if (isCountryManager()) {
+      query = col.otRequests()
+        .where('country','==',state.userProfile.country)
+        .orderBy('date','desc').limit(100);
+    } else {
+      // Admin/Super Admin xem tất cả
+      query = col.otRequests().orderBy('date','desc').limit(100);
+    }
 
     const snap = await query.get();
     const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Load employees for admin add form
-    if (!state.cache.employees) {
+    // Load employees for admin add form (không cần cho employee)
+    if (!isEmployee() && !state.cache.employees) {
       const es = await col.users().where('active','==',true).get();
       state.cache.employees = es.docs.map(d => ({ uid: d.id, ...d.data() }));
     }
@@ -4899,13 +4910,18 @@ function calcSiteEligible(startTime, endTime) {
 async function loadSiteRecords() {
   showLoader();
   try {
-    let query = col.siteRecords().orderBy('date','desc').limit(100);
-    if (isCountryManager()) query = col.siteRecords()
-      .where('country','==',state.userProfile.country)
-      .orderBy('date','desc').limit(100);
-    if (isEmployee()) query = col.siteRecords()
-      .where('employeeId','==',state.userProfile.uid)
-      .orderBy('date','desc').limit(100);
+    let query;
+    if (isEmployee()) {
+      query = col.siteRecords()
+        .where('employeeId','==',state.userProfile.uid)
+        .orderBy('date','desc').limit(100);
+    } else if (isCountryManager()) {
+      query = col.siteRecords()
+        .where('country','==',state.userProfile.country)
+        .orderBy('date','desc').limit(100);
+    } else {
+      query = col.siteRecords().orderBy('date','desc').limit(100);
+    }
 
     const snap = await query.get();
     const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
