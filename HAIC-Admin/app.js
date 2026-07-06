@@ -949,18 +949,42 @@ function getNavItems(role) {
   ];
 }
 
+// ── Profile helper ────────────────────────────────────────────
+async function fetchUserProfile(uid) {
+  const doc = await col.users().doc(uid).get();
+  if (!doc.exists) return null;
+  return { uid, ...doc.data() };
+}
+
+// Gọi trước mọi write operation — đảm bảo profile luôn có
+// Đặc biệt quan trọng trên iOS/Android khi app resume từ background
+async function ensureProfile() {
+  const currentUser = auth.currentUser;
+  if (!currentUser) return null;
+  // Profile đã có và đúng uid → dùng luôn
+  if (state.userProfile && state.userProfile.uid === currentUser.uid) {
+    return state.userProfile;
+  }
+  // Re-fetch nếu bị mất (mobile hay xảy ra)
+  try {
+    const profile = await fetchUserProfile(currentUser.uid);
+    if (profile) { state.userProfile = profile; return profile; }
+  } catch(e) { console.error('ensureProfile:', e); }
+  return null;
+}
+
 // ── Authentication ────────────────────────────────────────────
 auth.onAuthStateChanged(async user => {
   if (user) {
     state.currentUser = user;
     try {
-      const doc = await col.users().doc(user.uid).get();
-      if (!doc.exists) {
-        toast('User profile not found. Contact administrator.', 'error');
+      const profile = await fetchUserProfile(user.uid);
+      if (!profile) {
+        toast(t('err_no_profile'), 'error');
         auth.signOut();
         return;
       }
-      state.userProfile = { uid: user.uid, ...doc.data() };
+      state.userProfile = profile;
       initApp();
     } catch (err) {
       toast('Error loading profile: ' + err.message, 'error');
@@ -3290,15 +3314,23 @@ window.submitLeaveRequest = async function() {
   }
 
   const days    = Math.ceil((toDate - fromDate) / 86400000) + 1;
-  const balance = await getLeaveBalance(state.userProfile.uid);
+
+  // Đảm bảo profile có — quan trọng trên mobile
+  const profileCheck = await ensureProfile();
+  if (!profileCheck) {
+    toast(lang==='vi'?'Phiên đăng nhập hết hạn.':'Session expired.', 'error');
+    return;
+  }
+
+  const balance = await getLeaveBalance(auth.currentUser.uid);
   const leaveType = balance >= days ? 'paid' : 'unpaid';
 
   showLoader();
   try {
     await col.leave().add({
-      uid:          state.userProfile.uid,
-      employeeName: state.userProfile.name,
-      country:      state.userProfile.country,
+      uid:          auth.currentUser.uid,
+      employeeName: state.userProfile.name || '',
+      country:      state.userProfile.country || '',
       from, to, days, reason, leaveType,
       status:    'pending',
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
@@ -4792,20 +4824,13 @@ window.submitOTRequest = async function() {
     return;
   }
 
-  // Đảm bảo auth còn hạn trên mobile
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
+  // Đảm bảo profile luôn có — dùng ensureProfile()
+  const p = await ensureProfile();
+  if (!p) {
     toast(lang==='vi'?'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.':'Session expired.', 'error');
     return;
   }
-  if (!state.userProfile || !state.userProfile.uid) {
-    try {
-      const doc = await db.collection('apps').doc('hr').collection('users').doc(currentUser.uid).get();
-      if (doc.exists) state.userProfile = { uid: currentUser.uid, ...doc.data() };
-    } catch(e) { toast('Could not load profile.', 'error'); return; }
-  }
-  const p = state.userProfile;
-  const safeUid = currentUser.uid;
+  const safeUid = auth.currentUser.uid;
   showLoader();
   try {
     await col.otRequests().add({
@@ -5221,27 +5246,13 @@ window.saveSiteRecord = async function() {
     return;
   }
 
-  // Đảm bảo userProfile đã load — quan trọng trên mobile
-  const currentUser = auth.currentUser;
-  if (!currentUser) {
+  // Đảm bảo profile luôn có — dùng ensureProfile() cho cả iOS & Android
+  const p = await ensureProfile();
+  if (!p) {
     toast(lang==='vi'?'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.':'Session expired. Please sign in again.', 'error');
     return;
   }
-
-  // Reload profile nếu bị mất (mobile hay bị vậy)
-  if (!state.userProfile || !state.userProfile.uid) {
-    try {
-      const doc = await db.collection('apps').doc('hr').collection('users').doc(currentUser.uid).get();
-      if (doc.exists) state.userProfile = { uid: currentUser.uid, ...doc.data() };
-    } catch(e) {
-      toast(lang==='vi'?'Không tải được hồ sơ. Thử lại.':'Could not load profile. Try again.', 'error');
-      return;
-    }
-  }
-
-  const p = state.userProfile;
-  // Đảm bảo uid đúng với currentUser để Rules không chặn
-  const safeUid     = currentUser.uid;
+  const safeUid     = auth.currentUser.uid; // luôn lấy từ Firebase Auth
   const safeName    = p.name || '';
   const safeCountry = p.country || '';
 

@@ -21,8 +21,6 @@ const db   = firebase.firestore();
 const storage = firebase.storage();
 
 // ── Firestore offline persistence ────────────────────────────
-// Tắt trên mobile vì hay gây lỗi permissions với multi-tab
-const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-if (!isMobile) {
-  db.enablePersistence({ synchronizeTabs: true }).catch(() => {});
-}
+// TẮT HOÀN TOÀN — tránh lỗi permissions trên iOS Safari & Android Chrome
+// App vẫn hoạt động bình thường, chỉ không có offline cache
+// db.enablePersistence().catch(() => {});
