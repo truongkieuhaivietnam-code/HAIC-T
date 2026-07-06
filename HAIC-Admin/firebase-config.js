@@ -5,22 +5,17 @@
 // ============================================================
 
 const FIREBASE_CONFIG = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  apiKey: "AIzaSyDrU-X28Z7cE1ebdR4VTYYMnzJpHYbMIRM",
+  authDomain: "hai-cloud-88321.firebaseapp.com",
+  projectId: "hai-cloud-88321",
+  storageBucket: "hai-cloud-88321.firebasestorage.app",
+  messagingSenderId: "246892343866",
+  appId: "1:246892343866:web:703b0b85d72956a6de7b03"
 };
 
 // Initialize Firebase
 firebase.initializeApp(FIREBASE_CONFIG);
 
-const auth = firebase.auth();
-const db   = firebase.firestore();
+const auth    = firebase.auth();
+const db      = firebase.firestore();
 const storage = firebase.storage();
-
-// ── Firestore offline persistence ────────────────────────────
-// TẮT HOÀN TOÀN — tránh lỗi permissions trên iOS Safari & Android Chrome
-// App vẫn hoạt động bình thường, chỉ không có offline cache
-// db.enablePersistence().catch(() => {});
