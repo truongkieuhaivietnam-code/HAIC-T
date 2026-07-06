@@ -980,7 +980,7 @@ auth.onAuthStateChanged(async user => {
     try {
       const profile = await fetchUserProfile(user.uid);
       if (!profile) {
-        toast(t('err_no_profile'), 'error');
+        toast('User profile not found. Contact administrator.', 'error');
         auth.signOut();
         return;
       }
