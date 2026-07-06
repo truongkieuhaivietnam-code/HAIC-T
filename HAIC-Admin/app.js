@@ -4792,13 +4792,26 @@ window.submitOTRequest = async function() {
     return;
   }
 
+  // Đảm bảo auth còn hạn trên mobile
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    toast(lang==='vi'?'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.':'Session expired.', 'error');
+    return;
+  }
+  if (!state.userProfile || !state.userProfile.uid) {
+    try {
+      const doc = await db.collection('apps').doc('hr').collection('users').doc(currentUser.uid).get();
+      if (doc.exists) state.userProfile = { uid: currentUser.uid, ...doc.data() };
+    } catch(e) { toast('Could not load profile.', 'error'); return; }
+  }
   const p = state.userProfile;
+  const safeUid = currentUser.uid;
   showLoader();
   try {
     await col.otRequests().add({
-      employeeId:   p.uid,
-      employeeName: p.name,
-      country:      p.country,
+      employeeId:   safeUid,
+      employeeName: p.name || '',
+      country:      p.country || '',
       currency:     p.currency || getCurrency(p.country),
       date, startTime: start, endTime: end,
       hours, otPay, otType, reason,
@@ -5208,22 +5221,48 @@ window.saveSiteRecord = async function() {
     return;
   }
 
+  // Đảm bảo userProfile đã load — quan trọng trên mobile
+  const currentUser = auth.currentUser;
+  if (!currentUser) {
+    toast(lang==='vi'?'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.':'Session expired. Please sign in again.', 'error');
+    return;
+  }
+
+  // Reload profile nếu bị mất (mobile hay bị vậy)
+  if (!state.userProfile || !state.userProfile.uid) {
+    try {
+      const doc = await db.collection('apps').doc('hr').collection('users').doc(currentUser.uid).get();
+      if (doc.exists) state.userProfile = { uid: currentUser.uid, ...doc.data() };
+    } catch(e) {
+      toast(lang==='vi'?'Không tải được hồ sơ. Thử lại.':'Could not load profile. Try again.', 'error');
+      return;
+    }
+  }
+
+  const p = state.userProfile;
+  // Đảm bảo uid đúng với currentUser để Rules không chặn
+  const safeUid     = currentUser.uid;
+  const safeName    = p.name || '';
+  const safeCountry = p.country || '';
+
   const eligible = calcSiteEligible(start, end);
   const amount   = eligible ? (SITE_RATES[location] || 5) : 0;
-  const p        = state.userProfile;
 
   showLoader();
   try {
     await col.siteRecords().add({
-      employeeId:   p.uid,
-      employeeName: p.name,
-      country:      p.country,
-      date, location, project,
-      startTime: start, endTime: end,
-      eligible, amount,
-      status:      'pending',
-      submittedBy: p.uid,
-      createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+      employeeId:   safeUid,      // dùng auth.currentUser.uid để chắc chắn khớp Rules
+      employeeName: safeName,
+      country:      safeCountry,
+      date, location,
+      project:      project || '',
+      startTime:    start || '',
+      endTime:      end || '',
+      eligible,
+      amount,
+      status:       'pending',
+      submittedBy:  safeUid,
+      createdAt:    firebase.firestore.FieldValue.serverTimestamp(),
     });
     toast(
       lang==='vi'
@@ -5234,6 +5273,7 @@ window.saveSiteRecord = async function() {
     closeModal('modal-site');
     loadSiteRecords();
   } catch(e) {
+    console.error('saveSiteRecord error:', e);
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
 };
