@@ -5259,10 +5259,18 @@ window.saveSiteRecord = async function() {
   const eligible = calcSiteEligible(start, end);
   const amount   = eligible ? (SITE_RATES[location] || 5) : 0;
 
+  // Debug info — hiện trước khi ghi để xác nhận data đúng
+  console.log('[Site] Writing:', {
+    employeeId: safeUid,
+    employeeName: safeName,
+    country: safeCountry,
+    date, location, start, end, eligible, amount
+  });
+
   showLoader();
   try {
     await col.siteRecords().add({
-      employeeId:   safeUid,      // dùng auth.currentUser.uid để chắc chắn khớp Rules
+      employeeId:   safeUid,
       employeeName: safeName,
       country:      safeCountry,
       date, location,
@@ -5284,7 +5292,9 @@ window.saveSiteRecord = async function() {
     closeModal('modal-site');
     loadSiteRecords();
   } catch(e) {
-    console.error('saveSiteRecord error:', e);
+    console.error('[Site] Error:', e.code, e.message);
+    // Hiện alert trên điện thoại để xem lỗi cụ thể
+    alert('Debug Error:\nCode: ' + (e.code||'none') + '\nMessage: ' + e.message + '\nUID: ' + safeUid + '\nCountry: ' + safeCountry);
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
 };
