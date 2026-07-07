@@ -4512,32 +4512,52 @@ window.deleteAllowance = async function(id) {
 async function loadOTManage() {
   showLoader();
   try {
+    // iOS Safari fix: wait for auth before any Firestore read
+    const currentUser = auth.currentUser;
+    console.log('[OT] auth.currentUser:', currentUser ? currentUser.uid : 'NULL');
+
+    if (!currentUser) {
+      console.warn('[OT] auth not ready, waiting...');
+      hideLoader();
+      await new Promise(resolve => {
+        const unsub = auth.onAuthStateChanged(user => { unsub(); resolve(user); });
+      });
+      loadOTManage();
+      return;
+    }
+
+    // Reload profile if missing (happens on iOS after app resume)
+    if (!state.userProfile || !state.userProfile.uid) {
+      const doc = await col.users().doc(currentUser.uid).get();
+      if (doc.exists) state.userProfile = { uid: currentUser.uid, ...doc.data() };
+      else { toast('Profile not found.', 'error'); hideLoader(); return; }
+    }
+
+    const uid = currentUser.uid; // always from Firebase Auth, not state
     let query;
 
     if (isEmployee()) {
-      // Không dùng orderBy để tránh lỗi index trên iOS Safari
-      query = col.otRequests()
-        .where('employeeId','==',state.userProfile.uid)
-        .limit(100);
+      console.log('[OT] Employee query: employeeId ==', uid);
+      query = col.otRequests().where('employeeId','==',uid).limit(100);
     } else if (isCountryManager()) {
       query = col.otRequests()
         .where('country','==',state.userProfile.country)
         .orderBy('date','desc').limit(100);
     } else {
-      // Admin/Super Admin xem tất cả
       query = col.otRequests().orderBy('date','desc').limit(100);
     }
 
     const snap = await query.get();
+    console.log('[OT] Query OK, docs:', snap.size);
     const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    // Load employees for admin add form (không cần cho employee)
     if (!isEmployee() && !state.cache.employees) {
       const es = await col.users().where('active','==',true).get();
       state.cache.employees = es.docs.map(d => ({ uid: d.id, ...d.data() }));
     }
     renderOTManage(records);
   } catch(e) {
+    console.error('[OT] error:', e.code, e.message);
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
 }
@@ -4948,29 +4968,73 @@ function calcSiteEligible(startTime, endTime) {
 async function loadSiteRecords() {
   showLoader();
   try {
-    let query;
-    if (isEmployee()) {
-      // Không dùng orderBy để tránh lỗi index trên iOS Safari
-      query = col.siteRecords()
-        .where('employeeId','==',state.userProfile.uid)
-        .limit(100);
-    } else if (isCountryManager()) {
-      query = col.siteRecords()
-        .where('country','==',state.userProfile.country)
-        .orderBy('date','desc').limit(100);
-    } else {
-      query = col.siteRecords().orderBy('date','desc').limit(100);
+    // ── Step 1: Ensure auth.currentUser is available ──────────
+    const currentUser = auth.currentUser;
+    console.log('[Site] auth.currentUser:', currentUser ? currentUser.uid : 'NULL');
+
+    if (!currentUser) {
+      // iOS Safari: auth not ready yet — wait and retry
+      console.warn('[Site] auth.currentUser is null, waiting for auth state...');
+      hideLoader();
+      await new Promise(resolve => {
+        const unsub = auth.onAuthStateChanged(user => {
+          unsub();
+          resolve(user);
+        });
+      });
+      loadSiteRecords(); // retry after auth ready
+      return;
     }
 
+    // ── Step 2: Ensure profile is loaded ──────────────────────
+    if (!state.userProfile || !state.userProfile.uid) {
+      console.warn('[Site] userProfile missing, fetching...');
+      const doc = await col.users().doc(currentUser.uid).get();
+      if (doc.exists) {
+        state.userProfile = { uid: currentUser.uid, ...doc.data() };
+        console.log('[Site] profile reloaded:', state.userProfile.role);
+      } else {
+        toast('Profile not found.', 'error');
+        hideLoader();
+        return;
+      }
+    }
+
+    // ── Step 3: Build query based on role ─────────────────────
+    let query;
+    const uid = currentUser.uid; // always use auth uid, not state.userProfile.uid
+
+    if (isEmployee()) {
+      console.log('[Site] Employee query: employeeId ==', uid);
+      // Simple where query — no orderBy to avoid composite index on iOS
+      query = col.siteRecords()
+        .where('employeeId', '==', uid)
+        .limit(100);
+    } else if (isCountryManager()) {
+      console.log('[Site] CM query: country ==', state.userProfile.country);
+      query = col.siteRecords()
+        .where('country', '==', state.userProfile.country)
+        .orderBy('date', 'desc').limit(100);
+    } else {
+      console.log('[Site] Admin query: all records');
+      query = col.siteRecords().orderBy('date', 'desc').limit(100);
+    }
+
+    // ── Step 4: Execute query ──────────────────────────────────
+    console.log('[Site] Executing query...');
     const snap = await query.get();
+    console.log('[Site] Query OK, docs:', snap.size);
     const records = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-    if (!state.cache.employees) {
+    // Only load employees list for admin/CM (employees don't need it)
+    if (!isEmployee() && !state.cache.employees) {
       const es = await col.users().where('active','==',true).get();
       state.cache.employees = es.docs.map(d => ({ uid: d.id, ...d.data() }));
     }
+
     renderSiteRecords(records);
   } catch(e) {
+    console.error('[Site] loadSiteRecords error:', e.code, e.message);
     toast('Error: ' + e.message, 'error');
   } finally { hideLoader(); }
 }
