@@ -3229,7 +3229,7 @@ async function loadMyLeave() {
   let requests = [], balance = 0;
   try {
     const [reqSnap, bal] = await Promise.all([
-      col.leave().where('uid','==',uid).orderBy('createdAt','desc').limit(50).get(),
+      col.leave().where('uid','==',uid).limit(50).get(),
       getLeaveBalance(uid)
     ]);
     requests = reqSnap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -3361,7 +3361,7 @@ async function loadMySalary() {
   showLoader();
   let records = [];
   try {
-    const snap = await col.payroll().where('uid','==',uid).orderBy('month','desc').limit(12).get();
+    const snap = await col.payroll().where('uid','==',uid).limit(12).get();
     records = snap.docs.map(d => d.data());
   } catch(e) {
     console.error('loadMySalary error:', e);
@@ -3401,8 +3401,8 @@ async function loadMyPenalties() {
   let att = [], viol = [];
   try {
     const [attSnap, violSnap] = await Promise.all([
-      col.attendance().where('uid','==',uid).orderBy('date','desc').limit(50).get(),
-      col.violations().where('uid','==',uid).orderBy('date','desc').limit(50).get()
+      col.attendance().where('uid','==',uid).limit(50).get(),
+      col.violations().where('uid','==',uid).limit(50).get()
     ]);
     att  = attSnap.docs.map(d => ({ ...d.data(), _type: 'late' }));
     viol = violSnap.docs.map(d => ({ ...d.data(), _type: 'violation' }));
@@ -4515,10 +4515,10 @@ async function loadOTManage() {
     let query;
 
     if (isEmployee()) {
-      // Employee chỉ xem OT của chính mình
+      // Không dùng orderBy để tránh lỗi index trên iOS Safari
       query = col.otRequests()
         .where('employeeId','==',state.userProfile.uid)
-        .orderBy('date','desc').limit(100);
+        .limit(100);
     } else if (isCountryManager()) {
       query = col.otRequests()
         .where('country','==',state.userProfile.country)
@@ -4950,9 +4950,10 @@ async function loadSiteRecords() {
   try {
     let query;
     if (isEmployee()) {
+      // Không dùng orderBy để tránh lỗi index trên iOS Safari
       query = col.siteRecords()
         .where('employeeId','==',state.userProfile.uid)
-        .orderBy('date','desc').limit(100);
+        .limit(100);
     } else if (isCountryManager()) {
       query = col.siteRecords()
         .where('country','==',state.userProfile.country)
