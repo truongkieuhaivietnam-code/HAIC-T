@@ -4576,12 +4576,12 @@ function renderOTManage(records) {
           <thead><tr>
             <th>${t('allow_employee')}</th>
             <th>${t('att_date')}</th>
-            <th>${t('ot_start')}</th>
-            <th>${t('ot_end')}</th>
+            <th class="ot-hide-mobile">${t('ot_start')}</th>
+            <th class="ot-hide-mobile">${t('ot_end')}</th>
             <th>${lang==='vi'?'Số giờ':'Hours'}</th>
-            <th>${lang==='vi'?'Loại':'Type'}</th>
+            <th class="ot-hide-mobile">${lang==='vi'?'Loại':'Type'}</th>
             <th>${lang==='vi'?'Tiền OT':'OT Pay'}</th>
-            <th>${t('ot_reason')}</th>
+            <th class="ot-hide-mobile">${t('ot_reason')}</th>
             <th>${t('ot_status')}</th>
             ${canAdmin ? `<th>${t('emp_actions')}</th>` : ''}
           </tr></thead>
@@ -4701,12 +4701,12 @@ function renderOTRows(records, canAdmin) {
     return `<tr>
       <td><strong>${r.employeeName||'–'}</strong></td>
       <td class="td-mono">${r.date||'–'}</td>
-      <td class="td-mono">${r.startTime||'–'}</td>
-      <td class="td-mono">${r.endTime||'–'}</td>
+      <td class="td-mono ot-hide-mobile">${r.startTime||'–'}</td>
+      <td class="td-mono ot-hide-mobile">${r.endTime||'–'}</td>
       <td class="td-mono">${(r.hours||0).toFixed(1)}h</td>
-      <td><span class="badge badge-${r.otType==='holiday'?'amber':'blue'}">${r.otType||'normal'}</span></td>
+      <td class="ot-hide-mobile"><span class="badge badge-${r.otType==='holiday'?'amber':'blue'}">${r.otType||'normal'}</span></td>
       <td class="td-mono payroll-positive">+${formatCurrency(r.otPay||0, r.currency||'USD')}</td>
-      <td style="max-width:160px;white-space:normal;font-size:.80rem;">${r.reason||'–'}</td>
+      <td class="ot-hide-mobile" style="max-width:160px;white-space:normal;font-size:.80rem;">${r.reason||'–'}</td>
       <td>${statusBadge}</td>
       ${canAdmin ? `<td style="white-space:nowrap;">
         ${canAct ? `
