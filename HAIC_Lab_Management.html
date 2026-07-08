@@ -217,7 +217,15 @@
     <!-- ===================== DASHBOARD ===================== -->
     <section class="view" id="view-dashboard">
       <h2 class="view-title">Today Status <span class="vi">— Tổng quan hôm nay</span></h2>
-      <p class="view-sub" id="dashDate"></p>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+        <p class="view-sub" id="dashDate" style="margin:0;"></p>
+        <select id="dashCountryFilter" class="search-input" onchange="renderDashboard()" style="min-width:200px;">
+          <option value="">🌏 All countries / Tất cả quốc gia</option>
+          <option value="KH">🇰🇭 Cambodia (KH)</option>
+          <option value="LA">🇱🇦 Laos (LA)</option>
+          <option value="VN">🇻🇳 Vietnam (VN)</option>
+        </select>
+      </div>
 
       <div class="stat-row" id="dashStats"></div>
 
@@ -267,6 +275,12 @@
 
       <div class="toolbar">
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="projectCountryFilter" class="search-input" onchange="setProjectsCountryFilter(this.value)">
+            <option value="">All countries / Tất cả quốc gia</option>
+            <option value="KH">🇰🇭 Cambodia (KH)</option>
+            <option value="LA">🇱🇦 Laos (LA)</option>
+            <option value="VN">🇻🇳 Vietnam (VN)</option>
+          </select>
           <select id="projectTypeFilter" class="search-input" onchange="setProjectsTypeFilter(this.value)">
             <option value="">All types / Tất cả loại dự án</option>
           </select>
@@ -287,6 +301,12 @@
 
       <div class="toolbar">
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="filterCountry" class="search-input" onchange="renderTasks()">
+            <option value="">All countries / Tất cả quốc gia</option>
+            <option value="KH">🇰🇭 Cambodia (KH)</option>
+            <option value="LA">🇱🇦 Laos (LA)</option>
+            <option value="VN">🇻🇳 Vietnam (VN)</option>
+          </select>
           <select id="filterStaff" class="search-input" onchange="renderTasks()">
             <option value="">All staff / Tất cả nhân viên</option>
           </select>
@@ -433,6 +453,14 @@
       </div>
       <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
       <div><label>Client</label><input id="pClient"></div>
+      <div>
+        <label>Country<span class="vi">Quốc gia</span></label>
+        <select id="pCountry" onchange="suggestProjectCode()">
+          <option value="KH">🇰🇭 Cambodia / Campuchia (KH)</option>
+          <option value="LA">🇱🇦 Laos / Lào (LA)</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam (VN)</option>
+        </select>
+      </div>
       <div>
         <label>Project Type<span class="vi">Loại dự án</span></label>
         <select id="pType" onchange="suggestProjectCode()">
@@ -1038,7 +1066,18 @@ function assigneeUsers(){
 function renderDashboard(){
   document.getElementById('dashDate').textContent = 'Today / Hôm nay: ' + fmtDate(todayStr());
 
-  let tasks = TASKS;
+  const dashCountry = document.getElementById('dashCountryFilter') ? document.getElementById('dashCountryFilter').value : '';
+  const countryInfo = dashCountry ? COUNTRY_LABEL[dashCountry] : null;
+
+  const filterByCountry = (taskList) => {
+    if(!dashCountry) return taskList;
+    return taskList.filter(t=>{
+      const proj = PROJECTS.find(p=>p.id===t.projectId);
+      return proj && proj.country===dashCountry;
+    });
+  };
+
+  let tasks = filterByCountry(TASKS);
   if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
 
   const total = tasks.length;
@@ -1051,6 +1090,7 @@ function renderDashboard(){
   const done = tasks.filter(t=>taskStatus(t)==='done').length;
 
   document.getElementById('dashStats').innerHTML = `
+    ${countryInfo?`<div style="grid-column:1/-1;font-size:13px;color:var(--slate);padding:4px 0;">${countryInfo.flag} Showing: ${countryInfo.name} / ${countryInfo.vi}</div>`:''}
     <div class="stat-card"><div class="num">${total}</div><div class="lbl">Total samples<br>Tổng số mẫu</div></div>
     <div class="stat-card"><div class="num">${done}</div><div class="lbl">Completed<br>Hoàn tất</div></div>
     <div class="stat-card yellow"><div class="num">${atRisk}</div><div class="lbl">At risk (≤2 days)<br>Nguy cơ trễ (≤2 ngày)</div></div>
@@ -1065,7 +1105,7 @@ function renderDashboard(){
     rows = `<tr><td colspan="6"><div class="empty-state"><div class="icon">🧪</div><span class="en">No technicians yet.</span><br><span class="vi">Chưa có technician nào.</span></div></td></tr>`;
   } else {
     staffList.forEach(staff=>{
-      const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id) && taskStatus(t)!=='done');
+      const myTasks = filterByCountry(TASKS).filter(t=>getAssigneeIds(t).includes(staff.id) && taskStatus(t)!=='done');
       if(myTasks.length===0){
         rows += `<tr>
           <td><strong>${staff.name}</strong></td>
@@ -1096,7 +1136,7 @@ function renderDashboard(){
   }
   document.getElementById('dashTableBody').innerHTML = rows;
 
-  const alertTasks = TASKS.filter(t=>{
+  const alertTasks = filterByCountry(TASKS).filter(t=>{
     const st=taskStatus(t);
     if(SESSION.role==='technician' && !getAssigneeIds(t).includes(SESSION.uid)) return false;
     return st==='overdue' || (st==='progress' && t.deadline && daysBetween(todayStr(),t.deadline)<=2);
@@ -1263,8 +1303,15 @@ function renderTasks(){
   if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
   const fStaff = filterSel.value;
   const fStatus = document.getElementById('filterStatus').value;
+  const fCountry = document.getElementById('filterCountry').value;
   if(fStaff) tasks = tasks.filter(t=>getAssigneeIds(t).includes(fStaff));
   if(fStatus) tasks = tasks.filter(t=>taskStatus(t)===fStatus);
+  if(fCountry){
+    tasks = tasks.filter(t=>{
+      const proj = PROJECTS.find(p=>p.id===t.projectId);
+      return proj && proj.country===fCountry;
+    });
+  }
   if(TASKS_PROJECT_FILTER) tasks = tasks.filter(t=>t.projectId===TASKS_PROJECT_FILTER);
 
   tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
@@ -1294,7 +1341,7 @@ function renderTasks(){
       html += `<div class="section-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
           <div>
-            <h3 style="margin-bottom:4px;">${t.project||'(no project)'} — ${t.sampleId||''}</h3>
+            <h3 style="margin-bottom:4px;">${(()=>{ const proj=PROJECTS.find(p=>p.id===t.projectId); const cy=proj&&COUNTRY_LABEL[proj.country]; return cy?`<span style="font-size:14px;">${cy.flag}</span> `:''; })()} ${t.project||'(no project)'} — ${t.sampleId||''}</h3>
             <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
             </div>
           </div>
@@ -1494,6 +1541,12 @@ const PROJECT_TYPE_LABEL = {
   calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'},
   other:       {en:'Other',                           vi:'Khác',                        cls:'grey'}
 };
+const COUNTRY_LABEL = {
+  KH: {name:'Cambodia',  vi:'Campuchia', flag:'🇰🇭'},
+  LA: {name:'Laos',      vi:'Lào',       flag:'🇱🇦'},
+  VN: {name:'Vietnam',   vi:'Việt Nam',  flag:'🇻🇳'}
+};
+
 const PROJECT_CODE_PREFIX = {
   soil:        'SI',
   materials:   'CMT',
@@ -1504,9 +1557,11 @@ const PROJECT_CODE_PREFIX = {
 
 function suggestProjectCode(){
   const type = document.getElementById('pType').value;
-  const prefix = PROJECT_CODE_PREFIX[type] || 'PRJ';
+  const country = document.getElementById('pCountry').value || 'KH';
+  const typePrefix = PROJECT_CODE_PREFIX[type] || 'PRJ';
+  const fullPrefix = `${country}-${typePrefix}`;
   const year = new Date().getFullYear();
-  const pattern = new RegExp(`^${prefix}-${year}-(\\d+)$`, 'i');
+  const pattern = new RegExp(`^${country}-${typePrefix}-${year}-(\\d+)$`, 'i');
 
   let maxNum = 0;
   PROJECTS.forEach(p=>{
@@ -1519,11 +1574,12 @@ function suggestProjectCode(){
   });
 
   const nextNum = maxNum+1;
-  const code = `${prefix}-${year}-${String(nextNum).padStart(3,'0')}`;
+  const code = `${fullPrefix}-${year}-${String(nextNum).padStart(3,'0')}`;
   document.getElementById('pCode').value = code;
 }
 let PROJECTS_TYPE_FILTER = '';
 let PROJECTS_CLIENT_FILTER = '';
+let PROJECTS_COUNTRY_FILTER = '';
 
 function projectTaskList(projectId){
   return TASKS.filter(t=>t.projectId===projectId);
@@ -1571,6 +1627,7 @@ function renderProjects(){
   let projects = [...PROJECTS];
   if(PROJECTS_TYPE_FILTER) projects = projects.filter(p=>p.type===PROJECTS_TYPE_FILTER);
   if(PROJECTS_CLIENT_FILTER) projects = projects.filter(p=>p.client===PROJECTS_CLIENT_FILTER);
+  if(PROJECTS_COUNTRY_FILTER) projects = projects.filter(p=>p.country===PROJECTS_COUNTRY_FILTER);
   projects.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
 
   if(projects.length===0){
@@ -1587,6 +1644,7 @@ function renderProjects(){
     const pct = projectProgress(p.id);
     const st = PROJECT_STATUS_LABEL[p.status] || PROJECT_STATUS_LABEL.active;
     const ty = PROJECT_TYPE_LABEL[p.type];
+    const cy = COUNTRY_LABEL[p.country];
     const overdueCount = tasks.filter(t=>taskStatus(t)==='overdue').length;
 
     html += `<div class="section-card">
@@ -1597,6 +1655,7 @@ function renderProjects(){
         </div>
         <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="badge ${st.cls}">${st.en} / ${st.vi}</span>
+          ${cy?`<span class="badge grey">${cy.flag} ${cy.name} / ${cy.vi}</span>`:''}
           ${ty?`<span class="badge ${ty.cls}">${ty.en} / ${ty.vi}</span>`:''}
         </div>
       </div>
@@ -1617,6 +1676,7 @@ function renderProjects(){
 
 function setProjectsTypeFilter(val){ PROJECTS_TYPE_FILTER=val; renderProjects(); }
 function setProjectsClientFilter(val){ PROJECTS_CLIENT_FILTER=val; renderProjects(); }
+function setProjectsCountryFilter(val){ PROJECTS_COUNTRY_FILTER=val; renderProjects(); }
 
 function filterTasksByProject(projectId){
   goView('tasks');
@@ -1634,6 +1694,7 @@ function openProjectModal(projectId){
   document.getElementById('pCode').value = p ? (p.code||'') : '';
   document.getElementById('pName').value = p ? p.name : '';
   document.getElementById('pClient').value = p ? (p.client||'') : '';
+  document.getElementById('pCountry').value = p ? (p.country||'KH') : 'KH';
   document.getElementById('pType').value = p ? (p.type||'soil') : 'soil';
   document.getElementById('pDeadline').value = p ? p.deadline : '';
   document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
@@ -1652,6 +1713,7 @@ async function saveProject(){
   const code=document.getElementById('pCode').value.trim();
   const name=document.getElementById('pName').value.trim();
   const client=document.getElementById('pClient').value.trim();
+  const country=document.getElementById('pCountry').value;
   const type=document.getElementById('pType').value;
   const deadline=document.getElementById('pDeadline').value;
   const status=document.getElementById('pStatus').value;
@@ -1664,7 +1726,7 @@ async function saveProject(){
 
   if(EDIT_PROJECT_ID){
     await db.collection('projects').doc(EDIT_PROJECT_ID).update({
-      code, name, client, type, deadline, status, notes
+      code, name, client, country, type, deadline, status, notes
     });
     EDIT_PROJECT_ID = null;
     closeModal('projectModalBg');
@@ -1672,7 +1734,7 @@ async function saveProject(){
   }
 
   await db.collection('projects').add({
-    code, name, client, type, deadline, status, notes, createdAt: nowISO()
+    code, name, client, country, type, deadline, status, notes, createdAt: nowISO()
   });
   closeModal('projectModalBg');
 }
