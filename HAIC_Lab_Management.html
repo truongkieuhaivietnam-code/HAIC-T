@@ -243,6 +243,11 @@
       </div>
 
       <div class="section-card">
+        <h3>Plan Alerts <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Cảnh báo Kế hoạch</span></h3>
+        <div id="dashPlanAlerts"></div>
+      </div>
+
+      <div class="section-card">
         <div class="toolbar" style="margin-bottom:14px;">
           <h3 style="margin:0;">Completed in Period <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Hoàn thành theo khoảng thời gian</span></h3>
           <select id="dashPeriod" class="search-input" onchange="renderDashboard()">
@@ -365,7 +370,31 @@
       </div>
     </section>
 
-    <!-- ===================== STAFF / USERS ===================== -->
+    <!-- ===================== PLANS ===================== -->
+    <section class="view" id="view-plans">
+      <h2 class="view-title">Plans <span class="vi">— Kế hoạch nhiệm vụ</span></h2>
+      <p class="view-sub">Personal and team action plans with checklists and deadlines. Dashboard alerts when deadline is near.<br><span class="vi">Kế hoạch cá nhân và nhóm với checklist và deadline. Dashboard cảnh báo khi gần hạn.</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="planFilterOwner" class="search-input" onchange="renderPlans()">
+            <option value="">All / Tất cả</option>
+            <option value="mine">My plans / Kế hoạch của tôi</option>
+          </select>
+          <select id="planFilterStatus" class="search-input" onchange="renderPlans()">
+            <option value="">All status / Tất cả</option>
+            <option value="active">Active / Đang thực hiện</option>
+            <option value="done">Done / Hoàn tất</option>
+            <option value="overdue">Overdue / Quá hạn</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="openPlanModal()">+ New Plan <span class="vi">/ Kế hoạch mới</span></button>
+      </div>
+
+      <div id="planList"></div>
+    </section>
+
+    <!-- ===================== STAFF ===================== -->
     <section class="view" id="view-staff">
       <h2 class="view-title">Staff &amp; Accounts <span class="vi">— Nhân sự &amp; Tài khoản</span></h2>
       <p class="view-sub">Create accounts, assign roles, and promote/demote Admins.<br><span class="vi">Tạo tài khoản, gán vai trò, bổ nhiệm/hạ cấp Admin.</span></p>
@@ -502,6 +531,50 @@
   </div>
 </div>
 
+<!-- ===================== MODAL: NEW / EDIT PLAN ===================== -->
+<div class="modal-bg" id="planModalBg">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('planModalBg')">&times;</button>
+    <h3 id="planModalHeading">New Plan <span class="vi">/ Kế hoạch mới</span></h3>
+    <div class="form-grid">
+      <div class="full"><label>Plan title<span class="vi">Tiêu đề kế hoạch</span></label><input id="planTitle" placeholder="VD: Kế hoạch tháng 7/2026"></div>
+      <div class="full"><label>Goal / Objective<span class="vi">Mục tiêu kết quả</span></label><textarea id="planGoal" placeholder="Mô tả mục tiêu cần đạt được..."></textarea></div>
+      <div>
+        <label>Assigned to<span class="vi">Giao cho</span></label>
+        <select id="planAssignee"></select>
+      </div>
+      <div><label>Deadline (date &amp; time)<span class="vi">Deadline</span></label><input type="datetime-local" id="planDeadline"></div>
+      <div>
+        <label>Priority<span class="vi">Ưu tiên</span></label>
+        <select id="planPriority">
+          <option value="high">🔴 High / Cao</option>
+          <option value="medium" selected>🟡 Medium / Trung bình</option>
+          <option value="low">🟢 Low / Thấp</option>
+        </select>
+      </div>
+      <div>
+        <label>Alert before deadline<span class="vi">Cảnh báo trước deadline</span></label>
+        <select id="planAlertDays">
+          <option value="1">1 day / 1 ngày</option>
+          <option value="2" selected>2 days / 2 ngày</option>
+          <option value="3">3 days / 3 ngày</option>
+          <option value="5">5 days / 5 ngày</option>
+          <option value="7">7 days / 1 tuần</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Checklist steps (one per line)<span class="vi">Các bước thực hiện (mỗi dòng 1 bước)</span></label>
+        <textarea id="planChecklist" rows="6" placeholder="Bước 1: Liên hệ bên kho&#10;Bước 2: Xác nhận thông tin&#10;Bước 3: Báo cáo cho công ty"></textarea>
+      </div>
+      <div class="full"><label>Notes<span class="vi">Ghi chú</span></label><textarea id="planNotes"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('planModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="savePlan()">Save plan <span class="vi">/ Lưu kế hoạch</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL: VIEW SAMPLE DETAIL / CHECKLIST ===================== -->
 <div class="modal-bg" id="detailModalBg">
   <div class="modal">
@@ -625,8 +698,9 @@ let USERS = [];
 let TASKS = [];
 let DAILY_REPORTS = [];
 let PROJECTS = [];
+let PLANS = [];
 let TASKS_PROJECT_FILTER = '';
-let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null;
+let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null, unsubPlans=null;
 
 /* ============================================================
    AUTH
@@ -717,7 +791,8 @@ function detachListeners(){
   if(unsubTasks) unsubTasks();
   if(unsubDaily) unsubDaily();
   if(unsubProjects) unsubProjects();
-  unsubUsers=unsubTasks=unsubDaily=unsubProjects=null;
+  if(unsubPlans) unsubPlans();
+  unsubUsers=unsubTasks=unsubDaily=unsubProjects=unsubPlans=null;
 }
 
 function attachListeners(){
@@ -760,6 +835,10 @@ function attachListeners(){
     PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
     rerenderCurrentView();
   });
+  unsubPlans = db.collection('plans').onSnapshot(snap=>{
+    PLANS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
 }
 
 let CURRENT_VIEW = 'dashboard';
@@ -776,6 +855,7 @@ const NAV_ITEMS = {
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
     ['tasks','Tasks','Phân việc'],
+    ['plans','Plans','Kế hoạch'],
     ['daily','Daily Reports','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data'],
     ['report','Ready for Report','Sẵn sàng Report'],
@@ -786,6 +866,7 @@ const NAV_ITEMS = {
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
     ['tasks','Tasks','Phân việc'],
+    ['plans','Plans','Kế hoạch'],
     ['daily','Daily Reports','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data'],
     ['report','Ready for Report','Sẵn sàng Report'],
@@ -796,12 +877,14 @@ const NAV_ITEMS = {
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
     ['tasks','My Tasks','Việc của tôi'],
+    ['plans','Plans','Kế hoạch'],
     ['daily','Daily Report','Báo cáo ngày'],
     ['rawdata','Raw Data','Raw Data']
   ],
   report: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['plans','Plans','Kế hoạch'],
     ['daily','Daily Report','Báo cáo ngày'],
     ['report','Ready for Report','Sẵn sàng Report'],
     ['rawdata','Raw Data','Raw Data']
@@ -848,6 +931,7 @@ function goView(key){
   if(key==='rawdata') renderRawData();
   if(key==='report') renderReportReady();
   if(key==='performance') renderPerformance();
+  if(key==='plans') renderPlans();
   if(key==='staff') renderStaff();
 }
 
@@ -855,6 +939,7 @@ function closeModal(id){
   document.getElementById(id).classList.remove('active');
   if(id==='taskModalBg') EDIT_TASK_ID = null;
   if(id==='projectModalBg') EDIT_PROJECT_ID = null;
+  if(id==='planModalBg') EDIT_PLAN_ID = null;
 }
 function openModal(id){ document.getElementById(id).classList.add('active'); }
 
@@ -1036,6 +1121,48 @@ function renderDashboard(){
   }
 
   renderDashPeriodStats();
+  renderDashPlanAlerts();
+}
+
+function renderDashPlanAlerts(){
+  const el = document.getElementById('dashPlanAlerts');
+  if(!el) return;
+
+  let plans = PLANS.filter(p=>{
+    if(!isAdminLike(SESSION.role) && p.assigneeId!==SESSION.uid) return false;
+    const st = planStatus(p);
+    return st==='overdue' || planIsAtRisk(p);
+  });
+  plans.sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+
+  if(plans.length===0){
+    el.innerHTML = `<div class="small-muted">✅ <span class="en">No plans at risk.</span> <span class="vi">Không có kế hoạch nào nguy cơ trễ.</span></div>`;
+    return;
+  }
+
+  let html='';
+  plans.forEach(p=>{
+    const assignee = findUser(p.assigneeId);
+    const st = planStatus(p);
+    const diff = p.deadline ? daysBetween(todayStr(), p.deadline.slice(0,10)) : null;
+    const pr = PRIORITY_LABEL[p.priority] || PRIORITY_LABEL.medium;
+    let msg;
+    if(st==='overdue') msg = `<span class="badge red">Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày</span>`;
+    else msg = `<span class="badge yellow">${diff}d left / Còn ${diff} ngày</span>`;
+
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;">
+      <div>
+        <span class="badge ${pr.cls}" style="margin-right:6px;">${pr.en}</span>
+        <strong>${p.title}</strong>
+        <span class="small-muted"> — ${assignee?assignee.name:'?'} | ${fmtDateTime(p.deadline)}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${msg}
+        <button class="btn btn-secondary btn-sm" onclick="goView('plans')">View <span class="vi">Xem</span></button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
 }
 
 function getPeriodRange(period){
@@ -1860,6 +1987,201 @@ function renderPerformance(){
     </tr>`;
   });
   document.getElementById('perfTableBody').innerHTML = rows;
+}
+
+/* ============================================================
+   PLANS — Kế hoạch nhiệm vụ
+   ============================================================ */
+const PRIORITY_LABEL = {
+  high:   {en:'High',   vi:'Cao',        cls:'red'},
+  medium: {en:'Medium', vi:'Trung bình', cls:'yellow'},
+  low:    {en:'Low',    vi:'Thấp',       cls:'green'}
+};
+
+function planStatus(plan){
+  const today = todayStr();
+  const steps = plan.steps || [];
+  const allDone = steps.length > 0 && steps.every(s=>s.done);
+  if(allDone) return 'done';
+  if(plan.deadline && plan.deadline.slice(0,10) < today) return 'overdue';
+  return 'active';
+}
+
+function planProgress(plan){
+  const steps = plan.steps || [];
+  if(steps.length===0) return 0;
+  return Math.round(steps.filter(s=>s.done).length / steps.length * 100);
+}
+
+function planIsAtRisk(plan){
+  if(planStatus(plan)==='done') return false;
+  if(!plan.deadline) return false;
+  const alertDays = parseInt(plan.alertDays||2);
+  const diff = daysBetween(todayStr(), plan.deadline.slice(0,10));
+  return diff >= 0 && diff <= alertDays;
+}
+
+let EDIT_PLAN_ID = null;
+
+function openPlanModal(planId){
+  EDIT_PLAN_ID = planId || null;
+  const p = EDIT_PLAN_ID ? PLANS.find(x=>x.id===EDIT_PLAN_ID) : null;
+
+  document.getElementById('planTitle').value = p ? p.title : '';
+  document.getElementById('planGoal').value = p ? (p.goal||'') : '';
+  document.getElementById('planDeadline').value = p ? (p.deadline||'') : '';
+  document.getElementById('planPriority').value = p ? (p.priority||'medium') : 'medium';
+  document.getElementById('planAlertDays').value = p ? (p.alertDays||2) : 2;
+  document.getElementById('planNotes').value = p ? (p.notes||'') : '';
+  document.getElementById('planChecklist').value = p ? (p.steps||[]).map(s=>s.text).join('\n') : '';
+
+  const sel = document.getElementById('planAssignee');
+  sel.innerHTML = '';
+  USERS.forEach(u=>{
+    const o = document.createElement('option');
+    o.value = u.id;
+    o.textContent = `${u.name} (${(ROLE_LABEL[u.role]||{en:u.role}).en})`;
+    sel.appendChild(o);
+  });
+  if(p && p.assigneeId) sel.value = p.assigneeId;
+  else sel.value = SESSION.uid; // default to self
+
+  document.getElementById('planModalHeading').innerHTML = EDIT_PLAN_ID
+    ? `Edit Plan <span class="vi">/ Sửa kế hoạch</span>`
+    : `New Plan <span class="vi">/ Kế hoạch mới</span>`;
+
+  openModal('planModalBg');
+}
+
+async function savePlan(){
+  const title = document.getElementById('planTitle').value.trim();
+  const goal = document.getElementById('planGoal').value.trim();
+  const assigneeId = document.getElementById('planAssignee').value;
+  const deadline = document.getElementById('planDeadline').value;
+  const priority = document.getElementById('planPriority').value;
+  const alertDays = parseInt(document.getElementById('planAlertDays').value);
+  const notes = document.getElementById('planNotes').value.trim();
+  const checklistRaw = document.getElementById('planChecklist').value;
+
+  if(!title || !deadline){
+    alert('Please fill in Title and Deadline.\nVui lòng điền Tiêu đề và Deadline.');
+    return;
+  }
+
+  const stepLines = checklistRaw.split('\n').map(s=>s.trim()).filter(Boolean);
+
+  if(EDIT_PLAN_ID){
+    const existing = PLANS.find(x=>x.id===EDIT_PLAN_ID);
+    // Merge steps: keep done status for existing steps by text match
+    const existingSteps = existing.steps || [];
+    const steps = stepLines.map(text=>{
+      const found = existingSteps.find(s=>s.text===text);
+      return {text, done: found ? found.done : false};
+    });
+    await db.collection('plans').doc(EDIT_PLAN_ID).update({
+      title, goal, assigneeId, deadline, priority, alertDays, notes, steps
+    });
+    EDIT_PLAN_ID = null;
+  } else {
+    const steps = stepLines.map(text=>({text, done:false}));
+    await db.collection('plans').add({
+      title, goal, assigneeId, deadline, priority, alertDays, notes, steps,
+      createdBy: SESSION.uid, createdAt: nowISO(), completedAt: null
+    });
+  }
+  closeModal('planModalBg');
+}
+
+async function togglePlanStep(planId, stepIdx, value){
+  const plan = PLANS.find(x=>x.id===planId);
+  if(!plan) return;
+  const steps = [...(plan.steps||[])];
+  steps[stepIdx] = {...steps[stepIdx], done: value};
+  const allDone = steps.every(s=>s.done);
+  const completedAt = allDone ? (plan.completedAt || nowISO()) : null;
+  await db.collection('plans').doc(planId).update({steps, completedAt});
+}
+
+async function deletePlan(planId){
+  if(!confirm('Delete this plan?\nXoá kế hoạch này?')) return;
+  await db.collection('plans').doc(planId).delete();
+}
+
+function renderPlans(){
+  const fOwner = document.getElementById('planFilterOwner').value;
+  const fStatus = document.getElementById('planFilterStatus').value;
+
+  let plans = [...PLANS];
+
+  // Non-admin can only see their own plans
+  if(!isAdminLike(SESSION.role)){
+    plans = plans.filter(p=>p.assigneeId===SESSION.uid);
+  } else if(fOwner==='mine'){
+    plans = plans.filter(p=>p.assigneeId===SESSION.uid);
+  }
+
+  if(fStatus) plans = plans.filter(p=>planStatus(p)===fStatus);
+  plans.sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  if(plans.length===0){
+    document.getElementById('planList').innerHTML = `<div class="empty-state"><div class="icon">📋</div>
+      <span class="en">No plans yet. Click "+ New Plan" to create one.</span><br>
+      <span class="vi">Chưa có kế hoạch nào. Bấm "+ Kế hoạch mới" để tạo.</span>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+  plans.forEach(p=>{
+    const assignee = findUser(p.assigneeId);
+    const pct = planProgress(p);
+    const st = planStatus(p);
+    const pr = PRIORITY_LABEL[p.priority] || PRIORITY_LABEL.medium;
+    const steps = p.steps || [];
+    const atRisk = planIsAtRisk(p);
+    const diff = p.deadline ? daysBetween(todayStr(), p.deadline.slice(0,10)) : null;
+
+    const canEdit = isAdminLike(SESSION.role) || p.assigneeId===SESSION.uid || p.createdBy===SESSION.uid;
+
+    html += `<div class="section-card" style="border-left:4px solid ${st==='done'?'var(--ok)':st==='overdue'?'var(--danger)':atRisk?'var(--warn)':'var(--line)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${p.title}</h3>
+          <div class="small-muted">
+            Assigned to / Giao cho: <strong>${assignee?assignee.name:'?'}</strong>
+            &nbsp;|&nbsp; Deadline: <strong>${fmtDateTime(p.deadline)}</strong>
+            ${diff!==null && st!=='done' ? `&nbsp;|&nbsp; <span style="color:${diff<0?'var(--danger)':diff<=parseInt(p.alertDays||2)?'var(--warn)':'var(--slate)'}">${diff<0?`Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày`:`${diff}d left / Còn ${diff} ngày`}</span>` : ''}
+          </div>
+          ${p.goal?`<div class="small-muted" style="margin-top:4px;font-style:italic;">${p.goal}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="badge ${pr.cls}">${pr.en} / ${pr.vi}</span>
+          ${statusBadge(st)}
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+        <div class="progress-bar" style="width:180px;"><div class="fill" style="width:${pct}%"></div></div>
+        <span class="small-muted">${pct}% (${steps.filter(s=>s.done).length}/${steps.length} steps)</span>
+      </div>
+
+      ${steps.length>0?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        ${steps.map((s,idx)=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:${canEdit?'pointer':'default'};">
+          <input type="checkbox" ${s.done?'checked':''} ${canEdit?'':'disabled'}
+            onchange="togglePlanStep('${p.id}',${idx},this.checked)">
+          <span style="${s.done?'text-decoration:line-through;color:var(--slate)':''}">${s.text}</span>
+        </label>`).join('')}
+      </div>`:''}
+
+      ${p.notes?`<div class="small-muted" style="margin-bottom:10px;padding:8px;background:#f9f6ee;border-radius:2px;">📝 ${p.notes}</div>`:''}
+
+      ${canEdit?`<div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openPlanModal('${p.id}')">Edit <span class="vi">Sửa</span></button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">Delete <span class="vi">Xoá</span></button>
+      </div>`:''}
+    </div>`;
+  });
+  document.getElementById('planList').innerHTML = html;
 }
 
 /* ============================================================
