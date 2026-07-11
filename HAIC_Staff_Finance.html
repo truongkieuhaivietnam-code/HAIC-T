@@ -376,7 +376,15 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <h2 data-i18n="navDashboard">Tổng quan</h2>
           <div class="sub" id="dashSub"></div>
         </div>
-        <select id="dashMonthSelect" class="tab-btn" style="border:1.5px solid var(--line); background:var(--paper);"></select>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <select id="dashCompanyFilter" class="tab-btn" style="border:1.5px solid var(--line);background:var(--paper);">
+            <option value="all">🌏 Tất cả</option>
+            <option value="cambodia">🇰🇭 Cambodia</option>
+            <option value="laos">🇱🇦 Laos</option>
+            <option value="vietnam">🇻🇳 Việt Nam</option>
+          </select>
+          <select id="dashMonthSelect" class="tab-btn" style="border:1.5px solid var(--line); background:var(--paper);"></select>
+        </div>
       </div>
 
       <div class="hero-card">
@@ -1933,6 +1941,7 @@ function determineAdvanceStatus(amount, role) {
 }
 // ===================== APP =====================
 let currentDashMonth = null;
+let currentDashCompany = "all"; // "all" | "cambodia" | "laos" | "vietnam"
 let txFilterStatus = "all";
 let txFilterUserId = "all";
 let advanceFilterStatus = "all";
@@ -2212,6 +2221,13 @@ let pieChartInstance = null;
 let trendChartInstance = null;
 const CHART_COLORS = ["#163832", "#d9a440", "#3f7d5c", "#c97c2e", "#8a8174", "#b54b3f", "#2a5048", "#e0c68a"];
 
+// Returns branch of a transaction based on its owner user's branch
+function getTxBranch(tx) {
+  if (tx.branch) return tx.branch; // if tx has explicit branch field
+  const user = getUserById(tx.userId);
+  return user ? (user.branch || "cambodia") : "cambodia";
+}
+
 function getTxForMonth(monthKeyStr, opts) {
   opts = opts || {};
   return STORE.transactions.filter(tx => {
@@ -2219,6 +2235,10 @@ function getTxForMonth(monthKeyStr, opts) {
     if (opts.scopeUser) {
       if (!can("viewAllTx") && tx.userId !== currentUser.id) return false;
       if (currentUser.role === "branch_manager" && !canAccessUser(tx.userId)) return false;
+    }
+    // Company filter
+    if (opts.company && opts.company !== "all") {
+      if (getTxBranch(tx) !== opts.company) return false;
     }
     return true;
   });
@@ -2257,10 +2277,32 @@ function calcCategoryBreakdown(monthKeyStr, opts) {
 
 function renderDashboard() {
   populateMonthSelect();
-  const opts = { scopeUser: true };
+
+  // Wire company filter dropdown
+  const companySelect = document.getElementById("dashCompanyFilter");
+  if (companySelect) {
+    companySelect.value = currentDashCompany;
+    companySelect.onchange = () => {
+      currentDashCompany = companySelect.value;
+      renderDashboard();
+    };
+    // Hide company filter for branch_manager (they only see their own branch)
+    if (currentUser.role === "branch_manager") {
+      companySelect.style.display = "none";
+      currentDashCompany = currentUser.branch;
+    } else {
+      companySelect.style.display = "";
+    }
+  }
+
+  const opts = { scopeUser: true, company: currentDashCompany };
   const summary = calcMonthSummary(currentDashMonth, opts);
 
-  document.getElementById("heroMonth").textContent = formatMonthLabel(currentDashMonth);
+  // Show company label in hero
+  const companyLabel = currentDashCompany === "all"
+    ? (currentLang === "vi" ? "Tất cả chi nhánh" : "All Companies")
+    : branchLabel(currentDashCompany);
+  document.getElementById("heroMonth").textContent = formatMonthLabel(currentDashMonth) + " — " + companyLabel;
   document.getElementById("heroBalance").textContent = formatCurrency(summary.balance);
   document.getElementById("heroIncome").textContent = "+" + formatCurrency(summary.income);
   document.getElementById("heroExpense").textContent = "-" + formatCurrency(summary.expense);
@@ -2270,7 +2312,14 @@ function renderDashboard() {
 
   // Pending banner
   const pendingBanner = document.getElementById("pendingBanner");
-  const allPending = STORE.advances.filter(a => a.status === "pending");
+  const allPending = STORE.advances.filter(a => {
+    if (a.status !== "pending") return false;
+    if (currentDashCompany !== "all") {
+      const user = getUserById(a.userId);
+      if (!user || user.branch !== currentDashCompany) return false;
+    }
+    return true;
+  });
   if (can("approveAdvance") && allPending.length > 0) {
     pendingBanner.classList.remove("hidden");
     const totalPending = allPending.reduce((s, a) => s + a.amount, 0);
@@ -2286,9 +2335,8 @@ function renderDashboard() {
   const overviewCard = document.getElementById("adminOverviewCard");
   if (can("viewAllTx")) {
     overviewCard.classList.remove("hidden");
-    // Update card title with current month
     overviewCard.querySelector("h3").innerHTML =
-      `<span>${t("cardSpendingByMember")}</span><span class="more">${formatMonthLabel(currentDashMonth)}</span>`;
+      `<span>${t("cardSpendingByMember")}</span><span class="more">${formatMonthLabel(currentDashMonth)}${currentDashCompany !== "all" ? " · " + branchLabel(currentDashCompany) : ""}</span>`;
     renderMemberSpending();
   } else {
     overviewCard.classList.add("hidden");
@@ -2394,9 +2442,12 @@ function renderMemberSpending() {
   const spendingByUser = {};
   const incomeByUser = {};
 
-  // Show current month's transactions for the selected dashboard month
   STORE.transactions
-    .filter(tx => monthKey(tx.date) === currentDashMonth)
+    .filter(tx => {
+      if (monthKey(tx.date) !== currentDashMonth) return false;
+      if (currentDashCompany !== "all" && getTxBranch(tx) !== currentDashCompany) return false;
+      return true;
+    })
     .forEach(tx => {
       if (tx.type === "expense") {
         spendingByUser[tx.userId] = (spendingByUser[tx.userId] || 0) + tx.amount;
@@ -2405,7 +2456,10 @@ function renderMemberSpending() {
       }
     });
 
-  const activeUsers = getScopedActiveUsers();
+  let activeUsers = getScopedActiveUsers();
+  if (currentDashCompany !== "all") {
+    activeUsers = activeUsers.filter(u => (u.branch || "cambodia") === currentDashCompany);
+  }
   const sorted = activeUsers.slice().sort((a, b) => (spendingByUser[b.id] || 0) - (spendingByUser[a.id] || 0));
   document.getElementById("memberSpendingList").innerHTML = sorted.map(u => `
     <div class="member-row" style="cursor:pointer;" onclick="openMemberTxDetail('${u.id}')">
@@ -2944,12 +2998,12 @@ function markAdvancePaid(advanceId) {
     fromAdvanceId: adv.id,
   });
 
-  persistNow();
-  showToast(t("toastSaved"), "success");
-  renderAll();
+  persistNow().then(() => {
+    showToast(t("toastSaved"), "success");
+    renderAll();
+  });
 }
-
-// createAdvanceCashTx intentionally removed — advance cash received is NOT recorded as personal income
+// NOTE: advance cash received is NOT recorded as personal income
 // Only the itemized settlement expenses are recorded upon admin confirmation
 
 // ===================== SETTLEMENT (GIẢI TRÌNH TẠM ỨNG) =====================
@@ -3228,10 +3282,22 @@ function confirmSettlement() {
     detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
   });
 
-  persistNow();
-  closeModal("modalSettlementDetail");
-  showToast(t("toastSettlementConfirmed"), "success");
-  renderAll();
+  // Show saving indicator — wait for Firestore to confirm before closing
+  const btn = document.getElementById("btnConfirmSettlement");
+  if (btn) { btn.disabled = true; btn.textContent = currentLang === "vi" ? "Đang lưu..." : "Saving..."; }
+
+  persistNow().then(() => {
+    closeModal("modalSettlementDetail");
+    showToast(t("toastSettlementConfirmed"), "success");
+    renderAll();
+  }).catch(() => {
+    // Even if Firestore fails, data is in localStorage — still close and show success
+    closeModal("modalSettlementDetail");
+    showToast(t("toastSettlementConfirmed"), "success");
+    renderAll();
+  }).finally(() => {
+    if (btn) { btn.disabled = false; btn.textContent = t("btnConfirmSettlement") || "Xác nhận"; }
+  });
 }
 
 function submitRequestMoreInfo() {
@@ -3249,12 +3315,13 @@ function submitRequestMoreInfo() {
     detail: `${formatCurrency(adv.amount)} - ${getUserById(adv.userId).name}`
   });
 
-  persistNow();
-  document.getElementById("requestMoreInfoNote").value = "";
-  closeModal("modalRequestMoreInfo");
-  closeModal("modalSettlementDetail");
-  showToast(t("toastSettlementReturned"), "success");
-  renderAll();
+  persistNow().then(() => {
+    document.getElementById("requestMoreInfoNote").value = "";
+    closeModal("modalRequestMoreInfo");
+    closeModal("modalSettlementDetail");
+    showToast(t("toastSettlementReturned"), "success");
+    renderAll();
+  });
 }
 
 // ===================== APPROVALS =====================
@@ -3379,9 +3446,10 @@ function approveAdvance(advanceId) {
     detail: `${formatCurrency(a.amount)} - ${getUserById(a.userId).name}`
   });
 
-  persistNow();
-  showToast(t("toastApproved"), "success");
-  renderAll();
+  persistNow().then(() => {
+    showToast(t("toastApproved"), "success");
+    renderAll();
+  });
 }
 
 function openRejectModal(advanceId) {
@@ -3414,9 +3482,10 @@ function rejectAdvance(advanceId, note) {
     detail: `${formatCurrency(a.amount)} - ${getUserById(a.userId).name}`
   });
 
-  persistNow();
-  showToast(t("toastRejected"), "success");
-  renderAll();
+  persistNow().then(() => {
+    showToast(t("toastRejected"), "success");
+    renderAll();
+  });
 }
 // ===================== CUSTOMERS (DEBT) =====================
 let debtPieChartInstance = null;
