@@ -98,6 +98,8 @@
   /* ---- SIGNOFF ---- */
   .signoff{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
   @media(max-width:640px){.signoff{grid-template-columns:1fr;}}
+  .signoff3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+  @media(max-width:640px){.signoff3{grid-template-columns:1fr;}}
   .signoff .box{text-align:center;}
   .signoff .box .ttl{font-weight:700;font-size:12px;margin-bottom:32px;}
   .companyfoot{font-size:11px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px;}
@@ -248,14 +250,23 @@
 
   <div class="card">
     <h2>Xác Nhận / Sign-off</h2>
-    <div class="signoff">
+    <div class="grid3" style="margin-bottom:12px;">
+      <div class="field"><label>Ngày báo cáo / Report date</label><input id="fReportDate" type="date"></div>
+      <div class="field"><label>Thành phố / City</label><input id="fReportCity" type="text" value="Phnom Penh" placeholder="Phnom Penh"></div>
+      <div class="field"><label>Giám đốc / Director</label><input id="fDirector" type="text" placeholder="Dr. Nguyen Quang Anh"></div>
+    </div>
+    <div class="signoff3">
       <div class="box">
-        <div class="ttl">Thí nghiệm viên / Lab Technician</div>
+        <div class="ttl">Thí nghiệm viên<br><span style="font-weight:400;font-style:italic;font-size:11px;">Lab Technician</span></div>
         <input id="fLabTech" type="text" placeholder="Eng. ..." style="text-align:center;">
       </div>
       <div class="box">
-        <div class="ttl">Người kiểm tra / Checked by</div>
+        <div class="ttl">Người kiểm tra<br><span style="font-weight:400;font-style:italic;font-size:11px;">Checked by</span></div>
         <input id="fCheckedBy" type="text" placeholder="Eng. Lương Sơn Vi Na" style="text-align:center;">
+      </div>
+      <div class="box">
+        <div class="ttl">HAI (CAMBODIA)<br><span style="font-weight:400;font-style:italic;font-size:11px;">Survey &amp; Construction Co.,Ltd</span><br><span style="font-weight:400;font-size:11px;">Director</span></div>
+        <input id="fDirectorDisplay" type="text" placeholder="Dr. Nguyen Quang Anh" style="text-align:center;" onfocus="this.value=document.getElementById('fDirector').value">
       </div>
     </div>
     <div class="companyfoot" style="margin-top:16px;">
@@ -617,6 +628,10 @@ function addGroup(data){
           <label>Ngày nén / Date of Test</label>
           <input type="date" id="g${idx}-test" value="${data?.dateTest||''}" onchange="recalcGroup(${idx})">
         </div>
+        <div class="field" style="min-width:140px;">
+          <label>Hạng mục TN / Item name</label>
+          <input type="text" id="g${idx}-item" value="${data?.item||''}" placeholder="vd: Footing D5, Pile Cap...">
+        </div>
       </div>
       <div class="age-badge" id="g${idx}-age">— ngày</div>
       <button class="danger small del-group-btn" onclick="deleteGroup(${idx})">✕ Xóa tổ</button>
@@ -711,7 +726,7 @@ function collectGroups(){
       });
     }
     const avg = document.getElementById(`g${idx}-avg`)?.textContent || '';
-    groups.push({ dateCast, dateTest, age, specimens, avg });
+    groups.push({ dateCast, dateTest, age, specimens, avg, item: document.getElementById(`g${idx}-item`)?.value || '' });
   });
   return groups;
 }
@@ -727,6 +742,7 @@ function collectFormData(){
     equipment: gv('fEquipment'), fieldSupervisor: gv('fFieldSupervisor'),
     qc: gv('fQC'), remarks: gv('fRemarks'),
     labTech: gv('fLabTech'), checkedBy: gv('fCheckedBy'),
+    director: gv('fDirector'), reportDate: gv('fReportDate'), reportCity: gv('fReportCity')||'Phnom Penh',
     groups: collectGroups(),
   };
 }
@@ -739,6 +755,7 @@ function applyFormData(d){
   sv('fEquipment', d.equipment); sv('fFieldSupervisor', d.fieldSupervisor);
   sv('fQC', d.qc); sv('fRemarks', d.remarks);
   sv('fLabTech', d.labTech); sv('fCheckedBy', d.checkedBy);
+  sv('fDirector', d.director); sv('fDirectorDisplay', d.director); sv('fReportDate', d.reportDate); sv('fReportCity', d.reportCity||'Phnom Penh');
   document.getElementById('groupsContainer').innerHTML = '';
   groupCount = 0;
   (d.groups||[]).forEach(g => addGroup(g));
@@ -904,7 +921,7 @@ function exportExcel(){
   XLSX.writeFile(wb, fname);
 }
 
-/* ---- EXPORT PDF (A4 Portrait, bilingual, real logos) ---- */
+/* ---- REGISTER FONTS ---- */
 function registerFonts(doc){
   doc.addFileToVFS('Roboto-Regular.ttf', ROBOTO_REGULAR_B64);
   doc.addFont('Roboto-Regular.ttf','Roboto','normal');
@@ -912,126 +929,256 @@ function registerFonts(doc){
   doc.addFont('Roboto-Bold.ttf','Roboto','bold');
 }
 
+/* ---- EXPORT PDF — A4 Portrait, song ngữ, logo thật ---- */
 function exportPDF(){
-  const { d, headers, rows, isAstm } = buildExportData();
+  const d = collectFormData();
+  const isAstm = d.standard === 'astm';
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   registerFonts(doc);
 
-  const pageW = doc.internal.pageSize.getWidth();   // 210mm
-  const pageH = doc.internal.pageSize.getHeight();  // 297mm
-  const ML = 10, MR = 10, usableW = pageW - ML - MR;
-  const stdTitle = isAstm ? '(ASTM C39)' : '(TCVN 3118 - 2022)';
+  const pageW = 210, pageH = 297, ML = 10, MR = 10, usW = pageW - ML - MR;
+  const blue  = [26,82,118];
+  const stdName  = isAstm ? 'ASTM C39' : 'TCVN 3118 - 2022';
   const formCode = isAstm ? 'F-12.1.HAIC-LAB-15MAT' : 'F-12.2.HAIC-LAB-15MAT';
-  const headerColor = isAstm ? [26,82,118] : [108,52,131];
 
-  // ── LOGOS ──────────────────────────────────────────────
-  // HAIC: top-left 55×18mm
-  doc.addImage(HAIC_LOGO_B64,  'PNG', ML,          7, 52, 18);
-  // VICAS/IAF: top-right area
-  doc.addImage(VICAS_LOGO_B64, 'PNG', pageW-MR-62, 7, 38, 18);
-  // ISO 9001:
-  doc.addImage(ISO_LOGO_B64,   'PNG', pageW-MR-22, 7, 22, 18);
+  function setBlue(){ doc.setTextColor(...blue); }
+  function setBlack(){ doc.setTextColor(0,0,0); }
+  function bold(sz){ doc.setFont('Roboto','bold'); doc.setFontSize(sz); }
+  function norm(sz){ doc.setFont('Roboto','normal'); doc.setFontSize(sz); }
+  function fmtDate(iso){
+    if(!iso) return '';
+    const [y,m,d2]=iso.split('-'); return `${d2}/${m}/${y}`;
+  }
 
-  // ── TITLE ──────────────────────────────────────────────
-  let y = 31;
-  doc.setFont('Roboto','bold'); doc.setFontSize(12.5);
-  doc.text('CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG XM', pageW/2, y, {align:'center'});
-  y += 6;
-  doc.setFont('Roboto','normal'); doc.setFontSize(9.5);
-  doc.text('COMPRESSIVE STRENGTH OF CONCRETE ' + stdTitle, pageW/2, y, {align:'center'});
-  y += 2;
-  doc.setDrawColor(26,82,118); doc.setLineWidth(0.5);
-  doc.line(ML, y+1, pageW-MR, y+1);
+  // ══════════════════════════════════════════════════════
+  // 1. HEADER — logos + blue title box
+  // ══════════════════════════════════════════════════════
+  const LT = 6, LH = 18; // logo top, logo height
+
+  // HAIC logo: far left
+  doc.addImage(HAIC_LOGO_B64,  'PNG', ML, LT, 44, LH);
+
+  // Blue title box: centre
+  const TBX = ML+46, TBW = usW-46-30, TBY = LT, TBH = LH;
+  doc.setFillColor(...blue);
+  doc.rect(TBX, TBY, TBW, TBH, 'F');
+  doc.setTextColor(255,255,255);
+  bold(12); doc.text('CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG XM', TBX+TBW/2, TBY+7.5, {align:'center'});
+  norm(8.5); doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TBX+TBW/2, TBY+14, {align:'center'});
+  setBlack();
+
+  // Right logos: VICAS/IAF (top) + ISO 9001 (bottom)
+  const RLX = pageW-MR-28, RLY = LT;
+  doc.addImage(VICAS_LOGO_B64, 'PNG', RLX, RLY,      28, 9);
+  doc.addImage(ISO_LOGO_B64,   'PNG', RLX, RLY+9.5, 28, 8.5);
+
+  // Date line: right-aligned below header
+  let y = LT + LH + 5;
+  const rDate = d.reportDate ? fmtDate(d.reportDate) : new Date().toLocaleDateString('en-GB').replace(/\//g,'/');
+  const city  = d.reportCity || 'Phnom Penh';
+  norm(8.5); doc.text(`${city}, ${rDate}`, pageW-MR, y, {align:'right'});
   y += 5;
 
-  // ── PROJECT INFO ────────────────────────────────────────
-  const c2 = pageW/2 + 2;
-  const LH = 5.5;
-  doc.setFontSize(8.5);
-  function row(l1,v1,l2,v2,cy){
-    doc.setFont('Roboto','bold');   doc.text(l1, ML, cy);
-    doc.setFont('Roboto','normal'); doc.text(v1||'', ML + doc.getTextWidth(l1) + 1, cy);
-    if(l2 !== undefined){
-      doc.setFont('Roboto','bold');   doc.text(l2, c2, cy);
-      doc.setFont('Roboto','normal'); doc.text(v2||'', c2 + doc.getTextWidth(l2) + 1, cy);
-    }
+  // ══════════════════════════════════════════════════════
+  // 2. SECTION I — Project Information
+  // ══════════════════════════════════════════════════════
+  bold(9); setBlue();
+  doc.text('I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION', ML, y);
+  doc.setDrawColor(...blue); doc.setLineWidth(0.4);
+  doc.line(ML, y+0.8, pageW-MR, y+0.8);
+  setBlack(); y += 5.5;
+
+  const bullets = [
+    ['Công trình / Project',     d.project],
+    ['Địa điểm XD / Location',   d.location],
+    ['Tư vấn GS / Supervisor',   d.supervisor],
+    ['Nhà thầu / Contractor',    d.contractor],
+    ['Nhà cung cấp / Supplier',  d.supplier],
+  ];
+  for(const [lbl,val] of bullets){
+    norm(8.5);
+    doc.text(`  •  ${lbl}`, ML+2, y);
+    const lw = doc.getTextWidth(`  •  ${lbl}`);
+    doc.text(`:  ${val||''}`, ML+2+lw, y);
+    y += 5;
   }
-  row('Công trình / Project: ',     d.project,     'Địa điểm / Location: ',  d.location,    y); y+=LH;
-  row('Tư vấn GS / Supervisor: ',   d.supervisor,  'Nhà thầu / Contractor: ', d.contractor,  y); y+=LH;
-  row('Nhà cung cấp / Supplier: ',  d.supplier,    'Hạng mục / Item: ',       d.item,        y); y+=LH;
-  row('Độ sụt / Slump: ',           d.slump,       'CĐ yêu cầu / Req.str: ',  d.reqStrength, y);
-  doc.setFont('Roboto','bold');   doc.text('Thiết bị / Equipment: ', c2, y);
-  doc.setFont('Roboto','normal'); doc.text(d.equipment||'', c2 + doc.getTextWidth('Thiết bị / Equipment: ') + 1, y);
-  y += LH + 3;
+  y += 3;
 
-  // ── TABLE ───────────────────────────────────────────────
-  // Column widths tuned for portrait 190mm usable
-  const cwA = [11,14,21,21,11,11,11,18,21,21];   // ASTM  total=160 ✓
-  const cwT = [10,13,19,19,10,10,10,10,17,19,19]; // TCVN total=156 ✓
-  const cw  = isAstm ? cwA : cwT;
+  // ══════════════════════════════════════════════════════
+  // 3. SECTION II heading
+  // ══════════════════════════════════════════════════════
+  bold(9); setBlue();
+  doc.text('II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT', ML, y);
+  doc.setDrawColor(...blue); doc.setLineWidth(0.4);
+  doc.line(ML, y+0.8, pageW-MR, y+0.8);
+  setBlack(); y += 5;
 
-  const hdA = ['Tổ mẫu\n/No','Ký hiệu\n/Symbol','Ngày đúc\n/Date Cast','Ngày nén\n/Date Test','Tuổi\n/Age(d)','D\n(mm)','H\n(mm)','Tải trọng\n/Load(kN)','Cường độ\n/f\'c(MPa)','Trung bình\n/Avg(MPa)'];
-  const hdT = ['Tổ mẫu\n/No','Ký hiệu\n/Symbol','Ngày đúc\n/Date Cast','Ngày nén\n/Date Test','Tuổi\n/Age(d)','L\n(mm)','W\n(mm)','H\n(mm)','Tải trọng\n/Load(kN)','Cường độ\n/Rc(MPa)','Trung bình\n/Avg(MPa)'];
-  const tblHead = isAstm ? hdA : hdT;
+  // ══════════════════════════════════════════════════════
+  // 4. SPECIMEN INFO SUB-TABLE
+  // ══════════════════════════════════════════════════════
+  const lightBlue = [235,245,255], lighterBlue = [245,250,255];
+  doc.autoTable({
+    startY: y, margin:{left:ML,right:MR}, tableWidth:usW,
+    theme:'grid',
+    styles:{ font:'Roboto', fontSize:8, cellPadding:2, halign:'center', valign:'middle', lineColor:[180,200,220], lineWidth:0.2 },
+    head:[
+      [
+        {content:'Mẫu thử / Specimen information', colSpan:3,
+         styles:{font:'Roboto',fontStyle:'bold',fillColor:lightBlue,textColor:0,halign:'center'}},
+        {content:`Phương pháp thử\nTesting method\n${stdName}`, rowSpan:2,
+         styles:{font:'Roboto',fontStyle:'bold',fillColor:lightBlue,textColor:0,halign:'center',valign:'middle'}},
+      ],
+      [
+        {content:'Độ sụt\nSlump',                              styles:{font:'Roboto',fontStyle:'bold',fillColor:lighterBlue,textColor:0,halign:'center',fontSize:7.5}},
+        {content:'Cường độ yêu cầu\nRequest concrete strength',styles:{font:'Roboto',fontStyle:'bold',fillColor:lighterBlue,textColor:0,halign:'center',fontSize:7.5}},
+        {content:'Số lượng tổ mẫu\nQuantity',                 styles:{font:'Roboto',fontStyle:'bold',fillColor:lighterBlue,textColor:0,halign:'center',fontSize:7.5}},
+      ]
+    ],
+    body:[[
+      {content:d.slump||'',      styles:{font:'Roboto',fontStyle:'bold',fontSize:9.5}},
+      {content:d.reqStrength||'',styles:{font:'Roboto',fontStyle:'bold',fontSize:9.5}},
+      {content:String(d.groups.length), styles:{font:'Roboto',fontStyle:'bold',fontSize:9.5}},
+      {content:`Thiết bị TN / Equipment\n${d.equipment||''}`, styles:{font:'Roboto',fontStyle:'bold',fontSize:8.5}},
+    ]],
+    columnStyles:{
+      0:{cellWidth:usW*0.20},
+      1:{cellWidth:usW*0.30},
+      2:{cellWidth:usW*0.18},
+      3:{cellWidth:usW*0.32},
+    }
+  });
+  y = doc.lastAutoTable.finalY + 2;
+
+  // ══════════════════════════════════════════════════════
+  // 5. MAIN RESULTS TABLE (merged header + grouped body)
+  // ══════════════════════════════════════════════════════
+  // Cols: No|Symbol|DateCast|DateTest|Age|DxH|Load|Individual|Average
+  const CW = [10,14,22,22,12,22,22,27,27]; // total=178 ≤190 ✓
+
+  const tHead = [
+    [
+      {content:'Stt tổ\nmẫu\n/ No',                   rowSpan:2, styles:{valign:'middle'}},
+      {content:'Ký hiệu\nmẫu\nSpecimen\nsymbol',       rowSpan:2, styles:{valign:'middle'}},
+      {content:'Ngày - Date (dd/mm/yyyy)',               colSpan:2, styles:{halign:'center'}},
+      {content:'Tuổi\nmẫu\nAge at\nTest\n(day)',        rowSpan:2, styles:{valign:'middle'}},
+      {content:isAstm?'Kích thước\nmẫu\nDimension\nDxH (mm)':'Kích thước\nmẫu\nDimension\nLxW (mm)', rowSpan:2, styles:{valign:'middle'}},
+      {content:'Tải trọng\nphá hủy\nMax.Load\nat Failure\n(kN)', rowSpan:2, styles:{valign:'middle'}},
+      {content:'Cường độ kháng nén\nCompressive Strength', colSpan:2, styles:{halign:'center'}},
+    ],
+    [
+      {content:'Ngày đúc\nDate of Cast',   styles:{halign:'center',fontSize:7}},
+      {content:'Ngày nén\nDate of Test',   styles:{halign:'center',fontSize:7}},
+      {content:'Từng mẫu\nIndividual\n(MPa)', styles:{halign:'center'}},
+      {content:'Trung bình\nAverage\n(MPa)',  styles:{halign:'center'}},
+    ]
+  ];
+
+  const tBody = [];
+  d.groups.forEach((g,gi) => {
+    // Section item row (Footing D5 etc)
+    const itemLabel = g.item || '';
+    if(itemLabel){
+      tBody.push([{
+        content: itemLabel,
+        colSpan:9,
+        styles:{font:'Roboto',fontStyle:'bold',fillColor:[220,230,245],halign:'center',fontSize:8.5,textColor:[...blue]}
+      }]);
+    }
+    // 3 specimen rows with rowSpan on shared cells
+    g.specimens.forEach((s,si) => {
+      const dim = isAstm ? `${s.d1||''}x${s.d2||''}` : `${s.d1||''}x${s.d2||''}`;
+      const avgVal = si===1 ? (g.avg||'') : '';
+      const avgStyle = si===1 && g.avg
+        ? {font:'Roboto',fontStyle:'bold',fillColor:[255,248,220],halign:'center'}
+        : {font:'Roboto',halign:'center'};
+
+      if(si===0){
+        tBody.push([
+          {content:String(gi+1), rowSpan:3, styles:{font:'Roboto',fontStyle:'bold',halign:'center',valign:'middle',fontSize:10}},
+          {content:'S1', styles:{font:'Roboto',halign:'center'}},
+          {content:fmtDate(g.dateCast), rowSpan:3, styles:{font:'Roboto',halign:'center',valign:'middle',fontSize:7.5}},
+          {content:fmtDate(g.dateTest), rowSpan:3, styles:{font:'Roboto',halign:'center',valign:'middle',fontSize:7.5}},
+          {content:String(g.age||''),   rowSpan:3, styles:{font:'Roboto',fontStyle:'bold',halign:'center',valign:'middle'}},
+          {content:dim,   styles:{font:'Roboto',halign:'center'}},
+          {content:s.load||'',          styles:{font:'Roboto',halign:'center'}},
+          {content:s.strength||'-',     styles:{font:'Roboto',halign:'center'}},
+          {content:'',                  styles:{font:'Roboto',halign:'center'}},
+        ]);
+      } else {
+        tBody.push([
+          {content:`S${si+1}`,          styles:{font:'Roboto',halign:'center'}},
+          {content:dim,                 styles:{font:'Roboto',halign:'center'}},
+          {content:s.load||'',          styles:{font:'Roboto',halign:'center'}},
+          {content:s.strength||'-',     styles:{font:'Roboto',halign:'center'}},
+          {content:avgVal,              styles:avgStyle},
+        ]);
+      }
+    });
+  });
 
   doc.autoTable({
-    head: [tblHead], body: rows,
-    startY: y,
-    theme: 'grid',
-    tableWidth: usableW,
-    margin: { left: ML, right: MR },
-    styles:     { font:'Roboto', fontSize:7.5, halign:'center', valign:'middle', cellPadding:1.8 },
-    headStyles: { font:'Roboto', fontStyle:'bold', fillColor:headerColor, textColor:255, fontSize:7, cellPadding:2 },
-    columnStyles: Object.fromEntries(cw.map((w,i)=>[i,{cellWidth:w}])),
-    didParseCell: p => {
-      if(p.row.section !== 'body') return;
-      p.cell.styles.font = 'Roboto';
-      const last = cw.length - 1;
-      if(p.column.index === last && p.cell.raw && p.cell.raw !== ''){
-        p.cell.styles.fontStyle = 'bold';
-        p.cell.styles.fillColor = [255,248,220];
-      }
-      if(String(p.cell.raw).startsWith('Average')){
-        p.cell.styles.fontStyle = 'bold';
-        p.cell.styles.fillColor = [240,248,255];
-      }
-    }
+    head: tHead, body: tBody,
+    startY: y, margin:{left:ML,right:MR}, tableWidth:usW,
+    theme:'grid',
+    styles:    {font:'Roboto', fontSize:8,   halign:'center', valign:'middle', cellPadding:2, lineWidth:0.2},
+    headStyles:{font:'Roboto', fontStyle:'bold', fillColor:blue, textColor:255, fontSize:7.5, cellPadding:2.5},
+    columnStyles: Object.fromEntries(CW.map((w,i)=>[i,{cellWidth:w}])),
   });
 
-  // ── NOTES ───────────────────────────────────────────────
-  let fy = doc.lastAutoTable.finalY + 6;
-  doc.setFontSize(8);
-  (d.remarks||'').split('\n').forEach(r => {
-    if(r.trim()){ doc.setFont('Roboto','normal'); doc.text(r.trim(), ML, fy); fy += 4.5; }
+  // ══════════════════════════════════════════════════════
+  // 6. NOTES
+  // ══════════════════════════════════════════════════════
+  let fy = doc.lastAutoTable.finalY + 5;
+  norm(8); setBlack();
+  const noteLines = (d.remarks||'').split('\n').filter(Boolean);
+  noteLines.forEach((line,i) => {
+    const clean = line.replace(/^\d+\.\s*/,'');
+    if(i===0){ bold(8); doc.text('Note', ML, fy); norm(8); }
+    doc.text(`${i+1}. ${clean}`, ML+9, fy); fy += 5;
   });
+  fy += 6;
 
-  // ── SIGN-OFF ─────────────────────────────────────────────
-  fy += 8;
-  const half = usableW / 2;
-  doc.setFont('Roboto','bold'); doc.setFontSize(9);
-  doc.text('Thí nghiệm viên / Lab Technician', ML + half*0.5, fy, {align:'center'});
-  doc.text('Người kiểm tra / Checked by',      ML + half*1.5, fy, {align:'center'});
-  fy += 3.5;
-  doc.setFont('Roboto','normal'); doc.setFontSize(7.5);
-  doc.text('(Ký tên, ghi rõ họ tên / Sign & full name)', ML + half*0.5, fy, {align:'center'});
-  doc.text('(Ký tên, ghi rõ họ tên / Sign & full name)', ML + half*1.5, fy, {align:'center'});
-  fy += 13;
-  doc.setFont('Roboto','bold'); doc.setFontSize(9);
-  doc.text(d.labTech||'', ML + half*0.5, fy, {align:'center'});
-  doc.text(d.checkedBy||'', ML + half*1.5, fy, {align:'center'});
+  // ══════════════════════════════════════════════════════
+  // 7. SIGN-OFF — 3 columns
+  // ══════════════════════════════════════════════════════
+  const SC = usW/3;
+  const sx  = [ML, ML+SC, ML+SC*2];
+  const scx = [ML+SC*0.5, ML+SC*1.5, ML+SC*2.5]; // centre of each column
 
-  // ── PAGE FOOTER ──────────────────────────────────────────
+  bold(9); setBlack();
+  doc.text('Thí nghiệm viên',  scx[0], fy, {align:'center'});
+  doc.text('Người kiểm tra',   scx[1], fy, {align:'center'});
+  doc.text('HAI (CAMBODIA)',   scx[2], fy, {align:'center'});
+  fy+=4;
+  norm(8); doc.setTextColor(70,70,70);
+  doc.text('Lab Technician',   scx[0], fy, {align:'center'});
+  doc.text('Cheked by',        scx[1], fy, {align:'center'});
+  doc.text('SURVEY & CONSTRUCTION CO., LTD', scx[2], fy, {align:'center'});
+  fy+=4; setBlack();
+  norm(8.5); doc.text('Director', scx[2], fy, {align:'center'});
+
+  // signature space
+  fy += 18;
+  bold(9);
+  doc.text(d.labTech||'',   scx[0], fy, {align:'center'});
+  doc.text(d.checkedBy||'', scx[1], fy, {align:'center'});
+  doc.text(d.director||'',  scx[2], fy, {align:'center'});
+
+  // ══════════════════════════════════════════════════════
+  // 8. PAGE FOOTER
+  // ══════════════════════════════════════════════════════
   const fY = pageH - 12;
-  doc.setDrawColor(180,180,180); doc.setLineWidth(0.3);
+  doc.setDrawColor(160,160,160); doc.setLineWidth(0.3);
   doc.line(ML, fY-3, pageW-MR, fY-3);
-  doc.setFont('Roboto','bold'); doc.setFontSize(7);
-  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, fY, {align:'center'});
-  doc.setFont('Roboto','normal');
-  doc.text('No.06, Street D, Krang Tnorng Sangkat, Sen Sok Khan, Phnom Penh, Cambodia', pageW/2, fY+3.5, {align:'center'});
-  doc.text('Tel: +855 977 855 953  —  haicam.com  —  ' + formCode, pageW/2, fY+7, {align:'center'});
+  bold(7); setBlack();
+  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO.,LTD', pageW/2, fY, {align:'center'});
+  norm(6.5);
+  doc.text('Address: No.06, Street D, Krang Tnorng Sangkat, Sen Sok Khan, Phnom Penh, Cambodia', pageW/2, fY+3.5, {align:'center'});
+  doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, fY+7, {align:'center'});
+  bold(7); doc.text(formCode, pageW-MR, fY+7, {align:'right'});
 
-  const fname = 'ConcreteTest_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')+'_'+(isAstm?'ASTM':'TCVN')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  const fname='ConcreteTest_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')+'_'+(isAstm?'ASTM':'TCVN')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
 </script>
