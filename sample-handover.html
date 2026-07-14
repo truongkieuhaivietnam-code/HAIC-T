@@ -779,18 +779,61 @@ function renderAdmin(){
     const list = snap.docs.map(d=>d.data());
     const listEl = document.getElementById('users-list');
     if(!list.length){ listEl.innerHTML = `<p class="muted">${t('noUsers')}</p>`; return; }
-    listEl.innerHTML = list.map(u=>`
-      <div class="listrow">
-        <div>
+    listEl.innerHTML = list.map(u=>{
+      const isSelf = u.email === CURRENT_USER.email;
+      const isSuper = CURRENT_USER.role === 'superadmin';
+      const canManage = u.email !== SUPER_ADMIN_EMAIL && !isSelf;
+      // Role options available to current user for this target
+      let roleOpts = '';
+      if(canManage){
+        const roles = isSuper ? ['user','admin','superadmin'] : ['user','admin'];
+        roleOpts = roles.map(r=>`<option value="${r}" ${r===u.role?'selected':''}>${roleLabel(r)}</option>`).join('');
+      }
+      return `
+      <div class="listrow" style="align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div style="flex:1;min-width:200px">
           <div><strong>${u.displayName||u.email}</strong> <span class="badge ${u.country}">${u.country}</span></div>
-          <div class="meta">${u.email} · ${t('role'+capitalize(u.role)) || u.role} · ${u.active===false? t('inactive') : t('active')}</div>
+          <div class="meta">${u.email}</div>
+          <div class="meta" style="margin-top:2px">
+            <span style="color:${u.active===false?'var(--danger)':'var(--accent)'}">● </span>
+            ${u.active===false? t('inactive') : t('active')}
+          </div>
         </div>
-        ${u.email!==SUPER_ADMIN_EMAIL ? `<div><button class="btn small secondary" onclick="toggleUserActive('${u.email}', ${u.active===false})">${u.active===false? t('active') : t('inactive')}</button></div>` : ''}
-      </div>`).join('');
+        ${canManage ? `
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+          <div style="display:flex;align-items:center;gap:6px">
+            <label style="font-size:11px;color:var(--muted)">${t('role')}:</label>
+            <select class="role-select" style="padding:5px 8px;font-size:12px;width:auto"
+              onchange="changeUserRole('${u.email}', this.value, this)">${roleOpts}</select>
+          </div>
+          <button class="btn small secondary" onclick="toggleUserActive('${u.email}', ${u.active===false})">
+            ${u.active===false? t('active') : t('inactive')}
+          </button>
+        </div>` : `<div class="muted" style="font-size:11px">${roleLabel(u.role)}</div>`}
+      </div>`;
+    }).join('');
   });
 }
 function capitalize(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1) : s; }
 function roleLabel(r){ if(r==='superadmin') return t('roleSuperadmin'); if(r==='admin') return t('roleAdmin'); return t('roleUser'); }
+
+async function changeUserRole(email, newRole, selectEl){
+  // Ngăn admin tự tạo superadmin nếu không phải superadmin
+  if(newRole==='superadmin' && CURRENT_USER.role!=='superadmin'){
+    toast(t('permissionDenied')); selectEl.value = selectEl.dataset.prev || 'user'; return;
+  }
+  if(!confirm(`Đổi vai trò → ${roleLabel(newRole)}?`)){ 
+    selectEl.value = selectEl.dataset.prev || selectEl.value; return; 
+  }
+  try{
+    await db.collection('users').doc(email).update({ role: newRole });
+    toast(`✓ ${roleLabel(newRole)}`);
+    renderAdmin();
+  }catch(err){
+    toast(err.message);
+    renderAdmin();
+  }
+}
 
 function openNewUserModal(){
   const isSuper = CURRENT_USER.role==='superadmin';
