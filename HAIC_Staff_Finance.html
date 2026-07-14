@@ -687,8 +687,27 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <input type="text" id="txCustomCategory" class="hidden" placeholder="" style="margin-top:8px;">
       </div>
       <div class="form-group">
-        <label data-i18n="lblAmount">Số tiền ($)</label>
-        <input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01">
+        <label data-i18n="lblAmount">Số tiền</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="txAmount" placeholder="0.00" min="0" step="0.01" style="flex:1;">
+          <select id="txCurrency" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px;">
+            <option value="USD">USD $</option>
+            <option value="KHR">KHR ៛</option>
+            <option value="VND">VND ₫</option>
+            <option value="LAK">LAK ₭</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="txExchangeRateGroup" style="display:none;">
+        <label id="txExchangeRateLabel">Tỷ giá (1 USD = ?)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="txExchangeRate" placeholder="0" min="0" step="1" style="flex:1;">
+          <button type="button" id="btnFetchRate" onclick="fetchExchangeRate()" 
+            style="white-space:nowrap;padding:8px 12px;background:var(--forest);color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;">
+            🔄 Lấy tỷ giá
+          </button>
+        </div>
+        <div id="txRateInfo" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
       </div>
       <div class="form-group">
         <label data-i18n="lblProject">Công trình (tùy chọn)</label>
@@ -728,8 +747,27 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
       </div>
       <div class="form-group">
-        <label data-i18n="lblAmount">Số tiền ($)</label>
-        <input type="number" id="advanceAmount" placeholder="0.00" min="0" step="0.01">
+        <label data-i18n="lblAmount">Số tiền</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="advanceAmount" placeholder="0.00" min="0" step="0.01" style="flex:1;">
+          <select id="advanceCurrency" style="width:100px;border:1.5px solid var(--line);border-radius:8px;padding:8px;">
+            <option value="USD">USD $</option>
+            <option value="KHR">KHR ៛</option>
+            <option value="VND">VND ₫</option>
+            <option value="LAK">LAK ₭</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group" id="advExchangeRateGroup" style="display:none;">
+        <label id="advExchangeRateLabel">Tỷ giá (1 USD = ?)</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="number" id="advExchangeRate" placeholder="0" min="0" step="1" style="flex:1;">
+          <button type="button" onclick="fetchExchangeRateFor('adv')"
+            style="white-space:nowrap;padding:8px 12px;background:var(--forest);color:white;border:none;border-radius:8px;cursor:pointer;font-size:13px;">
+            🔄 Lấy tỷ giá
+          </button>
+        </div>
+        <div id="advRateInfo" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
       </div>
       <div class="form-group">
         <label data-i18n="lblProject">Công trình (tùy chọn)</label>
@@ -1712,6 +1750,15 @@ function ensureStructure() {
     if (tx.fromAdvanceId && tx.type === "income" && tx.categoryId === "c_reimbursement") {
       tx.categoryId = "c_advance_received";
     }
+    // Set default currency for old transactions
+    if (!tx.currency) tx.currency = "USD";
+    if (!tx.amountUSD) tx.amountUSD = tx.amount;
+  });
+
+  // Set default currency for old advances
+  STORE.advances.forEach(adv => {
+    if (!adv.currency) adv.currency = "USD";
+    if (!adv.amountUSD) adv.amountUSD = adv.amount;
   });
 
   // Xóa duplicate income tx cho cùng 1 advance (chỉ giữ 1 bản)
@@ -2248,8 +2295,10 @@ function calcMonthSummary(monthKeyStr, opts) {
   const txs = getTxForMonth(monthKeyStr, opts);
   let income = 0, expense = 0;
   txs.forEach(tx => {
-    if (tx.type === "income") income += tx.amount;
-    else expense += tx.amount;
+    // Use amountUSD for dashboard totals (consistent across currencies)
+    const amt = tx.amountUSD || tx.amount;
+    if (tx.type === "income") income += amt;
+    else expense += amt;
   });
   return { income, expense, balance: income - expense, txCount: txs.length };
 }
@@ -2259,8 +2308,9 @@ function calcCategoryBreakdown(monthKeyStr, opts) {
   const map = {};
   let total = 0;
   txs.forEach(tx => {
-    map[tx.categoryId] = (map[tx.categoryId] || 0) + tx.amount;
-    total += tx.amount;
+    const amt = tx.amountUSD || tx.amount;
+    map[tx.categoryId] = (map[tx.categoryId] || 0) + amt;
+    total += amt;
   });
   const cats = STORE.categories.expense;
   return {
@@ -2526,7 +2576,11 @@ function renderTxItem(tx) {
   const catName = tx.customCategory || (currentLang === "vi" ? cat.name_vi : cat.name_en);
   const catIcon = tx.categoryId === "__custom__" ? "✏️" : cat.icon;
   const isIncome = tx.type === "income";
-  const amountStr = (isIncome ? "+" : "-") + formatCurrency(tx.amount);
+  const currency = tx.currency || "USD";
+  const amountDisplay = formatAmountWithCurrency(tx.amount, currency);
+  const amountStr = (isIncome ? "+" : "-") + amountDisplay;
+  // Show USD equivalent if not USD
+  const usdNote = (currency !== "USD" && tx.amountUSD) ? ` ≈ ${formatCurrency(tx.amountUSD)}` : "";
   const project = tx.projectId ? getProjectById(tx.projectId) : null;
   const ownerUser = getUserById(tx.userId);
   const showOwner = can("viewAllTx");
@@ -2537,10 +2591,11 @@ function renderTxItem(tx) {
       <div class="tx-detail">
         <div class="top">
           <div class="cat">${escapeHtml(catName)}</div>
-          <div class="amt ${tx.type}">${amountStr}</div>
+          <div class="amt ${tx.type}">${amountStr}${usdNote ? `<span style="font-size:10px;color:var(--muted)"> ${usdNote}</span>` : ""}</div>
         </div>
         <div class="meta">
           <span>${formatDateDisplay(tx.date)}</span>
+          ${currency !== "USD" ? `<span class="project-pill" style="background:var(--gold-soft);color:var(--forest)">${currency}</span>` : ""}
           ${showOwner ? `<span>•</span><span>${ownerUser.name}</span>` : ""}
           ${project ? `<span class="project-pill">${project.name}</span>` : ""}
         </div>
@@ -2647,11 +2702,83 @@ function setupFab() {
   });
 }
 
+// ── CURRENCY SUPPORT ──────────────────────────────────────────────────────
+const CURRENCY_SYMBOLS = { USD: "$", KHR: "៛", VND: "₫", LAK: "₭" };
+let cachedRates = {}; // { KHR: 4100, VND: 25000, LAK: 21000, USD: 1 }
+
+function formatAmountWithCurrency(amount, currency) {
+  currency = currency || "USD";
+  const sym = CURRENCY_SYMBOLS[currency] || currency;
+  if (currency === "USD") return sym + amount.toFixed(2);
+  return amount.toLocaleString() + " " + sym;
+}
+
+function toUSD(amount, currency, rate) {
+  if (!currency || currency === "USD") return amount;
+  if (!rate || rate <= 0) return amount;
+  return amount / rate;
+}
+
+async function fetchExchangeRateFor(context) {
+  // context = "tx" or "adv"
+  const currencyEl = document.getElementById(context === "tx" ? "txCurrency" : "advCurrency");
+  const rateEl     = document.getElementById(context === "tx" ? "txExchangeRate" : "advExchangeRate");
+  const infoEl     = document.getElementById(context === "tx" ? "txRateInfo" : "advRateInfo");
+  const currency = currencyEl ? currencyEl.value : "USD";
+  if (currency === "USD") return;
+
+  infoEl.textContent = currentLang === "vi" ? "Đang lấy tỷ giá..." : "Fetching rate...";
+  try {
+    // Use exchangerate-api.com (free, no key needed for basic)
+    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+    const data = await res.json();
+    const rate = data.rates[currency];
+    if (rate) {
+      cachedRates[currency] = rate;
+      rateEl.value = Math.round(rate);
+      infoEl.textContent = `1 USD = ${Math.round(rate).toLocaleString()} ${currency} (${new Date().toLocaleDateString()})`;
+    } else {
+      infoEl.textContent = "Không tìm thấy tỷ giá.";
+    }
+  } catch(e) {
+    infoEl.textContent = currentLang === "vi" ? "Lỗi kết nối, nhập tỷ giá tay." : "Connection error, enter rate manually.";
+  }
+}
+
+function fetchExchangeRate() { fetchExchangeRateFor("tx"); }
+
+function toggleCurrencyFields(currencyEl, rateGroupId, rateLabelId, rateInfoId) {
+  const currency = currencyEl.value;
+  const group = document.getElementById(rateGroupId);
+  const label = document.getElementById(rateLabelId);
+  if (currency === "USD") {
+    group.style.display = "none";
+  } else {
+    group.style.display = "";
+    label.textContent = `Tỷ giá (1 USD = ? ${currency})`;
+    // Auto-fetch if not cached
+    if (cachedRates[currency]) {
+      document.getElementById(rateInfoId.replace("Info","Rate")) && 
+        (document.getElementById(rateInfoId.replace("Info","Rate")).value = Math.round(cachedRates[currency]));
+    } else {
+      // Trigger fetch
+      const ctx = rateGroupId.startsWith("tx") ? "tx" : "adv";
+      fetchExchangeRateFor(ctx);
+    }
+  }
+}
+
 function setupTxModal() {
   document.getElementById("txType").addEventListener("change", populateCategoryOptions);
   document.getElementById("txCategory").addEventListener("change", toggleCustomCategoryInput);
   document.getElementById("btnSaveTx").addEventListener("click", saveTransaction);
   document.getElementById("btnDeleteTx").addEventListener("click", deleteTransaction);
+  document.getElementById("txCurrency").addEventListener("change", () => {
+    toggleCurrencyFields(
+      document.getElementById("txCurrency"),
+      "txExchangeRateGroup", "txExchangeRateLabel", "txRateInfo"
+    );
+  });
 }
 
 function populateCategoryOptions() {
@@ -2693,10 +2820,26 @@ function openTxModal(tx) {
     customInp.classList.add("hidden");
   }
   document.getElementById("txDate").value = tx ? tx.date : todayStr();
-  document.getElementById("txAmount").value = tx ? tx.amount : "";
+  document.getElementById("txAmount").value = tx ? (tx.amount || "") : "";
   populateProjectOptions(document.getElementById("txProject"));
   document.getElementById("txProject").value = tx ? (tx.projectId || "") : "";
   document.getElementById("txNote").value = tx ? (tx.note || "") : "";
+
+  // Currency fields
+  const currency = tx ? (tx.currency || "USD") : "USD";
+  document.getElementById("txCurrency").value = currency;
+  if (currency !== "USD") {
+    document.getElementById("txExchangeRateGroup").style.display = "";
+    document.getElementById("txExchangeRate").value = tx ? (tx.exchangeRate || "") : "";
+    document.getElementById("txExchangeRateLabel").textContent = `Tỷ giá (1 USD = ? ${currency})`;
+    if (tx && tx.exchangeRate) {
+      document.getElementById("txRateInfo").textContent = `1 USD = ${tx.exchangeRate.toLocaleString()} ${currency}`;
+    }
+  } else {
+    document.getElementById("txExchangeRateGroup").style.display = "none";
+    document.getElementById("txExchangeRate").value = "";
+    document.getElementById("txRateInfo").textContent = "";
+  }
 
   const canDelete = tx && (tx.userId === currentUser.id || isSuperAdmin());
   document.getElementById("btnDeleteTx").classList.toggle("hidden", !canDelete);
@@ -2732,6 +2875,9 @@ function saveTransaction() {
   const customCategory = categoryId === "__custom__" ? document.getElementById("txCustomCategory").value.trim() : null;
   const date = document.getElementById("txDate").value;
   const amount = parseFloat(document.getElementById("txAmount").value);
+  const currency = document.getElementById("txCurrency").value || "USD";
+  const exchangeRate = currency !== "USD" ? (parseFloat(document.getElementById("txExchangeRate").value) || null) : null;
+  const amountUSD = exchangeRate ? toUSD(amount, currency, exchangeRate) : (currency === "USD" ? amount : amount);
   const projectId = document.getElementById("txProject").value || null;
   const note = document.getElementById("txNote").value.trim();
 
@@ -2744,6 +2890,8 @@ function saveTransaction() {
     return;
   }
 
+  const currencyFields = { currency, exchangeRate, amountUSD: parseFloat(amountUSD.toFixed(2)) };
+
   if (editingTxId) {
     const tx = STORE.transactions.find(t2 => t2.id === editingTxId);
     if (!tx) return;
@@ -2752,6 +2900,9 @@ function saveTransaction() {
     tx.customCategory = customCategory || null;
     tx.date = date;
     tx.amount = amount;
+    tx.currency = currency;
+    tx.exchangeRate = exchangeRate;
+    tx.amountUSD = currencyFields.amountUSD;
     tx.projectId = projectId;
     tx.note = note;
     tx.updatedAt = nowISO();
@@ -2759,12 +2910,14 @@ function saveTransaction() {
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name,
       action: "edited", targetType: type === "income" ? t("auditIncome") : t("auditExpense"),
-      detail: `${displayName} - ${formatCurrency(amount)}`
+      detail: `${displayName} - ${formatAmountWithCurrency(amount, currency)}`
     });
   } else {
     STORE.transactions.push({
       id: genId("tx"),
-      type, categoryId, customCategory: customCategory || null, date, amount, projectId, note,
+      type, categoryId, customCategory: customCategory || null,
+      date, amount, currency, exchangeRate, amountUSD: currencyFields.amountUSD,
+      projectId, note,
       userId: currentUser.id,
       timestamp: new Date().toTimeString().substring(0, 5),
       createdAt: nowISO(),
@@ -2773,7 +2926,7 @@ function saveTransaction() {
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name,
       action: "created", targetType: type === "income" ? t("auditIncome") : t("auditExpense"),
-      detail: `${displayName} - ${formatCurrency(amount)}`
+      detail: `${displayName} - ${formatAmountWithCurrency(amount, currency)}`
     });
   }
 
@@ -2871,7 +3024,10 @@ function renderAdvanceCard(a) {
           <div class="amt">${typeIcon} ${typeLabel}</div>
           <div class="who">${formatDateDisplay(a.date)}${showOwner ? " • " + ownerUser.name : ""}${project ? " • " + project.name : ""}</div>
         </div>
-        <div class="amt">${formatCurrency(a.amount)}</div>
+        <div style="text-align:right;">
+          <div class="amt">${formatAmountWithCurrency(a.amount, a.currency || "USD")}</div>
+          ${(a.currency && a.currency !== "USD" && a.amountUSD) ? `<div style="font-size:11px;color:var(--muted)">≈ ${formatCurrency(a.amountUSD)}</div>` : ""}
+        </div>
       </div>
       ${a.reason ? `<div class="note">${escapeHtml(a.reason)}</div>` : ""}
       <span class="status-pill ${a.status}">${t("status" + capitalize(a.status))}</span>
@@ -2890,13 +3046,22 @@ function renderAdvanceCard(a) {
 function setupAdvanceModal() {
   document.getElementById("advanceAmount").addEventListener("input", updateAdvanceStatusPreview);
   document.getElementById("btnSaveAdvance").addEventListener("click", saveAdvance);
+  document.getElementById("advanceCurrency").addEventListener("change", () => {
+    toggleCurrencyFields(
+      document.getElementById("advanceCurrency"),
+      "advExchangeRateGroup", "advExchangeRateLabel", "advRateInfo"
+    );
+  });
 }
 
 function updateAdvanceStatusPreview() {
   const amount = parseFloat(document.getElementById("advanceAmount").value) || 0;
+  const currency = document.getElementById("advanceCurrency").value || "USD";
+  const rate = parseFloat(document.getElementById("advExchangeRate").value) || 1;
+  const amountUSD = currency === "USD" ? amount : toUSD(amount, currency, rate);
   const preview = document.getElementById("advanceStatusPreview");
   if (amount <= 0) { preview.textContent = ""; return; }
-  const status = determineAdvanceStatus(amount, currentUser.role);
+  const status = determineAdvanceStatus(amountUSD, currentUser.role);
   const label = status === "approved" ? "✅ " + t("autoApproved") : "⏳ " + t("needApproval");
   preview.textContent = `${t("advanceStatusInfo")}: ${label}`;
 }
@@ -2909,6 +3074,20 @@ function openAdvanceModal(advanceId) {
   document.getElementById("advanceType").value = adv ? adv.advanceType : "advance";
   document.getElementById("advanceDate").value = adv ? adv.date : todayStr();
   document.getElementById("advanceAmount").value = adv ? adv.amount : "";
+
+  // Currency fields
+  const currency = adv ? (adv.currency || "USD") : "USD";
+  document.getElementById("advanceCurrency").value = currency;
+  if (currency !== "USD") {
+    document.getElementById("advExchangeRateGroup").style.display = "";
+    document.getElementById("advExchangeRate").value = adv ? (adv.exchangeRate || "") : "";
+    document.getElementById("advExchangeRateLabel").textContent = `Tỷ giá (1 USD = ? ${currency})`;
+  } else {
+    document.getElementById("advExchangeRateGroup").style.display = "none";
+    document.getElementById("advExchangeRate").value = "";
+    document.getElementById("advRateInfo").textContent = "";
+  }
+
   populateProjectOptions(document.getElementById("advanceProject"));
   document.getElementById("advanceProject").value = adv ? (adv.projectId || "") : "";
   document.getElementById("advanceReason").value = adv ? (adv.reason || "") : "";
@@ -2921,6 +3100,9 @@ function saveAdvance() {
   const advanceType = document.getElementById("advanceType").value;
   const date = document.getElementById("advanceDate").value;
   const amount = parseFloat(document.getElementById("advanceAmount").value);
+  const currency = document.getElementById("advanceCurrency").value || "USD";
+  const exchangeRate = currency !== "USD" ? (parseFloat(document.getElementById("advExchangeRate").value) || null) : null;
+  const amountUSD = exchangeRate ? parseFloat(toUSD(amount, currency, exchangeRate).toFixed(2)) : amount;
   const projectId = document.getElementById("advanceProject").value || null;
   const reason = document.getElementById("advanceReason").value.trim();
 
@@ -2930,6 +3112,7 @@ function saveAdvance() {
   }
 
   const typeLabel = advanceType === "purchase" ? t("auditPurchase") : t("auditAdvance");
+  const displayAmt = formatAmountWithCurrency(amount, currency);
 
   if (editingAdvanceId) {
     const adv = STORE.advances.find(a => a.id === editingAdvanceId);
@@ -2937,16 +3120,20 @@ function saveAdvance() {
     adv.advanceType = advanceType;
     adv.date = date;
     adv.amount = amount;
+    adv.currency = currency;
+    adv.exchangeRate = exchangeRate;
+    adv.amountUSD = amountUSD;
     adv.projectId = projectId;
     adv.reason = reason;
     adv.updatedAt = nowISO();
-    adv.status = determineAdvanceStatus(amount, currentUser.role);
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: typeLabel, detail: `${formatCurrency(amount)}` });
+    adv.status = determineAdvanceStatus(amountUSD, currentUser.role);
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: typeLabel, detail: displayAmt });
   } else {
-    const status = determineAdvanceStatus(amount, currentUser.role);
+    const status = determineAdvanceStatus(amountUSD, currentUser.role);
     STORE.advances.push({
       id: genId("adv"),
-      advanceType, date, amount, projectId, reason,
+      advanceType, date, amount, currency, exchangeRate, amountUSD,
+      projectId, reason,
       userId: currentUser.id,
       status,
       approvedBy: status === "approved" && currentUser.role !== "member" ? currentUser.id : null,
@@ -2955,7 +3142,7 @@ function saveAdvance() {
       createdAt: nowISO(),
       history: [{ action: "created", userId: currentUser.id, userName: currentUser.name, timestamp: nowISO() }],
     });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: typeLabel, detail: `${formatCurrency(amount)}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: typeLabel, detail: displayAmt });
 
     if (status === "pending") {
       addNotification({ type: "new_request", message: t("notifNewRequest"), forApprover: true });
