@@ -945,7 +945,7 @@ function exportPDF(){
   const blue=[26,82,118];
   const stdName  = isAstm ? 'ASTM C39'        : 'TCVN 3118 - 2022';
   const formCode = isAstm ? 'F-12.1.HAIC-LAB-15MAT' : 'F-12.2.HAIC-LAB-15MAT';
-  const dimHeader = isAstm ? 'DxH' : 'DxRxC';
+  const dimHeader = isAstm ? 'DxH' : 'LxWxH';
 
   // shortcuts
   const B=(sz)=>{ doc.setFont('Roboto','bold');   doc.setFontSize(sz); };
@@ -1101,13 +1101,15 @@ function exportPDF(){
       {content:'Từng mẫu\nIndividual', styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
       {content:'Trung bình\nAverage',   styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
     ],
-    // ── Row 3 — units ──
+    // ── Row 3 — units (7 cells: DateCast|DateTest|Age|Dim|Load|Individual|Average) ──
     [
-      {content:'(day)',        styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
-      {content:dimHeader,     styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
-      {content:'(kN)',         styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
-      {content:'(MPa)',        styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
-      {content:'(MPa)',        styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(date)', styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(date)', styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(day)',  styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:dimHeader,styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(kN)',   styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(MPa)',  styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(MPa)',  styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
     ],
   ];
 
@@ -1127,10 +1129,7 @@ function exportPDF(){
       const dim = isAstm
         ? `${s.d1||''}x${s.d2||''}`
         : `${s.d1||''}x${s.d2||''}x${s.d3||''}`;
-      const avgVal = si===1 ? (g.avg||'') : '';
-      const avgSty = si===1 && g.avg
-        ? {font:'Roboto',fontStyle:'bold',halign:'center',valign:'middle',fontSize:9}
-        : {font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'};
+
 
       if(si===0){
         tb.push([
@@ -1142,7 +1141,7 @@ function exportPDF(){
           {content:dim,  styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8.5}},
           {content:s.load||'',          styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
           {content:s.strength||'',      styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
-          {content:'',                  styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:g.avg||'', rowSpan:3, styles:{font:'Roboto',fontStyle:'bold',halign:'center',valign:'middle',fontSize:10,fillColor:g.avg?[255,248,220]:[255,255,255]}},
         ]);
       } else {
         tb.push([
@@ -1150,7 +1149,6 @@ function exportPDF(){
           {content:dim,        styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8.5}},
           {content:s.load||'', styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
           {content:s.strength||'', styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
-          {content:avgVal,     styles:avgSty},
         ]);
       }
     });
