@@ -255,6 +255,15 @@
       <div class="field"><label>Thành phố / City</label><input id="fReportCity" type="text" value="Phnom Penh" placeholder="Phnom Penh"></div>
       <div class="field"><label>Giám đốc / Director</label><input id="fDirector" type="text" placeholder="Dr. Nguyen Quang Anh"></div>
     </div>
+    <div style="background:#f0f4ff;border:1px solid #c5d0e8;border-radius:8px;padding:10px 12px;margin-bottom:10px;">
+      <div style="font-size:12px;font-weight:700;color:var(--primary);margin-bottom:8px;">Người chứng kiến / Witnesses (dành cho Biên bản thí nghiệm)</div>
+      <div class="grid2">
+        <div class="field"><label>Nhà thầu / Contractor rep.</label><input id="fWitnessContractor" type="text" placeholder="Eng. ..."></div>
+        <div class="field"><label>Tư vấn GS / Consultant rep.</label><input id="fWitnessConsultant" type="text" placeholder="Eng. ..."></div>
+        <div class="field"><label>Đại diện CĐT / Client rep.</label><input id="fWitnessClient" type="text" placeholder="Eng. ..."></div>
+        <div class="field"><label>Nhà cung cấp / Supplier rep.</label><input id="fWitnessSupplier" type="text" placeholder="Eng. ..."></div>
+      </div>
+    </div>
     <div class="signoff3">
       <div class="box">
         <div class="ttl">Thí nghiệm viên<br><span style="font-weight:400;font-style:italic;font-size:11px;">Lab Technician</span></div>
@@ -285,6 +294,7 @@
   <button class="accent" id="updateBtn" onclick="updateReport()" style="display:none;">✏️ Cập nhật</button>
   <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
   <button class="accent" onclick="exportPDF()">📄 PDF</button>
+  <button onclick="exportMinutePDF()" style="background:#6c3483;">📋 Biên Bản TN</button>
   <button class="accent" onclick="exportExcel()">📊 Excel</button>
 </div>
 
@@ -744,6 +754,8 @@ function collectFormData(){
     qc: gv('fQC'), remarks: gv('fRemarks'),
     labTech: gv('fLabTech'), checkedBy: gv('fCheckedBy'),
     director: gv('fDirector'), reportDate: gv('fReportDate'), reportCity: gv('fReportCity')||'Phnom Penh',
+    witnessContractor: gv('fWitnessContractor'), witnessConsultant: gv('fWitnessConsultant'),
+    witnessClient: gv('fWitnessClient'), witnessSupplier: gv('fWitnessSupplier'),
     groups: collectGroups(),
   };
 }
@@ -757,6 +769,8 @@ function applyFormData(d){
   sv('fQC', d.qc); sv('fRemarks', d.remarks);
   sv('fLabTech', d.labTech); sv('fCheckedBy', d.checkedBy);
   sv('fDirector', d.director); sv('fDirectorDisplay', d.director); sv('fReportDate', d.reportDate); sv('fReportCity', d.reportCity||'Phnom Penh');
+  sv('fWitnessContractor', d.witnessContractor); sv('fWitnessConsultant', d.witnessConsultant);
+  sv('fWitnessClient', d.witnessClient); sv('fWitnessSupplier', d.witnessSupplier);
   document.getElementById('groupsContainer').innerHTML = '';
   groupCount = 0;
   (d.groups||[]).forEach(g => addGroup(g));
@@ -1237,6 +1251,266 @@ function exportPDF(){
   doc.text(formCode, pageW-MR-2, FBY+FBH-2, {align:'right'});
 
   const fname='ConcreteTest_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
+    +'_'+(isAstm?'ASTM':'TCVN')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fname);
+}
+
+
+
+/* ---- EXPORT TESTING MINUTE PDF (Biên bản thí nghiệm) ---- */
+function exportMinutePDF(){
+  const d = collectFormData();
+  const isAstm = d.standard === 'astm';
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  registerFonts(doc);
+
+  const pageW=210, pageH=297, ML=8, MR=8, usW=pageW-ML-MR;
+  const blue=[26,82,118], purple=[108,52,131];
+  const stdName  = isAstm ? 'ASTM C39' : 'TCVN 3118 - 2022';
+  const formCode = isAstm ? 'F-12.1.HAIC-LAB-15MAT' : 'F-12.2.HAIC-LAB-15MAT';
+  const dimHeader = isAstm ? 'DxH' : 'LxWxH';
+
+  const B=(sz)=>{ doc.setFont('Roboto','bold');   doc.setFontSize(sz); };
+  const N=(sz)=>{ doc.setFont('Roboto','normal'); doc.setFontSize(sz); };
+  const I=(sz)=>{ doc.setFont('Roboto','italic'); doc.setFontSize(sz); };
+  const BLUE  =()=> doc.setTextColor(...blue);
+  const PURPLE=()=> doc.setTextColor(...purple);
+  const BLACK =()=> doc.setTextColor(0,0,0);
+  const GRAY  =()=> doc.setTextColor(60,60,60);
+  function fmtDate(iso){
+    if(!iso) return '';
+    const [y,m,d2]=iso.split('-'); return `${d2}/${m}/${y}`;
+  }
+
+  // ── OUTER BORDER ─────────────────────────────────────────
+  doc.setDrawColor(0,0,0); doc.setLineWidth(1.2);
+  doc.roundedRect(4,4,pageW-8,pageH-8,2,2,'S');
+
+  // ── HEADER ───────────────────────────────────────────────
+  const HY=5, HH=27;
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.rect(ML,HY,46,HH,'S');
+  doc.addImage(HAIC_LOGO_B64,'PNG',ML+1,HY+1,44,HH-2);
+
+  const RW=32, RX=pageW-MR-RW;
+  doc.rect(RX,HY,RW,HH,'S');
+  doc.addImage(VICAS_LOGO_B64,'PNG',RX+1,HY+1,   RW-2,13);
+  doc.addImage(ISO_LOGO_B64,  'PNG',RX+1,HY+14.5,RW-2,12);
+
+  // Title — blue title + purple "BIÊN BẢN" subtitle
+  const TX=ML+48, TW=RX-ML-50;
+  BLUE(); B(12);
+  doc.text('CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG XM', TX+TW/2, HY+8, {align:'center'});
+  I(9.5); BLUE();
+  doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+15, {align:'center'});
+  B(9); PURPLE();
+  doc.text('BIÊN BẢN THÍ NGHIỆM / TESTING MINUTE', TX+TW/2, HY+23, {align:'center'});
+  BLACK();
+
+  doc.setDrawColor(0,0,0); doc.setLineWidth(0.8);
+  doc.line(ML,HY+HH+1,pageW-MR,HY+HH+1);
+
+  let y = HY+HH+5;
+
+  // Date
+  const rDate = d.reportDate ? fmtDate(d.reportDate)
+    : new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const city = d.reportCity||'Phnom Penh';
+  I(9); GRAY(); doc.text(`${city}, ${rDate}`, pageW-MR, y, {align:'right'}); BLACK();
+  y += 5.5;
+
+  // ── SECTION I ────────────────────────────────────────────
+  const secH = (txt,cy) => {
+    B(9.5); BLUE(); doc.text(txt, ML+2, cy);
+    const tw=doc.getTextWidth(txt);
+    doc.setDrawColor(...blue); doc.setLineWidth(0.4);
+    doc.line(ML+2,cy+1,ML+2+tw,cy+1); BLACK();
+  };
+  secH('I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION', y); y+=6;
+
+  const bullets=[
+    ['Công trình / Project',    d.project],
+    ['Địa điểm XD / Location',  d.location],
+    ['Tư vấn GS / Consultant',  d.supervisor],
+    ['Nhà thầu / Contractor',   d.contractor],
+    ['Nhà cung cấp / Supplier', d.supplier],
+  ];
+  for(const [lbl,val] of bullets){
+    N(9); doc.text('- ',ML+2,y);
+    B(9);  doc.text(lbl,ML+6,y);
+    N(9);  doc.text(' : '+(val||''),ML+6+doc.getTextWidth(lbl),y);
+    y+=5.2;
+  }
+  y+=3;
+
+  // ── SECTION II heading ───────────────────────────────────
+  secH('II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT', y); y+=5.5;
+
+  // ── SPECIMEN INFO TABLE ──────────────────────────────────
+  const tblStyle={font:'Roboto',fontSize:8,cellPadding:2,halign:'center',valign:'middle',lineColor:[0,0,0],lineWidth:0.25};
+  const headStyle={...tblStyle,fillColor:[255,255,255],textColor:0};
+
+  doc.autoTable({
+    startY:y, margin:{left:ML,right:MR}, tableWidth:usW, theme:'grid',
+    styles:tblStyle,
+    head:[
+      [
+        {content:'Mẫu thử / Specimen information',colSpan:3,
+         styles:{...headStyle,fontStyle:'normal',fontSize:8.5,halign:'center'}},
+        {content:`Phương pháp thử\nTesting method\n${stdName}`,rowSpan:2,
+         styles:{...headStyle,fontStyle:'italic',fontSize:8,halign:'center',valign:'middle'}},
+      ],
+      [
+        {content:'Độ sụt\nSlump',styles:{...headStyle,fontSize:7.5}},
+        {content:'Cường độ yêu cầu\nRequest concrete strength',styles:{...headStyle,fontSize:7.5}},
+        {content:'Số lượng tổ mẫu\nQuantity',styles:{...headStyle,fontSize:7.5}},
+      ]
+    ],
+    body:[[
+      {content:d.slump||'',       styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
+      {content:d.reqStrength||'', styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
+      {content:String(d.groups.length),styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
+      {content:`Thiết bị TN / Equipment\n${d.equipment||''}`,
+       styles:{font:'Roboto',fontStyle:'normal',fontSize:8.5,halign:'center',valign:'middle'}},
+    ]],
+    columnStyles:{0:{cellWidth:usW*0.20},1:{cellWidth:usW*0.32},2:{cellWidth:usW*0.18},3:{cellWidth:usW*0.30}},
+  });
+  y = doc.lastAutoTable.finalY + 2;
+
+  // ── MAIN RESULTS TABLE ───────────────────────────────────
+  const CW=[12,20,23,23,12,22,22,30,30];
+  const hd=[
+    [
+      {content:'Stt tổ\nmẫu /\nNo',rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Ký hiệu\nmẫu\nSpecimen\nsymbol',rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Ngày - Date\n(dd/mm/yyyy)',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Tuổi\nmẫu\nAge at\nTest',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:isAstm?'Kích thước mẫu\nDimension\nDxH (mm)':'Kích thước mẫu\nDimension\nLxWxH (mm)',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Tải trọng\nphá hủy\nmẫu\nMaximum\nLoad at\nFailure',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Cường độ kháng nén\nCompressive Strength',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+    ],
+    [
+      {content:'Ngày đúc\nDate of\nCast',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
+      {content:'Ngày nén\nDate of\nTest',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
+      {content:'Từng mẫu\nIndividual',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:'Trung bình\nAverage',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+    ],
+    [
+      {content:'(date)',styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(date)',styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(day)', styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:dimHeader,styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(kN)',  styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(MPa)', styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+      {content:'(MPa)', styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
+    ],
+  ];
+
+  const tb=[];
+  d.groups.forEach((g,gi)=>{
+    if(g.item) tb.push([{content:g.item,colSpan:9,
+      styles:{font:'Roboto',fontStyle:'normal',fontSize:9,halign:'center',fillColor:[255,255,255],textColor:0,cellPadding:2}}]);
+    g.specimens.forEach((s,si)=>{
+      const dim=isAstm?`${s.d1||''}x${s.d2||''}`:`${s.d1||''}x${s.d2||''}x${s.d3||''}`;
+      if(si===0){
+        tb.push([
+          {content:String(gi+1),rowSpan:3,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:10}},
+          {content:'S1',styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:fmtDate(g.dateCast),rowSpan:3,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8}},
+          {content:fmtDate(g.dateTest),rowSpan:3,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8}},
+          {content:String(g.age||''),rowSpan:3,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:9}},
+          {content:dim,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8.5}},
+          {content:s.load||'',styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:s.strength||'',styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:g.avg||'',rowSpan:3,styles:{font:'Roboto',fontStyle:'bold',halign:'center',valign:'middle',fontSize:10,fillColor:g.avg?[255,248,220]:[255,255,255]}},
+        ]);
+      } else {
+        tb.push([
+          {content:`S${si+1}`,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:dim,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:8.5}},
+          {content:s.load||'',styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+          {content:s.strength||'',styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle'}},
+        ]);
+      }
+    });
+  });
+
+  doc.autoTable({
+    head:hd, body:tb,
+    startY:y, margin:{left:ML,right:MR}, tableWidth:usW,
+    theme:'grid',
+    styles:{font:'Roboto',fontStyle:'normal',fontSize:8.5,halign:'center',valign:'middle',cellPadding:2,lineColor:[0,0,0],lineWidth:0.25},
+    headStyles:{font:'Roboto',fontStyle:'normal',fillColor:[255,255,255],textColor:0,fontSize:7.5,cellPadding:2,lineColor:[0,0,0],lineWidth:0.25},
+    columnStyles:Object.fromEntries(CW.map((w,i)=>[i,{cellWidth:w}])),
+  });
+
+  // ── NOTES ────────────────────────────────────────────────
+  let fy = doc.lastAutoTable.finalY + 5;
+  const noteLines=(d.remarks||'').split('\n').filter(Boolean);
+  N(8.5); BLACK();
+  const nl='Note'; doc.text(nl,ML+2,fy);
+  doc.setDrawColor(0); doc.setLineWidth(0.3);
+  doc.line(ML+2,fy+0.6,ML+2+doc.getTextWidth(nl),fy+0.6);
+  const nlw=doc.getTextWidth(nl);
+  noteLines.forEach((line,i)=>{
+    const clean=line.replace(/^\d+\.\s*/,'');
+    N(8.5);
+    if(i===0){ doc.text(`1. ${clean}`,ML+2+nlw+3,fy); }
+    else { fy+=5; doc.text(`${i+1}. ${clean}`,ML+2+nlw+3,fy); }
+  });
+  fy+=8;
+
+  // ── SIGN-OFF — WITNESSES (2 rows) ────────────────────────
+  // Row 1: Nhà thầu | Tư vấn GS | Đại diện CĐT
+  // Row 2: Nhà cung cấp | Thí nghiệm viên (HAIC)
+  const R1W = usW/3, R2W = usW/2;
+  const r1x = [ML+R1W*0.5, ML+R1W*1.5, ML+R1W*2.5];
+  const r2x = [ML+R2W*0.5, ML+R2W*1.5];
+
+  // Row 1 labels
+  B(9); PURPLE();
+  doc.text('Nhà thầu',      r1x[0], fy, {align:'center'});
+  doc.text('Tư vấn GS',     r1x[1], fy, {align:'center'});
+  doc.text('Đại diện CĐT',  r1x[2], fy, {align:'center'});
+  fy+=4;
+  I(8.5); PURPLE();
+  doc.text('Contractor',    r1x[0], fy, {align:'center'});
+  doc.text('Consultant',    r1x[1], fy, {align:'center'});
+  doc.text('Client / Owner',r1x[2], fy, {align:'center'});
+  fy+=18;  // signature space
+  I(8.5); BLACK();
+  doc.text(d.witnessContractor||'', r1x[0], fy, {align:'center'});
+  doc.text(d.witnessConsultant||'', r1x[1], fy, {align:'center'});
+  doc.text(d.witnessClient||'',     r1x[2], fy, {align:'center'});
+  fy+=10;
+
+  // Row 2 labels
+  B(9); PURPLE();
+  doc.text('Nhà cung cấp',              r2x[0], fy, {align:'center'});
+  doc.text('Thí nghiệm viên / HAIC',    r2x[1], fy, {align:'center'});
+  fy+=4;
+  I(8.5); PURPLE();
+  doc.text('Supplier',                  r2x[0], fy, {align:'center'});
+  doc.text('Lab Technician',            r2x[1], fy, {align:'center'});
+  fy+=18; // signature space
+  I(8.5); BLACK();
+  doc.text(d.witnessSupplier||'', r2x[0], fy, {align:'center'});
+  doc.text(d.labTech||'',         r2x[1], fy, {align:'center'});
+
+  // ── FOOTER BOX ───────────────────────────────────────────
+  const FBH=22, FBY=pageH-4-FBH-2;
+  doc.setDrawColor(0,0,0); doc.setLineWidth(0.5);
+  doc.rect(ML,FBY,usW,FBH,'S');
+  B(8); BLACK();
+  doc.text('HAI (CAMBODIA)  SURVEY & CONSTRUCTION CO.,LTD', pageW/2, FBY+6, {align:'center'});
+  I(7.5);
+  doc.text('Address: No.06, Street D, Krang Tnorng Sangkat, Sen Sok Khan, Phnom Penh, Cambodia', pageW/2, FBY+11, {align:'center'});
+  doc.text('Telephone: +855 977 855 953 - Website: haicam.com - Email: anhnguyen@haicam.com', pageW/2, FBY+16, {align:'center'});
+  N(7); doc.setTextColor(100,100,100);
+  doc.text(formCode, pageW-MR-2, FBY+FBH-2, {align:'right'});
+
+  const fname='TestingMinute_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
     +'_'+(isAstm?'ASTM':'TCVN')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
