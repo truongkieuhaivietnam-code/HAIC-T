@@ -428,6 +428,7 @@
             <th>Name<span class="vi">Tên</span></th>
             <th>Email</th>
             <th>Role<span class="vi">Vai trò</span></th>
+            <th>Country<span class="vi">Quốc gia</span></th>
             <th>Actions<span class="vi">Hành động</span></th>
           </tr></thead>
           <tbody id="staffTableBody"></tbody>
@@ -536,19 +537,28 @@
 
 <!-- ===================== MODAL: STAFF ===================== -->
 <div class="modal-bg" id="staffModalBg">
-  <div class="modal" style="max-width:460px;">
+  <div class="modal" style="max-width:480px;">
     <button class="modal-close" onclick="closeModal('staffModalBg')">&times;</button>
-    <h3>Add Staff <span class="vi">/ Thêm nhân viên</span></h3>
+    <h3 id="staffModalHeading">Add Staff <span class="vi">/ Thêm nhân viên</span></h3>
     <div class="form-grid">
       <div class="full"><label>Full name<span class="vi">Họ tên</span></label><input id="sName"></div>
       <div class="full"><label>Email (Gmail) — used as username<span class="vi">Email (Gmail) — dùng làm username</span></label><input id="sUser" type="email" placeholder="name@gmail.com"></div>
-      <div class="full"><label>Temporary password<span class="vi">Mật khẩu tạm</span></label><input id="sPass" placeholder="min 6 characters"></div>
-      <div class="full">
+      <div class="full" id="sPassSection"><label>Temporary password<span class="vi">Mật khẩu tạm</span></label><input id="sPass" placeholder="min 6 characters"></div>
+      <div>
         <label>Role<span class="vi">Vai trò</span></label>
         <select id="sRole">
           <option value="technician">Technician</option>
           <option value="report">Report Team</option>
           <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div>
+        <label>Country<span class="vi">Quốc gia</span></label>
+        <select id="sCountry">
+          <option value="">🌏 All / Tất cả</option>
+          <option value="KH">🇰🇭 Cambodia / Campuchia (KH)</option>
+          <option value="LA">🇱🇦 Laos / Lào (LA)</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam (VN)</option>
         </select>
       </div>
     </div>
@@ -599,6 +609,33 @@
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('planModalBg')">Cancel <span class="vi">/ Hủy</span></button>
       <button class="btn btn-primary" onclick="savePlan()">Save plan <span class="vi">/ Lưu kế hoạch</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: SUB-TASK ===================== -->
+<div class="modal-bg" id="subtaskModalBg">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('subtaskModalBg')">&times;</button>
+    <h3 id="subtaskModalHeading">New Sub-task <span class="vi">/ Giao việc con</span></h3>
+    <div class="small-muted" id="subtaskParentInfo" style="margin-bottom:14px;padding:8px 10px;background:#f3f0e6;border-radius:2px;"></div>
+    <div class="form-grid">
+      <div class="full"><label>Sub-task description<span class="vi">Mô tả đầu việc</span></label><input id="stDesc" placeholder="VD: Thực hiện thí nghiệm Direct Shear cho BH-03"></div>
+      <div>
+        <label>Assigned to<span class="vi">Giao cho</span></label>
+        <select id="stAssignee"></select>
+      </div>
+      <div><label>Start time<span class="vi">Thời gian bắt đầu</span></label><input type="datetime-local" id="stStartTime"></div>
+      <div><label>Deadline<span class="vi">Deadline</span></label><input type="datetime-local" id="stDeadline"></div>
+      <div class="full">
+        <label>Tests / Steps (select from parent task)<span class="vi">Test/bước từ task gốc</span></label>
+        <div class="checklist" id="stTestsChecklist" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
+      <div class="full"><label>Notes<span class="vi">Ghi chú</span></label><textarea id="stNotes"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('subtaskModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveSubTask()">Save <span class="vi">/ Lưu</span></button>
     </div>
   </div>
 </div>
@@ -968,6 +1005,8 @@ function closeModal(id){
   if(id==='taskModalBg') EDIT_TASK_ID = null;
   if(id==='projectModalBg') EDIT_PROJECT_ID = null;
   if(id==='planModalBg') EDIT_PLAN_ID = null;
+  if(id==='staffModalBg') EDIT_STAFF_ID = null;
+  if(id==='subtaskModalBg'){ SUBTASK_PARENT_ID=null; EDIT_SUBTASK_ID=null; }
 }
 function openModal(id){ document.getElementById(id).classList.add('active'); }
 
@@ -1019,9 +1058,11 @@ function statusBadge(status){
     pending:['grey','Not started','Chưa bắt đầu'],
     progress:['yellow','In progress','Đang làm'],
     done:['green','Completed','Hoàn tất'],
-    overdue:['red','Overdue','Quá hạn']
+    overdue:['red','Overdue','Quá hạn'],
+    active:['yellow','In progress','Đang thực hiện']
   };
-  const [c,en,vi]=map[status];
+  const entry = map[status] || ['grey', status, status];
+  const [c,en,vi] = entry;
   return `<span class="badge ${c}">${en} / ${vi}</span>`;
 }
 function trafficDot(task){
@@ -1337,7 +1378,10 @@ function renderTasks(){
   let html='';
   tasks.forEach(t=>{
     try {
-      const pct = taskProgress(t);
+      // Filter out sub-tasks from main list (they show inside parent card)
+      if(t.parentTaskId) return;
+      const pct = taskProgressWithSubs(t, TASKS);
+      const subs = getSubTasks(t.id);
       html += `<div class="section-card">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
           <div>
@@ -1355,11 +1399,30 @@ function renderTasks(){
         </div>
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
           <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
-          <span class="small-muted">${pct}% complete / hoàn thành</span>
+          <span class="small-muted">${pct}% complete / hoàn thành${subs.length>0?` <span style="color:var(--accent2);">(${subs.length} sub-tasks / việc con)</span>`:''}</span>
         </div>
+        ${subs.length>0?`<div style="margin-bottom:10px;padding:10px;background:#f3f0e6;border-radius:2px;border-left:3px solid var(--accent2);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent2);margin-bottom:8px;">Sub-tasks / Việc con</div>
+          ${subs.map(s=>{
+            const spct=taskProgress(s);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);gap:8px;flex-wrap:wrap;">
+              <div>
+                <span style="font-size:12.5px;font-weight:600;">${s.sampleId||'?'}</span>
+                <span class="small-muted"> — ${getAssigneeNames(s)}${s.deadline?' | '+fmtDateTime(s.deadline):''}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="progress-bar" style="width:80px;"><div class="fill" style="width:${spct}%"></div></div>
+                <span class="small-muted">${spct}%</span>
+                <button class="btn btn-secondary btn-sm" onclick="openDetail('${s.id}')">View</button>
+                ${isAdminLike(SESSION.role)||getAssigneeIds(t).includes(SESSION.uid)?`<button class="btn btn-secondary btn-sm" onclick="openSubTaskModal('${t.id}','${s.id}')">Edit</button>`:''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`:''}
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
           ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Edit <span class="vi">Sửa</span></button>`:''}
+          ${(isAdminLike(SESSION.role) && getAssigneeIds(t).includes(SESSION.uid)) || SESSION.role==='admin'?`<button class="btn btn-secondary btn-sm" style="color:var(--accent2);border-color:var(--accent2);" onclick="openSubTaskModal('${t.id}')">+ Sub-task <span class="vi">Việc con</span></button>`:''}
           ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
         </div>
       </div>`;
@@ -2005,7 +2068,7 @@ function renderPerformance(){
   let rows='';
   staffWithTasks.forEach(staff=>{
     const role = staff.role; // technician, admin, superadmin, report
-    const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id));
+    const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id) && !t.parentTaskId);
 
     // Count tasks where this person's part is done
     const doneTasks = myTasks.filter(t=>staffPartDone(t, role));
@@ -2249,10 +2312,13 @@ function renderPlans(){
 /* ============================================================
    STAFF MANAGEMENT
    ============================================================ */
+const COUNTRY_FLAGS = {KH:'🇰🇭',LA:'🇱🇦',VN:'🇻🇳'};
+
 function renderStaff(){
   let rows='';
   USERS.forEach(u=>{
     const isSuper = u.role==='superadmin';
+    const cy = u.country ? (COUNTRY_LABEL[u.country]||{flag:'🌏',name:u.country}) : null;
     let actions = '';
 
     if(SESSION.role==='superadmin' && u.id!==SESSION.uid){
@@ -2263,31 +2329,50 @@ function renderStaff(){
       }
     }
     if(isAdminLike(SESSION.role) && !isSuper && u.id!==SESSION.uid){
+      actions += `<button class="btn btn-secondary btn-sm" onclick="openStaffModal('${u.id}')">Edit <span class="vi">Sửa</span></button> `;
       actions += `<button class="btn btn-danger btn-sm" onclick="deleteStaff('${u.id}')">Delete <span class="vi">Xoá</span></button>`;
     }
     if(isSuper){
-      actions = `<span class="small-muted">Super Admin — fixed / cố định</span>`;
+      actions = `<button class="btn btn-secondary btn-sm" onclick="openStaffModal('${u.id}')">Edit <span class="vi">Sửa</span></button>`;
     }
 
     rows += `<tr>
       <td>${u.name}</td>
       <td><code>${u.email}</code></td>
       <td><span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
+      <td>${cy?`${cy.flag} ${cy.name}`:'-'}</td>
       <td><div class="role-actions">${actions}</div></td>
     </tr>`;
   });
   document.getElementById('staffTableBody').innerHTML = rows;
 }
 
-function openStaffModal(){
-  document.getElementById('sName').value='';
-  document.getElementById('sUser').value='';
-  document.getElementById('sPass').value='';
-  document.getElementById('sRole').value='technician';
+let EDIT_STAFF_ID = null;
+
+function openStaffModal(userId){
+  EDIT_STAFF_ID = userId || null;
+  const u = EDIT_STAFF_ID ? findUser(EDIT_STAFF_ID) : null;
+
+  document.getElementById('sName').value = u ? u.name : '';
+  document.getElementById('sUser').value = u ? u.email : '';
+  document.getElementById('sPass').value = '';
+  document.getElementById('sRole').value = u ? u.role : 'technician';
+  document.getElementById('sCountry').value = u ? (u.country||'') : '';
+
+  // Hide password field when editing (password change via Firebase Console)
+  document.getElementById('sPassSection').style.display = EDIT_STAFF_ID ? 'none' : '';
+
+  // Lock email when editing
+  document.getElementById('sUser').readOnly = !!EDIT_STAFF_ID;
+  document.getElementById('sUser').style.opacity = EDIT_STAFF_ID ? '.6' : '';
 
   const roleSel = document.getElementById('sRole');
   const adminOpt = roleSel.querySelector('option[value="admin"]');
   adminOpt.style.display = (SESSION.role==='superadmin') ? '' : 'none';
+
+  document.getElementById('staffModalHeading').innerHTML = EDIT_STAFF_ID
+    ? `Edit Staff <span class="vi">/ Sửa thông tin nhân viên</span>`
+    : `Add Staff <span class="vi">/ Thêm nhân viên</span>`;
 
   openModal('staffModalBg');
 }
@@ -2297,28 +2382,35 @@ async function saveStaff(){
   const email=document.getElementById('sUser').value.trim();
   const password=document.getElementById('sPass').value;
   const role=document.getElementById('sRole').value;
+  const country=document.getElementById('sCountry').value;
 
-  if(!name||!email||!password){
-    alert('Please fill in all fields.\nĐiền đủ thông tin.');
+  if(!name||!email){ alert('Please fill in name and email.\nĐiền đủ tên và email.'); return; }
+
+  if(EDIT_STAFF_ID){
+    // Edit mode: update profile only (no password change)
+    const u = findUser(EDIT_STAFF_ID);
+    if(u.role==='superadmin' && role!=='superadmin' && SESSION.role!=='superadmin'){
+      alert('Cannot change Super Admin role.\nKhông thể đổi role Super Admin.'); return;
+    }
+    await db.collection('users').doc(EDIT_STAFF_ID).update({name, role, country});
+    EDIT_STAFF_ID = null;
+    closeModal('staffModalBg');
+    alert('Profile updated / Đã cập nhật thông tin.');
     return;
   }
-  if(password.length<6){
-    alert('Password must be at least 6 characters.\nMật khẩu tối thiểu 6 ký tự.');
-    return;
-  }
+
+  // Create new account
+  if(!password){ alert('Please enter a password.\nVui lòng nhập mật khẩu.'); return; }
+  if(password.length<6){ alert('Password must be at least 6 characters.\nMật khẩu tối thiểu 6 ký tự.'); return; }
   if(role==='admin' && SESSION.role!=='superadmin'){
-    alert('Only Super Admin can create Admin accounts.\nChỉ Super Admin được tạo tài khoản Admin.');
-    return;
+    alert('Only Super Admin can create Admin accounts.\nChỉ Super Admin được tạo tài khoản Admin.'); return;
   }
-
   try{
-    // Use a secondary Firebase Auth app instance so creating the new account
-    // does not sign out the current Admin/Super Admin session.
     const secondaryApp = firebase.apps.find(a=>a.name==='secondary') || firebase.initializeApp(firebaseConfig,'secondary');
     const secondaryAuth = secondaryApp.auth();
     const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     await db.collection('users').doc(cred.user.uid).set({
-      name, email, role, createdAt: nowISO()
+      name, email, role, country, createdAt: nowISO()
     });
     await secondaryAuth.signOut();
     closeModal('staffModalBg');
@@ -2349,12 +2441,134 @@ async function deleteStaff(userId){
     return;
   }
   if(TASKS.some(t=>getAssigneeIds(t).includes(userId))){
-    if(!confirm('This staff has assigned samples. Delete the account anyway?\nNhân viên này đang có mẫu được gán. Vẫn xoá tài khoản?')) return;
+    if(!confirm('This staff has assigned samples. Delete anyway?\nNhân viên này có mẫu đang gán. Vẫn xoá?')) return;
   } else {
     if(!confirm(`Delete account for ${u.name}?\nXoá tài khoản của ${u.name}?`)) return;
   }
   await db.collection('users').doc(userId).delete();
-  alert('Profile removed. The login record (Firebase Auth) must be removed separately via Firebase Console.\nĐã xoá hồ sơ. Tài khoản đăng nhập (Firebase Auth) cần xoá riêng qua Firebase Console.');
+  alert('Profile removed. Firebase Auth record must be removed separately via Firebase Console.\nĐã xoá hồ sơ. Tài khoản Auth cần xoá riêng qua Firebase Console.');
+}
+
+/* ============================================================
+   SUB-TASK (Task con)
+   ============================================================ */
+let SUBTASK_PARENT_ID = null;
+let EDIT_SUBTASK_ID = null;
+
+// Override taskProgress to account for sub-tasks
+function taskProgressWithSubs(task, subtasks){
+  const mySubs = subtasks.filter(s=>s.parentTaskId===task.id);
+  if(mySubs.length===0) return taskProgress(task);
+  // Progress = average of sub-task progresses
+  const avg = mySubs.reduce((sum,s)=>sum+taskProgress(s),0) / mySubs.length;
+  return Math.round(avg);
+}
+
+// Get all sub-tasks for a task (from TASKS collection with parentTaskId field)
+function getSubTasks(taskId){
+  return TASKS.filter(t=>t.parentTaskId===taskId);
+}
+
+function canCreateSubTask(task){
+  // Admin/SuperAdmin assigned to this task can create sub-tasks
+  return isAdminLike(SESSION.role) && getAssigneeIds(task).includes(SESSION.uid);
+}
+
+function openSubTaskModal(parentTaskId, subTaskId){
+  SUBTASK_PARENT_ID = parentTaskId;
+  EDIT_SUBTASK_ID = subTaskId || null;
+
+  const parent = TASKS.find(t=>t.id===parentTaskId);
+  const sub = EDIT_SUBTASK_ID ? TASKS.find(t=>t.id===EDIT_SUBTASK_ID) : null;
+
+  document.getElementById('subtaskParentInfo').innerHTML =
+    `Parent task / Task gốc: <strong>${parent?parent.project+' — '+parent.sampleId:'?'}</strong>`;
+
+  document.getElementById('stDesc').value = sub ? (sub.sampleId||'') : '';
+  document.getElementById('stStartTime').value = sub ? (sub.startTime||'') : '';
+  document.getElementById('stDeadline').value = sub ? (sub.deadline||'') : '';
+  document.getElementById('stNotes').value = sub ? (sub.client||'') : '';
+
+  // Assignee: only technicians and non-admin users
+  const sel = document.getElementById('stAssignee');
+  sel.innerHTML='';
+  USERS.filter(u=>u.role==='technician'||u.role==='report').forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+    sel.appendChild(o);
+  });
+  if(sub) sel.value = getAssigneeIds(sub)[0]||'';
+
+  // Tests from parent: show checklist of parent's test names
+  const cl = document.getElementById('stTestsChecklist');
+  const existingTests = sub ? sub.tests.map(x=>x.name) : [];
+  if(parent && parent.tests && parent.tests.length>0){
+    cl.innerHTML = parent.tests.map(t=>`<label><input type="checkbox" value="${t.name}" ${existingTests.includes(t.name)?'checked':''}> ${t.name}</label>`).join('');
+  } else {
+    cl.innerHTML = '<div class="small-muted">No tests in parent task. / Không có test trong task gốc.</div>';
+  }
+
+  document.getElementById('subtaskModalHeading').innerHTML = EDIT_SUBTASK_ID
+    ? `Edit Sub-task <span class="vi">/ Sửa việc con</span>`
+    : `New Sub-task <span class="vi">/ Giao việc con</span>`;
+
+  openModal('subtaskModalBg');
+}
+
+async function saveSubTask(){
+  const desc = document.getElementById('stDesc').value.trim();
+  const assigneeId = document.getElementById('stAssignee').value;
+  const startTime = document.getElementById('stStartTime').value;
+  const deadline = document.getElementById('stDeadline').value;
+  const notes = document.getElementById('stNotes').value.trim();
+
+  if(!desc||!assigneeId||!deadline){
+    alert('Please fill in description, assignee and deadline.\nVui lòng điền mô tả, người phụ trách và deadline.');
+    return;
+  }
+
+  const checked = Array.from(document.querySelectorAll('#stTestsChecklist input:checked')).map(c=>c.value);
+  if(checked.length===0){
+    alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+    return;
+  }
+
+  const parent = TASKS.find(t=>t.id===SUBTASK_PARENT_ID);
+  const projectObj = parent ? PROJECTS.find(p=>p.id===parent.projectId) : null;
+
+  if(EDIT_SUBTASK_ID){
+    const existing = TASKS.find(t=>t.id===EDIT_SUBTASK_ID);
+    const newTests = checked.map(name=>{
+      const ex = existing.tests.find(x=>x.name===name);
+      return ex ? ex : {name, steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}};
+    });
+    await db.collection('tasks').doc(EDIT_SUBTASK_ID).update({
+      sampleId:desc, assigneeIds:[assigneeId], assigneeId,
+      startTime, deadline, client:notes, tests:newTests
+    });
+    EDIT_SUBTASK_ID=null; SUBTASK_PARENT_ID=null;
+    closeModal('subtaskModalBg');
+    return;
+  }
+
+  const subTask = {
+    parentTaskId: SUBTASK_PARENT_ID,
+    projectId: parent ? parent.projectId : '',
+    project: parent ? parent.project : '',
+    sampleId: desc,
+    client: notes,
+    standard: parent ? parent.standard : '',
+    assigneeIds: [assigneeId], assigneeId,
+    startTime, deadline,
+    createdAt: nowISO(), completedAt: null,
+    tests: checked.map(name=>({
+      name,
+      steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}
+    }))
+  };
+  await db.collection('tasks').add(subTask);
+  SUBTASK_PARENT_ID=null;
+  closeModal('subtaskModalBg');
+  alert('Sub-task created / Đã tạo việc con.');
 }
 
 /* ============================================================
