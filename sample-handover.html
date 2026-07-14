@@ -113,12 +113,14 @@ select.role-select{font-weight:600}
     <button data-tab="dashboard" class="active" data-i18n="tabDashboard">Tổng quan</button>
     <button data-tab="projects" data-i18n="tabProjects">Dự án</button>
     <button data-tab="forms" data-i18n="tabForms">Phiếu giao nhận</button>
+    <button data-tab="goods" data-i18n="tabGoods">Giao nhận hàng</button>
     <button data-tab="admin" id="tab-admin-btn" data-i18n="tabAdmin">Quản trị</button>
   </nav>
   <main>
     <div id="tab-dashboard"></div>
     <div id="tab-projects" class="hidden"></div>
     <div id="tab-forms" class="hidden"></div>
+    <div id="tab-goods" class="hidden"></div>
     <div id="tab-admin" class="hidden"></div>
   </main>
 </div>
@@ -170,6 +172,42 @@ const I18N = {
   tabProjects:{vi:"Dự án",en:"Projects"},
   tabForms:{vi:"Phiếu giao nhận",en:"Handover Forms"},
   tabAdmin:{vi:"Quản trị",en:"Admin"},
+  tabGoods:{vi:"Giao nhận hàng",en:"Goods Handover"},
+  newGoodsForm:{vi:"+ Phiếu hàng hóa mới",en:"+ New Goods Form"},
+  goodsFormTitle:{vi:"PHIẾU GIAO NHẬN HÀNG HÓA / THIẾT BỊ",en:"GOODS & EQUIPMENT HANDOVER FORM"},
+  sender:{vi:"Bên gửi",en:"Sender"},
+  senderName:{vi:"Tên người gửi",en:"Sender Name"},
+  senderPhone:{vi:"SĐT người gửi",en:"Sender Phone"},
+  senderCountry:{vi:"Nước gửi",en:"Sending Country"},
+  receiver:{vi:"Bên nhận",en:"Receiver"},
+  receiverName:{vi:"Tên người nhận",en:"Receiver Name"},
+  receiverPhone:{vi:"SĐT người nhận",en:"Receiver Phone"},
+  receiverCountry:{vi:"Nước nhận",en:"Receiving Country"},
+  receiverAccount:{vi:"Tài khoản người nhận (email)",en:"Receiver Account (email)"},
+  carrier:{vi:"Đơn vị vận chuyển",en:"Carrier / Shipper"},
+  carrierName:{vi:"Tên đơn vị vận chuyển",en:"Carrier Name"},
+  carrierPhone:{vi:"SĐT liên hệ",en:"Carrier Phone"},
+  trackingNo:{vi:"Số vận đơn / Tracking",en:"Tracking No."},
+  sendDate:{vi:"Ngày gửi",en:"Send Date"},
+  estimatedArrival:{vi:"Ngày dự kiến đến",en:"Estimated Arrival"},
+  actualReceiveDate:{vi:"Ngày nhận thực tế",en:"Actual Receive Date"},
+  itemName:{vi:"Tên hàng hóa / thiết bị",en:"Item Name"},
+  qty:{vi:"Số lượng",en:"Qty"},
+  unit:{vi:"Đơn vị",en:"Unit"},
+  condition:{vi:"Tình trạng",en:"Condition"},
+  confirmReceive:{vi:"✓ Xác nhận đã nhận",en:"✓ Confirm Receipt"},
+  confirmedBy:{vi:"Người xác nhận",en:"Confirmed By"},
+  confirmNote:{vi:"Ghi chú khi nhận",en:"Receive Note"},
+  statusPending:{vi:"Chờ gửi",en:"Pending"},
+  statusTransit:{vi:"Đang vận chuyển",en:"In Transit"},
+  statusDelivered:{vi:"Đã nhận",en:"Delivered"},
+  markTransit:{vi:"Đánh dấu: Đang vận chuyển",en:"Mark as In Transit"},
+  goodsDocNo:{vi:"Số phiếu hàng",en:"Goods Form No."},
+  noGoods:{vi:"Chưa có phiếu hàng hóa nào.",en:"No goods handover forms yet."},
+  confirmReceiveTitle:{vi:"Xác nhận nhận hàng",en:"Confirm Receipt"},
+  myInbox:{vi:"Hàng gửi cho tôi",en:"Sent to Me"},
+  mySent:{vi:"Hàng tôi gửi",en:"Sent by Me"},
+  allGoods:{vi:"Tất cả",en:"All"},
   newProject:{vi:"+ Dự án mới",en:"+ New Project"},
   newForm:{vi:"+ Phiếu mới",en:"+ New Form"},
   projectName:{vi:"Tên dự án",en:"Project Name"},
@@ -351,6 +389,7 @@ function renderActiveTab(){
   if(ACTIVE_TAB==='dashboard') renderDashboard();
   if(ACTIVE_TAB==='projects') renderProjects();
   if(ACTIVE_TAB==='forms') renderForms();
+  if(ACTIVE_TAB==='goods') renderGoods();
   if(ACTIVE_TAB==='admin') renderAdmin();
 }
 
@@ -371,12 +410,18 @@ function renderDashboard(){
       <div class="row">
         <div class="card" style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--primary)" id="dash-projects">…</div><div class="muted">${t('tabProjects')}</div></div>
         <div class="card" style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--accent)" id="dash-forms">…</div><div class="muted">${t('tabForms')}</div></div>
+        <div class="card" style="flex:1;text-align:center"><div style="font-size:26px;font-weight:800;color:var(--warn)" id="dash-goods">…</div><div class="muted">${t('tabGoods')}</div></div>
       </div>
     </div>`;
   document.getElementById('dash-projects').textContent = PROJECTS_CACHE.length;
   let q = db.collection('handovers');
   if(CURRENT_USER.role !== 'superadmin') q = q.where('country','==',CURRENT_USER.country);
   q.get().then(s=>{ document.getElementById('dash-forms').textContent = s.size; });
+  let q2 = db.collection('goods_handovers');
+  if(CURRENT_USER.role !== 'superadmin'){
+    q2 = q2.where('senderCountry','==',CURRENT_USER.country);
+  }
+  q2.get().then(s=>{ if(document.getElementById('dash-goods')) document.getElementById('dash-goods').textContent = s.size; });
 }
 
 // ============ PROJECTS ============
@@ -798,6 +843,360 @@ async function saveCompanyNames(){
   COMPANY_NAMES = data;
   toast(t('save')+' ✓');
 }
+
+
+// ============================================================
+// GOODS HANDOVER MODULE
+// ============================================================
+let GOODS_VIEW = 'all'; // 'all' | 'sent' | 'inbox'
+
+function gStatus(s){
+  if(s==='transit') return t('statusTransit');
+  if(s==='delivered') return t('statusDelivered');
+  return t('statusPending');
+}
+function gStatusColor(s){
+  if(s==='transit') return 'var(--warn)';
+  if(s==='delivered') return 'var(--accent)';
+  return 'var(--muted)';
+}
+
+function renderGoods(){
+  const el = document.getElementById('tab-goods');
+  const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}">${cName(c)}</option>`).join('');
+  el.innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+        <h3 style="margin:0">${t('tabGoods')}</h3>
+        <button class="btn small" onclick="openGoodsEditor(null)">${t('newGoodsForm')}</button>
+      </div>
+      <div class="row" style="margin-top:10px;gap:6px">
+        <button class="btn small ${GOODS_VIEW==='all'?'':'secondary'}" onclick="setGoodsView('all')">${t('allGoods')}</button>
+        <button class="btn small ${GOODS_VIEW==='sent'?'':'secondary'}" onclick="setGoodsView('sent')">${t('mySent')}</button>
+        <button class="btn small ${GOODS_VIEW==='inbox'?'':'secondary'}" onclick="setGoodsView('inbox')">${t('myInbox')}</button>
+        ${CURRENT_USER.role==='superadmin' ? `<div class="field" style="max-width:180px;margin:0"><select id="goods-filter" onchange="renderGoods()"><option value="ALL">${t('all')}</option>${countryOptions}</select></div>` : ''}
+      </div>
+      <div id="goods-list" style="margin-top:10px">${t('loadingForms')}</div>
+    </div>`;
+  loadGoodsList();
+}
+function setGoodsView(v){ GOODS_VIEW=v; renderGoods(); }
+
+async function loadGoodsList(){
+  const listEl = document.getElementById('goods-list');
+  if(!listEl) return;
+  try{
+    let snap;
+    if(GOODS_VIEW==='sent'){
+      snap = await db.collection('goods_handovers').where('createdBy','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+    } else if(GOODS_VIEW==='inbox'){
+      snap = await db.collection('goods_handovers').where('receiverEmail','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+    } else {
+      let q = db.collection('goods_handovers').orderBy('createdAt','desc');
+      if(CURRENT_USER.role!=='superadmin') q = q.where('senderCountry','==',CURRENT_USER.country);
+      const filter = document.getElementById('goods-filter');
+      if(filter && filter.value!=='ALL') q = q.where('senderCountry','==',filter.value);
+      snap = await q.get();
+    }
+    let list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!list.length){ listEl.innerHTML=`<p class="muted">${t('noGoods')}</p>`; return; }
+    listEl.innerHTML = list.map(g=>`
+      <div class="listrow" onclick="openGoodsEditor('${g.id}')">
+        <div>
+          <div><strong>${g.docNo||'...'}</strong>
+            <span class="badge ${g.senderCountry}">${g.senderCountry}</span>
+            <span style="font-size:11px;color:var(--muted)">→</span>
+            <span class="badge ${g.receiverCountry}">${g.receiverCountry}</span>
+          </div>
+          <div class="meta">${g.senderName||''} → ${g.receiverName||''} · ${g.sendDate||''}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:700;color:${gStatusColor(g.status)}">${gStatus(g.status)}</div>
+          ${g.status!=='delivered' && g.receiverEmail===CURRENT_USER.email
+            ? `<button class="btn small" style="margin-top:4px;background:var(--accent)" onclick="event.stopPropagation();openConfirmReceive('${g.id}')">${t('confirmReceive')}</button>` : ''}
+        </div>
+      </div>`).join('');
+  }catch(err){
+    listEl.innerHTML=`<p class="muted">${err.message}</p>`;
+  }
+}
+
+function blankGoodsRow(){ return {name:'',qty:'',unit:'',condition:'',remarks:''}; }
+
+async function openGoodsEditor(formId){
+  let g;
+  if(formId){
+    const snap = await db.collection('goods_handovers').doc(formId).get();
+    g = {id:formId,...snap.data()};
+  } else {
+    g = {
+      senderCountry:CURRENT_USER.country, senderName:CURRENT_USER.displayName,
+      senderEmail:CURRENT_USER.email, senderPhone:'',
+      receiverCountry:'', receiverName:'', receiverEmail:'', receiverPhone:'',
+      carrierName:'', carrierPhone:'', trackingNo:'',
+      sendDate:new Date().toISOString().slice(0,10), estimatedArrival:'',
+      items:[blankGoodsRow()], comment:'', status:'pending'
+    };
+  }
+  window._editingGoods = g;
+  renderGoodsEditorView();
+}
+
+function renderGoodsEditorView(){
+  const g = window._editingGoods;
+  const isSuper = CURRENT_USER.role==='superadmin';
+  const cOpts = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===g.senderCountry?'selected':''}>${cName(c)}</option>`).join('');
+  const rOpts = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===g.receiverCountry?'selected':''}>${cName(c)}</option>`).join('');
+  const isDelivered = g.status==='delivered';
+  const canEdit = !isDelivered && (CURRENT_USER.email===g.createdBy || CURRENT_USER.role!=='user' || !g.id);
+  const dis = isDelivered ? 'disabled' : '';
+
+  document.getElementById('tab-goods').innerHTML = `
+    <div class="card">
+      <div class="row" style="justify-content:space-between;align-items:center">
+        <h3 style="margin:0">${t('goodsFormTitle')} ${g.docNo?'· '+g.docNo:''}</h3>
+        <button class="btn small secondary" onclick="renderGoods()">← ${t('close')}</button>
+      </div>
+      ${isDelivered ? `<div style="background:var(--accent);color:#fff;border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:700">✓ ${t('statusDelivered')} — ${g.confirmedBy||''} · ${g.actualReceiveDate||''}</div>` : ''}
+
+      <div class="section-title">${t('sender')}</div>
+      <div class="row">
+        <div class="field"><label>${t('senderCountry')}</label>
+          <select id="g-scountry" ${isSuper&&!g.id?'':'disabled'}>${cOpts}</select></div>
+        <div class="field"><label>${t('senderName')}</label><input id="g-sname" value="${g.senderName||''}" ${dis}></div>
+        <div class="field"><label>${t('senderPhone')}</label><input id="g-sphone" value="${g.senderPhone||''}" ${dis}></div>
+      </div>
+
+      <div class="section-title">${t('receiver')}</div>
+      <div class="row">
+        <div class="field"><label>${t('receiverCountry')}</label>
+          <select id="g-rcountry" ${dis}>${rOpts}</select></div>
+        <div class="field"><label>${t('receiverName')}</label><input id="g-rname" value="${g.receiverName||''}" ${dis}></div>
+        <div class="field"><label>${t('receiverPhone')}</label><input id="g-rphone" value="${g.receiverPhone||''}" ${dis}></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>${t('receiverAccount')}</label>
+          <input id="g-remail" type="email" value="${g.receiverEmail||''}" placeholder="email@haic.com" ${dis}></div>
+      </div>
+
+      <div class="section-title">${t('carrier')}</div>
+      <div class="row">
+        <div class="field"><label>${t('carrierName')}</label><input id="g-cname" value="${g.carrierName||''}" ${dis}></div>
+        <div class="field"><label>${t('carrierPhone')}</label><input id="g-cphone" value="${g.carrierPhone||''}" ${dis}></div>
+        <div class="field"><label>${t('trackingNo')}</label><input id="g-track" value="${g.trackingNo||''}" ${dis}></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>${t('sendDate')}</label><input id="g-sdate" type="date" value="${g.sendDate||''}" ${dis}></div>
+        <div class="field"><label>${t('estimatedArrival')}</label><input id="g-eta" type="date" value="${g.estimatedArrival||''}" ${dis}></div>
+      </div>
+
+      <div class="section-title">${t('tabGoods')}</div>
+      <div class="tablewrap">
+        <table class="grid" id="goods-rows-table">
+          <thead><tr>
+            <th>${t('no')}</th>
+            <th style="min-width:160px">${t('itemName')}</th>
+            <th style="min-width:60px">${t('qty')}</th>
+            <th style="min-width:70px">${t('unit')}</th>
+            <th style="min-width:100px">${t('condition')}</th>
+            <th style="min-width:120px">${t('remarks')}</th>
+            ${!isDelivered?'<th></th>':''}
+          </tr></thead>
+          <tbody id="goods-rows-tbody"></tbody>
+        </table>
+      </div>
+      ${!isDelivered ? `<button class="btn small secondary" style="margin-top:8px" onclick="addGoodsRow()">${t('addRow')}</button>` : ''}
+
+      <div class="section-title">${t('comment')}</div>
+      <textarea id="g-comment" ${dis}>${g.comment||''}</textarea>
+
+      ${!isDelivered ? `
+      <div class="row" style="margin-top:14px;flex-wrap:wrap">
+        ${canEdit ? `
+        <button class="btn" onclick="saveGoodsForm('pending')">${t('save')} (${t('statusPending')})</button>
+        <button class="btn" style="background:var(--warn)" onclick="saveGoodsForm('transit')">${t('markTransit')}</button>` : ''}
+        ${g.id && g.receiverEmail===CURRENT_USER.email && g.status!=='delivered'
+          ? `<button class="btn" style="background:var(--accent)" onclick="openConfirmReceive('${g.id}')">${t('confirmReceive')}</button>` : ''}
+        ${g.id ? `
+        <button class="btn secondary" onclick="exportGoodsPdf()">${t('exportPdf')}</button>
+        <button class="btn secondary" onclick="exportGoodsExcel()">${t('exportExcel')}</button>
+        ${CURRENT_USER.role!=='user' ? `<button class="btn danger" onclick="deleteGoodsForm()">${t('delete')}</button>` : ''}` : ''}
+      </div>` : `
+      <div class="row" style="margin-top:14px">
+        <button class="btn secondary" onclick="exportGoodsPdf()">${t('exportPdf')}</button>
+        <button class="btn secondary" onclick="exportGoodsExcel()">${t('exportExcel')}</button>
+      </div>`}
+    </div>`;
+  renderGoodsRows();
+}
+
+function renderGoodsRows(){
+  const g = window._editingGoods;
+  const isDelivered = g.status==='delivered';
+  const tbody = document.getElementById('goods-rows-tbody');
+  if(!tbody) return;
+  tbody.innerHTML = g.items.map((r,i)=>`
+    <tr>
+      <td>${i+1}</td>
+      <td class="txt"><input value="${r.name}" ${isDelivered?'disabled':''} onchange="updateGoodsRow(${i},'name',this.value)"></td>
+      <td><input type="number" min="0" value="${r.qty}" ${isDelivered?'disabled':''} onchange="updateGoodsRow(${i},'qty',this.value)" style="width:55px"></td>
+      <td class="txt"><input value="${r.unit}" ${isDelivered?'disabled':''} onchange="updateGoodsRow(${i},'unit',this.value)" style="width:60px"></td>
+      <td class="txt"><input value="${r.condition}" ${isDelivered?'disabled':''} onchange="updateGoodsRow(${i},'condition',this.value)"></td>
+      <td class="txt"><input value="${r.remarks}" ${isDelivered?'disabled':''} onchange="updateGoodsRow(${i},'remarks',this.value)"></td>
+      ${!isDelivered ? `<td><button class="btn small secondary" onclick="removeGoodsRow(${i})">✕</button></td>` : ''}
+    </tr>`).join('');
+}
+function updateGoodsRow(i,f,v){ window._editingGoods.items[i][f]=v; }
+function addGoodsRow(){ window._editingGoods.items.push(blankGoodsRow()); renderGoodsRows(); }
+function removeGoodsRow(i){ window._editingGoods.items.splice(i,1); renderGoodsRows(); }
+
+function collectGoodsFields(){
+  const g = window._editingGoods;
+  g.senderName = document.getElementById('g-sname').value.trim();
+  g.senderPhone = document.getElementById('g-sphone').value.trim();
+  g.receiverCountry = document.getElementById('g-rcountry').value;
+  g.receiverName = document.getElementById('g-rname').value.trim();
+  g.receiverPhone = document.getElementById('g-rphone').value.trim();
+  g.receiverEmail = document.getElementById('g-remail').value.trim().toLowerCase();
+  g.carrierName = document.getElementById('g-cname').value.trim();
+  g.carrierPhone = document.getElementById('g-cphone').value.trim();
+  g.trackingNo = document.getElementById('g-track').value.trim();
+  g.sendDate = document.getElementById('g-sdate').value;
+  g.estimatedArrival = document.getElementById('g-eta').value;
+  g.comment = document.getElementById('g-comment').value;
+}
+
+async function getNextGoodsDocNo(country){
+  const counterRef = db.collection('counters').doc(country+'-HH');
+  return db.runTransaction(async(tx)=>{
+    const snap = await tx.get(counterRef);
+    const last = snap.exists ? (snap.data().lastNumber||0) : 0;
+    const next = last+1;
+    tx.set(counterRef,{lastNumber:next},{merge:true});
+    return `${country}-HH-${String(next).padStart(4,'0')}`;
+  });
+}
+
+async function saveGoodsForm(status){
+  collectGoodsFields();
+  const g = window._editingGoods;
+  if(!g.receiverEmail){ toast(t('receiverAccount')+' ?'); return; }
+  if(!g.receiverCountry){ toast(t('receiverCountry')+' ?'); return; }
+  g.status = status;
+  const payload = {
+    senderCountry:g.senderCountry, senderName:g.senderName,
+    senderEmail:g.senderEmail||CURRENT_USER.email, senderPhone:g.senderPhone,
+    receiverCountry:g.receiverCountry, receiverName:g.receiverName,
+    receiverEmail:g.receiverEmail, receiverPhone:g.receiverPhone,
+    carrierName:g.carrierName, carrierPhone:g.carrierPhone, trackingNo:g.trackingNo,
+    sendDate:g.sendDate, estimatedArrival:g.estimatedArrival,
+    items:g.items, comment:g.comment, status:g.status,
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp(), updatedBy:CURRENT_USER.email
+  };
+  if(g.id){
+    await db.collection('goods_handovers').doc(g.id).update(payload);
+    toast(t('formSaved'));
+  } else {
+    const docNo = await getNextGoodsDocNo(g.senderCountry);
+    payload.docNo = docNo;
+    payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+    payload.createdBy = CURRENT_USER.email;
+    const ref = await db.collection('goods_handovers').add(payload);
+    g.id = ref.id; g.docNo = docNo;
+    toast(t('formSaved')+': '+docNo);
+  }
+  renderGoodsEditorView();
+}
+
+async function deleteGoodsForm(){
+  if(!confirm(t('confirmDelete'))) return;
+  await db.collection('goods_handovers').doc(window._editingGoods.id).delete();
+  renderGoods();
+}
+
+function openConfirmReceive(formId){
+  openModal(`
+    <h3>${t('confirmReceiveTitle')}</h3>
+    <div class="field"><label>${t('actualReceiveDate')}</label><input id="cr-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label>${t('confirmNote')}</label><textarea id="cr-note" style="min-height:70px"></textarea></div>
+    <div class="row">
+      <button class="btn" style="background:var(--accent)" onclick="submitConfirmReceive('${formId}')">${t('confirmReceive')}</button>
+      <button class="btn secondary" onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+}
+async function submitConfirmReceive(formId){
+  const date = document.getElementById('cr-date').value;
+  const note = document.getElementById('cr-note').value;
+  await db.collection('goods_handovers').doc(formId).update({
+    status:'delivered',
+    actualReceiveDate:date,
+    confirmNote:note,
+    confirmedBy:CURRENT_USER.displayName,
+    confirmedByEmail:CURRENT_USER.email,
+    confirmedAt:firebase.firestore.FieldValue.serverTimestamp()
+  });
+  closeModal();
+  toast('✓ '+t('statusDelivered'));
+  // Refresh
+  if(window._editingGoods && window._editingGoods.id===formId){
+    openGoodsEditor(formId);
+  } else {
+    renderGoods();
+  }
+}
+
+function exportGoodsPdf(){
+  const g = window._editingGoods;
+  const doc = new jspdf.jsPDF();
+  doc.setFontSize(13); doc.text(t('goodsFormTitle'), 105, 14, {align:'center'});
+  doc.setFontSize(9);
+  let y=24;
+  doc.text(`${t('goodsDocNo')}: ${g.docNo||''}`, 14, y); y+=6;
+  doc.text(`${t('sender')}: ${g.senderName||''} (${g.senderCountry}) · ${g.senderPhone||''}`, 14, y); y+=6;
+  doc.text(`${t('receiver')}: ${g.receiverName||''} (${g.receiverCountry}) · ${g.receiverPhone||''}`, 14, y); y+=6;
+  doc.text(`${t('carrier')}: ${g.carrierName||''} · ${g.carrierPhone||''} · Tracking: ${g.trackingNo||''}`, 14, y); y+=6;
+  doc.text(`${t('sendDate')}: ${g.sendDate||''} · ${t('estimatedArrival')}: ${g.estimatedArrival||''}`, 14, y); y+=8;
+  doc.autoTable({
+    startY:y,
+    head:[[t('no'),t('itemName'),t('qty'),t('unit'),t('condition'),t('remarks')]],
+    body:g.items.map((r,i)=>[i+1,r.name,r.qty,r.unit,r.condition,r.remarks]),
+    styles:{fontSize:8}
+  });
+  y = doc.lastAutoTable.finalY + 8;
+  doc.text(`${t('comment')}: ${g.comment||''}`, 14, y); y+=10;
+  if(g.status==='delivered'){
+    doc.text(`${t('statusDelivered')}: ${g.confirmedBy||''} · ${g.actualReceiveDate||''}`, 14, y); y+=6;
+    doc.text(`${t('confirmNote')}: ${g.confirmNote||''}`, 14, y); y+=10;
+  }
+  doc.text(t('sender'), 50, y+30, {align:'center'});
+  doc.text(t('receiver'), 160, y+30, {align:'center'});
+  doc.save(`${g.docNo||'goods'}.pdf`);
+}
+
+function exportGoodsExcel(){
+  const g = window._editingGoods;
+  const sheetData = [
+    [t('goodsFormTitle')],
+    [t('goodsDocNo'), g.docNo||''],
+    [t('sender'), g.senderName||'', g.senderCountry, g.senderPhone||''],
+    [t('receiver'), g.receiverName||'', g.receiverCountry, g.receiverPhone||''],
+    [t('carrier'), g.carrierName||'', g.carrierPhone||'', g.trackingNo||''],
+    [t('sendDate'), g.sendDate||'', t('estimatedArrival'), g.estimatedArrival||''],
+    [],
+    [t('no'),t('itemName'),t('qty'),t('unit'),t('condition'),t('remarks')],
+    ...g.items.map((r,i)=>[i+1,r.name,r.qty,r.unit,r.condition,r.remarks]),
+    [],
+    [t('comment'), g.comment||''],
+    ...(g.status==='delivered'?[[t('statusDelivered'), g.confirmedBy||'', g.actualReceiveDate||'', g.confirmNote||'']]:[])
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(sheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Goods');
+  XLSX.writeFile(wb, `${g.docNo||'goods'}.xlsx`);
+}
+// ============================================================
+// END GOODS HANDOVER MODULE
+// ============================================================
 
 applyI18n();
 </script>
