@@ -208,6 +208,9 @@ const I18N = {
   myInbox:{vi:"Hàng gửi cho tôi",en:"Sent to Me"},
   mySent:{vi:"Hàng tôi gửi",en:"Sent by Me"},
   allGoods:{vi:"Tất cả",en:"All"},
+  selectFromList:{vi:"Chọn từ danh sách",en:"Select from list"},
+  manualEntry:{vi:"✏ Nhập tay",en:"✏ Manual entry"},
+  pickReceiver:{vi:"Chọn người nhận",en:"Pick Receiver"},
   newProject:{vi:"+ Dự án mới",en:"+ New Project"},
   newForm:{vi:"+ Phiếu mới",en:"+ New Form"},
   projectName:{vi:"Tên dự án",en:"Project Name"},
@@ -310,6 +313,52 @@ function toast(msg){ const el=document.getElementById('toast'); el.textContent=m
 let CURRENT_USER = null; // {email, role, country, displayName}
 let ACTIVE_TAB = 'dashboard';
 let PROJECTS_CACHE = [];
+let USERS_CACHE = [];
+
+async function loadUsersCache(){
+  try{
+    const snap = await db.collection('users').get();
+    USERS_CACHE = snap.docs.map(d=>({email:d.id,...d.data()})).filter(u=>u.active!==false);
+  }catch(e){ USERS_CACHE = []; }
+}
+
+function buildUserOpts(countryFilter, selectedEmail){
+  const list = countryFilter ? USERS_CACHE.filter(u=>u.country===countryFilter) : USERS_CACHE;
+  const opts = list.map(u=>`<option value="${u.email}" data-name="${u.displayName||u.email}" ${u.email===selectedEmail?'selected':''}>${u.displayName||u.email} (${u.country})</option>`).join('');
+  const isManual = selectedEmail && !list.find(u=>u.email===selectedEmail);
+  return `<option value="">${t('selectFromList')}...</option>${opts}<option value="__manual__" ${isManual?'selected':''}>${t('manualEntry')}</option>`;
+}
+
+function onPickUser(nameId, emailId, selectId){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const val = sel.value;
+  const nameEl = document.getElementById(nameId);
+  const emailEl = document.getElementById(emailId);
+  if(val==='' || val==='__manual__'){
+    if(nameEl) nameEl.value='';
+    if(emailEl) emailEl.value='';
+    if(nameEl) nameEl.removeAttribute('readonly');
+    if(emailEl) emailEl.removeAttribute('readonly');
+  } else {
+    const u = USERS_CACHE.find(u=>u.email===val);
+    if(u){
+      if(nameEl){ nameEl.value=u.displayName||u.email; nameEl.setAttribute('readonly',''); }
+      if(emailEl){ emailEl.value=u.email; emailEl.setAttribute('readonly',''); }
+    }
+  }
+}
+
+function onGoodsRcountryChange(){
+  const country = document.getElementById('g-rcountry').value;
+  window._editingGoods.receiverCountry = country;
+  const pick = document.getElementById('g-receiver-pick');
+  if(pick) pick.innerHTML = buildUserOpts(country, '');
+  const nameEl = document.getElementById('g-rname');
+  const emailEl = document.getElementById('g-remail');
+  if(nameEl){ nameEl.value=''; nameEl.removeAttribute('readonly'); }
+  if(emailEl){ emailEl.value=''; emailEl.removeAttribute('readonly'); }
+}
 let COMPANY_NAMES = {}; // country -> partyB name, loaded from settings/companyNames
 
 // ---------- Auth ----------
@@ -633,11 +682,19 @@ function renderFormEditorView(){
 
       <div class="section-title">${t('labReceiver')}</div>
       <div class="row">
-        <div class="field"><label>${t('staffName')}</label><input id="f-rname" value="${form.receiverName||''}" ${dis}></div>
-        <div class="field"><label>${t('labReceiverEmail')}</label>
-          <input id="f-remail" type="email" value="${form.receiverEmail||''}" placeholder="email@haic.com" ${dis}></div>
+        ${!isCompleted ? `<div class="field"><label>${t('pickReceiver')}</label>
+          <select id="f-receiver-pick" onchange="onPickUser('f-rname','f-remail','f-receiver-pick')"
+            style="font-size:13px">${buildUserOpts('', form.receiverEmail)}</select></div>` : ''}
         <div class="field"><label>${t('estimatedArrival')}</label>
           <input id="f-eta" type="date" value="${form.estimatedArrival||''}" ${dis}></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>${t('staffName')}</label>
+          <input id="f-rname" value="${form.receiverName||''}" ${dis}
+            ${form.receiverEmail && USERS_CACHE.find(u=>u.email===form.receiverEmail) ? 'readonly' : ''}></div>
+        <div class="field"><label>${t('labReceiverEmail')}</label>
+          <input id="f-remail" type="email" value="${form.receiverEmail||''}" placeholder="email@haic.com" ${dis}
+            ${form.receiverEmail && USERS_CACHE.find(u=>u.email===form.receiverEmail) ? 'readonly' : ''}></div>
       </div>
 
       <div class="section-title">${t('docNo')}</div>
@@ -1168,13 +1225,20 @@ function renderGoodsEditorView(){
       <div class="section-title">${t('receiver')}</div>
       <div class="row">
         <div class="field"><label>${t('receiverCountry')}</label>
-          <select id="g-rcountry" ${dis}>${rOpts}</select></div>
-        <div class="field"><label>${t('receiverName')}</label><input id="g-rname" value="${g.receiverName||''}" ${dis}></div>
-        <div class="field"><label>${t('receiverPhone')}</label><input id="g-rphone" value="${g.receiverPhone||''}" ${dis}></div>
+          <select id="g-rcountry" onchange="onGoodsRcountryChange()" ${dis}>${rOpts}</select></div>
+        ${!isDelivered ? `<div class="field"><label>${t('pickReceiver')}</label>
+          <select id="g-receiver-pick" onchange="onPickUser('g-rname','g-remail','g-receiver-pick')"
+            style="font-size:13px">${buildUserOpts(g.receiverCountry, g.receiverEmail)}</select></div>` : ''}
       </div>
       <div class="row">
+        <div class="field"><label>${t('receiverName')}</label>
+          <input id="g-rname" value="${g.receiverName||''}" ${dis}
+            ${g.receiverEmail && USERS_CACHE.find(u=>u.email===g.receiverEmail) ? 'readonly' : ''}></div>
+        <div class="field"><label>${t('receiverPhone')}</label>
+          <input id="g-rphone" value="${g.receiverPhone||''}" ${dis}></div>
         <div class="field"><label>${t('receiverAccount')}</label>
-          <input id="g-remail" type="email" value="${g.receiverEmail||''}" placeholder="email@haic.com" ${dis}></div>
+          <input id="g-remail" type="email" value="${g.receiverEmail||''}" placeholder="email@haic.com" ${dis}
+            ${g.receiverEmail && USERS_CACHE.find(u=>u.email===g.receiverEmail) ? 'readonly' : ''}></div>
       </div>
 
       <div class="section-title">${t('carrier')}</div>
