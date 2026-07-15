@@ -317,7 +317,7 @@ let USERS_CACHE = [];
 
 async function loadUsersCache(){
   try{
-    const snap = await db.collection('users').get();
+    const snap = await db.collection('users').get({ source: 'server' });
     USERS_CACHE = snap.docs
       .map(d=>({email:d.id,...d.data()}))
       .filter(u=>u.active!==false && u.email);
