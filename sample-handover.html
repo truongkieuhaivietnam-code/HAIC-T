@@ -246,6 +246,16 @@ const I18N = {
   formTitle:{vi:"PHIẾU GIAO NHẬN MẪU",en:"SAMPLE HANDOVER FORM"},
   noProjects:{vi:"Chưa có dự án nào.",en:"No projects yet."},
   noForms:{vi:"Chưa có phiếu nào.",en:"No forms yet."},
+  labReceiver:{vi:"Người nhận tại Lab (Bên B)",en:"Lab Receiver (Party B)"},
+  labReceiverEmail:{vi:"Email tài khoản người nhận",en:"Receiver Account Email"},
+  submitSamples:{vi:"Đánh dấu: Đã gửi mẫu",en:"Mark as Submitted"},
+  statusSubmitted:{vi:"Đã gửi mẫu",en:"Submitted"},
+  confirmSampleReceive:{vi:"✓ Xác nhận đã nhận mẫu",en:"✓ Confirm Sample Receipt"},
+  confirmSampleTitle:{vi:"Xác nhận nhận mẫu",en:"Confirm Sample Receipt"},
+  formsSentByMe:{vi:"Tôi gửi",en:"Sent by Me"},
+  formsSentToMe:{vi:"Gửi cho tôi",en:"Sent to Me"},
+  receiveDate:{vi:"Ngày nhận thực tế",en:"Actual Receive Date"},
+  receiveNote:{vi:"Ghi chú khi nhận",en:"Receive Note"},
   noUsers:{vi:"Chưa có tài khoản nào.",en:"No accounts yet."},
   confirmDelete:{vi:"Bạn chắc chắn muốn xóa?",en:"Are you sure you want to delete?"},
   active:{vi:"Hoạt động",en:"Active"},
@@ -490,38 +500,73 @@ async function deleteProject(id){
 }
 
 // ============ HANDOVER FORMS ============
+function fStatusColor(s){
+  if(s==='submitted') return 'var(--warn)';
+  if(s==='completed') return 'var(--accent)';
+  return 'var(--muted)';
+}
+function fStatusLabel(s){
+  if(s==='submitted') return t('statusSubmitted');
+  if(s==='completed') return t('completed');
+  return t('draft');
+}
+
 function renderForms(){
   const el = document.getElementById('tab-forms');
   const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}">${cName(c)}</option>`).join('');
   el.innerHTML = `
     <div class="card">
-      <div class="row" style="justify-content:space-between;align-items:center">
+      <div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
         <h3 style="margin:0">${t('tabForms')}</h3>
         <button class="btn small" onclick="openFormEditor(null)">${t('newForm')}</button>
       </div>
-      ${CURRENT_USER.role==='superadmin' ? `<div class="field" style="max-width:220px"><label>${t('filterCountry')}</label>
-      <select id="form-filter" onchange="renderForms()"><option value="ALL">${t('all')}</option>${countryOptions}</select></div>` : ''}
-      <div id="forms-list">${t('loadingForms')}</div>
+      <div class="row" style="margin-top:10px;gap:6px;flex-wrap:wrap">
+        <button class="btn small ${FORMS_VIEW==='all'?'':'secondary'}" onclick="setFormsView('all')">${t('allGoods')}</button>
+        <button class="btn small ${FORMS_VIEW==='sent'?'':'secondary'}" onclick="setFormsView('sent')">${t('formsSentByMe')}</button>
+        <button class="btn small ${FORMS_VIEW==='inbox'?'':'secondary'}" onclick="setFormsView('inbox')">${t('formsSentToMe')}</button>
+        ${CURRENT_USER.role==='superadmin' ? `<div style="max-width:180px"><select id="form-filter" onchange="renderForms()"><option value="ALL">${t('all')}</option>${countryOptions}</select></div>` : ''}
+      </div>
+      <div id="forms-list" style="margin-top:10px">${t('loadingForms')}</div>
     </div>`;
-  let q = db.collection('handovers').orderBy('createdAt','desc');
-  if(CURRENT_USER.role!=='superadmin') q = q.where('country','==',CURRENT_USER.country);
-  q.get().then(snap=>{
-    let list = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    const filter = document.getElementById('form-filter');
-    if(filter && filter.value!=='ALL') list = list.filter(f=>f.country===filter.value);
-    const listEl = document.getElementById('forms-list');
-    if(!list.length){ listEl.innerHTML = `<p class="muted">${t('noForms')}</p>`; return; }
+  loadFormsList();
+}
+function setFormsView(v){ FORMS_VIEW=v; renderForms(); }
+
+async function loadFormsList(){
+  const listEl = document.getElementById('forms-list');
+  if(!listEl) return;
+  try{
+    let list = [];
+    if(FORMS_VIEW==='sent'){
+      const snap = await db.collection('handovers').where('createdBy','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    } else if(FORMS_VIEW==='inbox'){
+      const snap = await db.collection('handovers').where('receiverEmail','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      list = snap.docs.map(d=>({id:d.id,...d.data()}));
+    } else {
+      let q = db.collection('handovers').orderBy('createdAt','desc');
+      if(CURRENT_USER.role!=='superadmin') q = q.where('country','==',CURRENT_USER.country);
+      const snap = await q.get();
+      list = snap.docs.map(d=>({id:d.id,...d.data()}));
+      const filter = document.getElementById('form-filter');
+      if(filter && filter.value!=='ALL') list = list.filter(f=>f.country===filter.value);
+    }
+    if(!list.length){ listEl.innerHTML=`<p class="muted">${t('noForms')}</p>`; return; }
     listEl.innerHTML = list.map(f=>`
       <div class="listrow" onclick="openFormEditor('${f.id}')">
         <div>
-          <div><strong>${f.docNo}</strong> <span class="badge ${f.country}">${f.country}</span></div>
+          <div><strong>${f.docNo||'...'}</strong> <span class="badge ${f.country}">${f.country}</span></div>
           <div class="meta">${f.projectName||''} · ${f.date||''}</div>
         </div>
-        <div class="meta">${t(f.status==='completed'?'completed':'draft')}</div>
+        <div style="text-align:right">
+          <div style="font-size:12px;font-weight:700;color:${fStatusColor(f.status)}">${fStatusLabel(f.status)}</div>
+          ${f.status==='submitted' && f.receiverEmail===CURRENT_USER.email
+            ? `<button class="btn small" style="margin-top:4px;background:var(--accent)" onclick="event.stopPropagation();openConfirmSampleReceive('${f.id}')">${t('confirmSampleReceive')}</button>` : ''}
+        </div>
       </div>`).join('');
-  }).catch(err=>{
-    document.getElementById('forms-list').innerHTML = `<p class="muted">${err.message}</p>`;
-  });
+  }catch(err){
+    listEl.innerHTML=`<p class="muted">${err.message}</p>`;
+  }
 }
 
 function blankRow(no){ return {no, borehole:'', depth:'', soil:0, rock:0, spt:0, water:0, stainless:0, pvc:0, remarks:''}; }
@@ -535,8 +580,9 @@ async function openFormEditor(formId){
     form = {
       country: CURRENT_USER.country, projectId:'', projectName:'', location:'',
       partyA_name:'', partyA_person:'', partyB_name: COMPANY_NAMES[CURRENT_USER.country] || '', partyB_person:'',
+      receiverName:'', receiverEmail:'',
       place:'', date: new Date().toISOString().slice(0,10),
-      rows:[blankRow(1)], comment:'', signPartyA:'', signPartyB:'', status:'draft'
+      rows:[blankRow(1)], comment:'', status:'draft'
     };
   }
   window._editingForm = form;
@@ -546,38 +592,58 @@ async function openFormEditor(formId){
 function renderFormEditorView(){
   const form = window._editingForm;
   const isSuper = CURRENT_USER.role==='superadmin';
+  const isCompleted = form.status==='completed';
+  const isSubmitted = form.status==='submitted';
+  const dis = isCompleted ? 'disabled' : '';
   const projOptions = PROJECTS_CACHE.filter(p=> isSuper ? p.country===form.country : true)
     .map(p=>`<option value="${p.id}" ${p.id===form.projectId?'selected':''}>${p.name}</option>`).join('');
   const countryOptions = Object.keys(COUNTRIES).map(c=>`<option value="${c}" ${c===form.country?'selected':''}>${cName(c)}</option>`).join('');
+  const isReceiver = form.receiverEmail && form.receiverEmail===CURRENT_USER.email;
+
   document.getElementById('tab-forms').innerHTML = `
     <div class="card">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0">${t('formTitle')} ${form.docNo? '· '+form.docNo : ''}</h3>
+        <h3 style="margin:0">${t('formTitle')} ${form.docNo?'· '+form.docNo:''}</h3>
         <button class="btn small secondary" onclick="renderForms()">← ${t('close')}</button>
       </div>
 
+      ${isCompleted ? `<div style="background:var(--accent);color:#fff;border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:700">
+        ✓ ${t('completed')} — ${t('confirmedBy')}: ${form.confirmedBy||''} · ${form.actualReceiveDate||''}</div>` : ''}
+      ${isSubmitted ? `<div style="background:var(--warn);color:#fff;border-radius:8px;padding:8px 12px;margin:8px 0;font-weight:700">
+        ⏳ ${t('statusSubmitted')} — ${t('estimatedArrival')}: ${form.estimatedArrival||''}</div>` : ''}
+
       <div class="section-title">${t('project')}</div>
       <div class="row">
-        ${isSuper ? `<div class="field"><label>${t('country')}</label><select id="f-country" onchange="changeFormCountry()">${countryOptions}</select></div>` : ''}
-        <div class="field"><label>${t('project')}</label><select id="f-project" onchange="onProjectChange()"><option value="">--</option>${projOptions}</select></div>
-        <div class="field"><label>${t('location')}</label><input id="f-location" value="${form.location||''}"></div>
+        ${isSuper ? `<div class="field"><label>${t('country')}</label><select id="f-country" onchange="changeFormCountry()" ${dis}>${countryOptions}</select></div>` : ''}
+        <div class="field"><label>${t('project')}</label><select id="f-project" onchange="onProjectChange()" ${dis}><option value="">--</option>${projOptions}</select></div>
+        <div class="field"><label>${t('location')}</label><input id="f-location" value="${form.location||''}" ${dis}></div>
       </div>
 
       <div class="section-title">${t('partyA')}</div>
       <div class="row">
-        <div class="field"><label>${t('partyA')}</label><input id="f-partyA-name" value="${form.partyA_name||''}"></div>
-        <div class="field"><label>${t('mrMs')}</label><input id="f-partyA-person" value="${form.partyA_person||''}"></div>
+        <div class="field"><label>${t('partyA')}</label><input id="f-partyA-name" value="${form.partyA_name||''}" ${dis}></div>
+        <div class="field"><label>${t('mrMs')}</label><input id="f-partyA-person" value="${form.partyA_person||''}" ${dis}></div>
       </div>
+
       <div class="section-title">${t('partyB')}</div>
       <div class="row">
-        <div class="field"><label>${t('partyB')}</label><input id="f-partyB-name" value="${form.partyB_name||''}"></div>
-        <div class="field"><label>${t('mrMs')}</label><input id="f-partyB-person" value="${form.partyB_person||''}"></div>
+        <div class="field"><label>${t('partyB')}</label><input id="f-partyB-name" value="${form.partyB_name||''}" ${dis}></div>
+        <div class="field"><label>${t('mrMs')}</label><input id="f-partyB-person" value="${form.partyB_person||''}" ${dis}></div>
+      </div>
+
+      <div class="section-title">${t('labReceiver')}</div>
+      <div class="row">
+        <div class="field"><label>${t('staffName')}</label><input id="f-rname" value="${form.receiverName||''}" ${dis}></div>
+        <div class="field"><label>${t('labReceiverEmail')}</label>
+          <input id="f-remail" type="email" value="${form.receiverEmail||''}" placeholder="email@haic.com" ${dis}></div>
+        <div class="field"><label>${t('estimatedArrival')}</label>
+          <input id="f-eta" type="date" value="${form.estimatedArrival||''}" ${dis}></div>
       </div>
 
       <div class="section-title">${t('docNo')}</div>
       <div class="row">
-        <div class="field"><label>${t('place')}</label><input id="f-place" value="${form.place||''}"></div>
-        <div class="field"><label>${t('date')}</label><input id="f-date" type="date" value="${form.date||''}"></div>
+        <div class="field"><label>${t('place')}</label><input id="f-place" value="${form.place||''}" ${dis}></div>
+        <div class="field"><label>${t('date')}</label><input id="f-date" type="date" value="${form.date||''}" ${dis}></div>
       </div>
 
       <div class="section-title">${t('tabForms')}</div>
@@ -586,25 +652,36 @@ function renderFormEditorView(){
           <thead><tr>
             <th>${t('no')}</th><th>${t('borehole')}</th><th>${t('depth')}</th>
             <th>${t('soil')}</th><th>${t('rock')}</th><th>${t('spt')}</th><th>${t('water')}</th>
-            <th>${t('stainless')}</th><th>${t('pvc')}</th><th>${t('remarks')}</th><th></th>
+            <th>${t('stainless')}</th><th>${t('pvc')}</th><th>${t('remarks')}</th>
+            ${!isCompleted?'<th></th>':''}
           </tr></thead>
           <tbody id="rows-tbody"></tbody>
         </table>
       </div>
-      <button class="btn small secondary" style="margin-top:8px" onclick="addRow()">${t('addRow')}</button>
+      ${!isCompleted ? `<button class="btn small secondary" style="margin-top:8px" onclick="addRow()">${t('addRow')}</button>` : ''}
 
       <div class="section-title">${t('comment')}</div>
-      <textarea id="f-comment">${form.comment||''}</textarea>
+      <textarea id="f-comment" ${dis}>${form.comment||''}</textarea>
 
-      <div class="row" style="margin-top:14px">
-        <button class="btn" onclick="saveForm('draft')">${t('save')} (${t('draft')})</button>
-        <button class="btn" style="background:var(--accent)" onclick="saveForm('completed')">${t('save')} (${t('completed')})</button>
-        ${form.id ? `<button class="btn secondary" onclick="exportPdf()">${t('exportPdf')}</button>
-        <button class="btn secondary" onclick="exportExcel()">${t('exportExcel')}</button>
-        ${(CURRENT_USER.role!=='user') ? `<button class="btn danger" onclick="deleteForm()">${t('delete')}</button>` : ''}` : ''}
+      <div class="row" style="margin-top:14px;flex-wrap:wrap">
+        ${!isCompleted ? `
+          <button class="btn" onclick="saveForm('draft')">${t('save')} (${t('draft')})</button>
+          <button class="btn" style="background:var(--warn)" onclick="saveForm('submitted')">${t('submitSamples')}</button>
+        ` : ''}
+        ${isReceiver && !isCompleted ? `
+          <button class="btn" style="background:var(--accent)" onclick="openConfirmSampleReceive('${form.id}')">${t('confirmSampleReceive')}</button>
+        ` : ''}
+        ${form.id ? `
+          <button class="btn secondary" onclick="exportPdf()">${t('exportPdf')}</button>
+          <button class="btn secondary" onclick="exportExcel()">${t('exportExcel')}</button>
+          ${CURRENT_USER.role!=='user' ? `<button class="btn danger" onclick="deleteForm()">${t('delete')}</button>` : ''}
+        ` : ''}
       </div>
+      ${isCompleted && form.receiveNote ? `
+        <div class="section-title" style="margin-top:12px">${t('receiveNote')}</div>
+        <div style="background:var(--table-head);border-radius:8px;padding:10px;font-size:13px">${form.receiveNote}</div>` : ''}
     </div>`;
-  renderRows();
+  renderRows(isCompleted);
 }
 
 function changeFormCountry(){
@@ -621,22 +698,23 @@ function onProjectChange(){
   window._editingForm.projectName = p ? p.name : '';
   if(p){ document.getElementById('f-location').value = p.location || ''; }
 }
-function renderRows(){
+function renderRows(disabled){
   const tbody = document.getElementById('rows-tbody');
   const rows = window._editingForm.rows;
+  const d = disabled ? 'disabled' : '';
   tbody.innerHTML = rows.map((r,i)=>`
     <tr>
       <td>${i+1}</td>
-      <td class="txt"><input value="${r.borehole}" onchange="updateRow(${i},'borehole',this.value)"></td>
-      <td><input value="${r.depth}" onchange="updateRow(${i},'depth',this.value)" style="width:55px"></td>
-      <td><input type="number" min="0" value="${r.soil}" onchange="updateRow(${i},'soil',this.value)" style="width:45px"></td>
-      <td><input type="number" min="0" value="${r.rock}" onchange="updateRow(${i},'rock',this.value)" style="width:45px"></td>
-      <td><input type="number" min="0" value="${r.spt}" onchange="updateRow(${i},'spt',this.value)" style="width:45px"></td>
-      <td><input type="number" min="0" value="${r.water}" onchange="updateRow(${i},'water',this.value)" style="width:45px"></td>
-      <td><input type="number" min="0" value="${r.stainless}" onchange="updateRow(${i},'stainless',this.value)" style="width:45px"></td>
-      <td><input type="number" min="0" value="${r.pvc}" onchange="updateRow(${i},'pvc',this.value)" style="width:45px"></td>
-      <td class="txt"><input value="${r.remarks}" onchange="updateRow(${i},'remarks',this.value)"></td>
-      <td><button class="btn small secondary" onclick="removeRow(${i})">✕</button></td>
+      <td class="txt"><input value="${r.borehole}" ${d} onchange="updateRow(${i},'borehole',this.value)"></td>
+      <td><input value="${r.depth}" ${d} onchange="updateRow(${i},'depth',this.value)" style="width:55px"></td>
+      <td><input type="number" min="0" value="${r.soil}" ${d} onchange="updateRow(${i},'soil',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.rock}" ${d} onchange="updateRow(${i},'rock',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.spt}" ${d} onchange="updateRow(${i},'spt',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.water}" ${d} onchange="updateRow(${i},'water',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.stainless}" ${d} onchange="updateRow(${i},'stainless',this.value)" style="width:45px"></td>
+      <td><input type="number" min="0" value="${r.pvc}" ${d} onchange="updateRow(${i},'pvc',this.value)" style="width:45px"></td>
+      <td class="txt"><input value="${r.remarks}" ${d} onchange="updateRow(${i},'remarks',this.value)"></td>
+      ${!disabled ? `<td><button class="btn small secondary" onclick="removeRow(${i})">✕</button></td>` : ''}
     </tr>`).join('') + totalsRowHtml(rows);
 }
 function totalsRowHtml(rows){
@@ -676,10 +754,15 @@ async function saveForm(status){
   form.status = status;
   if(!form.projectId){ toast(t('selectProjectFirst')); return; }
 
+  form.receiverName = (document.getElementById('f-rname')||{}).value?.trim() || form.receiverName || '';
+  form.receiverEmail = (document.getElementById('f-remail')||{}).value?.trim().toLowerCase() || form.receiverEmail || '';
+  form.estimatedArrival = (document.getElementById('f-eta')||{}).value || form.estimatedArrival || '';
   const payload = {
     country: form.country, projectId: form.projectId, projectName: form.projectName, location: form.location,
     partyA_name: form.partyA_name, partyA_person: form.partyA_person,
     partyB_name: form.partyB_name, partyB_person: form.partyB_person,
+    receiverName: form.receiverName, receiverEmail: form.receiverEmail,
+    estimatedArrival: form.estimatedArrival,
     place: form.place, date: form.date, rows: form.rows, comment: form.comment, status: form.status,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp(), updatedBy: CURRENT_USER.email
   };
@@ -698,6 +781,36 @@ async function saveForm(status){
   }
   renderFormEditorView();
 }
+function openConfirmSampleReceive(formId){
+  openModal(`
+    <h3>${t('confirmSampleTitle')}</h3>
+    <div class="field"><label>${t('receiveDate')}</label><input id="sr-date" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label>${t('receiveNote')}</label><textarea id="sr-note" style="min-height:70px"></textarea></div>
+    <div class="row">
+      <button class="btn" style="background:var(--accent)" onclick="submitConfirmSampleReceive('${formId}')">${t('confirmSampleReceive')}</button>
+      <button class="btn secondary" onclick="closeModal()">${t('cancel')}</button>
+    </div>`);
+}
+async function submitConfirmSampleReceive(formId){
+  const date = document.getElementById('sr-date').value;
+  const note = document.getElementById('sr-note').value;
+  await db.collection('handovers').doc(formId).update({
+    status: 'completed',
+    actualReceiveDate: date,
+    receiveNote: note,
+    confirmedBy: CURRENT_USER.displayName,
+    confirmedByEmail: CURRENT_USER.email,
+    confirmedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  closeModal();
+  toast('✓ ' + t('completed'));
+  if(window._editingForm && window._editingForm.id===formId){
+    openFormEditor(formId);
+  } else {
+    loadFormsList();
+  }
+}
+
 async function deleteForm(){
   if(!confirm(t('confirmDelete'))) return;
   await db.collection('handovers').doc(window._editingForm.id).delete();
@@ -892,6 +1005,7 @@ async function saveCompanyNames(){
 // GOODS HANDOVER MODULE
 // ============================================================
 let GOODS_VIEW = 'all'; // 'all' | 'sent' | 'inbox'
+let FORMS_VIEW = 'all'; // 'all' | 'sent' | 'inbox'
 
 function gStatus(s){
   if(s==='transit') return t('statusTransit');
@@ -929,19 +1043,37 @@ async function loadGoodsList(){
   const listEl = document.getElementById('goods-list');
   if(!listEl) return;
   try{
-    let snap;
+    let list = [];
     if(GOODS_VIEW==='sent'){
-      snap = await db.collection('goods_handovers').where('createdBy','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      const snap = await db.collection('goods_handovers').where('createdBy','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      list = snap.docs.map(d=>({id:d.id,...d.data()}));
     } else if(GOODS_VIEW==='inbox'){
-      snap = await db.collection('goods_handovers').where('receiverEmail','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      const snap = await db.collection('goods_handovers').where('receiverEmail','==',CURRENT_USER.email).orderBy('createdAt','desc').get();
+      list = snap.docs.map(d=>({id:d.id,...d.data()}));
     } else {
-      let q = db.collection('goods_handovers').orderBy('createdAt','desc');
-      if(CURRENT_USER.role!=='superadmin') q = q.where('senderCountry','==',CURRENT_USER.country);
+      // 2 queries riêng (sender + receiver) rồi merge để tránh permissions error
+      const country = CURRENT_USER.country;
       const filter = document.getElementById('goods-filter');
-      if(filter && filter.value!=='ALL') q = q.where('senderCountry','==',filter.value);
-      snap = await q.get();
+      const filterVal = filter ? filter.value : 'ALL';
+      let snaps;
+      if(CURRENT_USER.role==='superadmin'){
+        const q = filterVal!=='ALL'
+          ? db.collection('goods_handovers').where('senderCountry','==',filterVal).orderBy('createdAt','desc')
+          : db.collection('goods_handovers').orderBy('createdAt','desc');
+        snaps = [await q.get()];
+      } else {
+        const [s1, s2] = await Promise.all([
+          db.collection('goods_handovers').where('senderCountry','==',country).orderBy('createdAt','desc').get(),
+          db.collection('goods_handovers').where('receiverCountry','==',country).orderBy('createdAt','desc').get()
+        ]);
+        const seen = new Set();
+        list = [...s1.docs,...s2.docs].filter(d=>{ if(seen.has(d.id)) return false; seen.add(d.id); return true; })
+          .map(d=>({id:d.id,...d.data()}))
+          .sort((a,b)=>((b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)));
+        snaps = null;
+      }
+      if(snaps) list = snaps.flatMap(s=>s.docs.map(d=>({id:d.id,...d.data()})));
     }
-    let list = snap.docs.map(d=>({id:d.id,...d.data()}));
     if(!list.length){ listEl.innerHTML=`<p class="muted">${t('noGoods')}</p>`; return; }
     listEl.innerHTML = list.map(g=>`
       <div class="listrow" onclick="openGoodsEditor('${g.id}')">
