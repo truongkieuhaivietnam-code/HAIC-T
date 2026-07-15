@@ -1667,8 +1667,11 @@ function lsSaveAll(data) {
 
 function getDefaultData() {
   return {
+    // Mật khẩu KHÔNG còn lưu ở đây nữa — dùng Firebase Authentication.
+    // Chạy script create-finance-accounts.js (xem README) để tạo tài
+    // khoản đăng nhập thật cho từng người trong danh sách này.
     users: [
-      { id: "u_truong", name: "Truong", email: "truong.haicambodia@gmail.com", password: "admin123", role: "superadmin", active: true },
+      { id: "u_truong", name: "Truong", email: "truong.haicambodia@gmail.com", role: "superadmin", active: true },
     ],
     categories: {
       expense: [
@@ -1926,43 +1929,52 @@ function isSuperAdmin() {
   return currentUser && currentUser.role === "superadmin";
 }
 
-function attemptLogin(email, password) {
+// ===================== ĐĂNG NHẬP QUA FIREBASE AUTHENTICATION =====================
+// Không còn kiểm tra mật khẩu bằng tay / lưu password trong Firestore nữa.
+// Mật khẩu do Firebase quản lý (mã hóa, không ai — kể cả admin — đọc được).
+// Tài khoản đăng nhập được TẠO TRƯỚC bằng script create-finance-accounts.js
+// (xem README), app này chỉ xác thực + đọc hồ sơ vai trò (role/branch/active).
+
+// Bước 1: CHỈ xác thực với Firebase Auth (chưa đọc dữ liệu Finance).
+// Nếu sai mật khẩu, Firebase từ chối ngay — không hề chạm tới Firestore.
+async function attemptLogin(email, password) {
   email = (email || "").trim().toLowerCase();
-  const user = STORE.users.find(u => u.email.toLowerCase() === email && u.active !== false);
-  if (!user) return { success: false, error: "notfound" };
-  if (user.password !== password) return { success: false, error: "badpassword" };
-  currentUser = { id: user.id, name: user.name, email: user.email, role: user.role, branch: user.branch || null };
-  saveSession();
-  return { success: true, user: currentUser };
-}
-
-function saveSession() {
-  localStorage.setItem(SESSION_KEY, JSON.stringify({ userId: currentUser.id, timestamp: nowISO() }));
-}
-
-function restoreSession() {
   try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return false;
-    const session = JSON.parse(raw);
-    const user = STORE.users.find(u => u.id === session.userId && u.active !== false);
-    if (!user) {
-      localStorage.removeItem(SESSION_KEY);
-      return false;
-    }
-    currentUser = { id: user.id, name: user.name, email: user.email, role: user.role, branch: user.branch || null };
-    return true;
+    await auth.signInWithEmailAndPassword(email, password);
+    return { success: true };
   } catch (e) {
-    return false;
+    return { success: false, error: "badpassword" };
   }
+}
+
+// Bước 2: gọi SAU KHI đã initRealtimeSync (STORE đã có dữ liệu thật) —
+// tra hồ sơ vai trò/chi nhánh theo email. Nếu không có hồ sơ hoặc bị khóa,
+// đăng xuất ngay, không cho vào app dù Firebase Auth đã xác thực đúng.
+function loadProfileAfterAuth() {
+  const fbUser = auth.currentUser;
+  if (!fbUser) return false;
+  const email = (fbUser.email || "").toLowerCase();
+  const profile = STORE.users.find(u => u.email.toLowerCase() === email && u.active !== false);
+  if (!profile) return false;
+  currentUser = { id: profile.id, name: profile.name, email: profile.email, role: profile.role, branch: profile.branch || null };
+  return true;
+}
+
+// restoreSession giờ dựa vào trạng thái đăng nhập thật của Firebase Auth
+// (tồn tại xuyên suốt phiên trình duyệt) thay vì localStorage session.
+// Chỉ xác nhận CÓ phiên Auth hay không — tra hồ sơ vai trò làm ở bước sau
+// (loadProfileAfterAuth), sau khi đã tải được dữ liệu Finance thật.
+function restoreSessionAsync() {
+  return new Promise(resolve => {
+    auth.onAuthStateChanged(fbUser => resolve(!!fbUser));
+  });
 }
 
 function logout() {
   currentUser = null;
-  localStorage.removeItem(SESSION_KEY);
   unsubscribers.forEach(u => { try { u(); } catch (e) {} });
   unsubscribers = [];
-  location.reload();
+  auth.signOut().finally(() => location.reload());
 }
 
 function roleLabel(role) {
@@ -2002,14 +2014,23 @@ let currentSettlementAdvanceId = null;
 let settlementItems = []; // working list for the settlement form
 let editingUserId = null;
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   applyTranslations();
   setupLoginScreen();
 
-  if (restoreSession()) {
+  // Thứ tự bảo mật đúng: (1) xác nhận Firebase Auth đã đăng nhập chưa,
+  // (2) NẾU có thì mới tải dữ liệu Finance, (3) rồi mới tra hồ sơ vai trò.
+  const hasAuthSession = await restoreSessionAsync();
+  if (hasAuthSession) {
     initRealtimeSync(() => {
       ensureStructure();
-      bootApp();
+      if (loadProfileAfterAuth()) {
+        bootApp();
+      } else {
+        // Có tài khoản Firebase Auth nhưng chưa có/không còn hồ sơ vai trò
+        // hợp lệ trong Finance -> không cho vào, đăng xuất luôn.
+        auth.signOut();
+      }
     });
   }
 
@@ -2023,11 +2044,11 @@ document.addEventListener("DOMContentLoaded", () => {
 function setupLoginScreen() {
   const note = document.getElementById("demoNote");
   note.innerHTML = currentLang === "vi"
-    ? "Tài khoản Super Admin mặc định:<br><b>truong.haicambodia@gmail.com</b> / admin123"
-    : "Default Super Admin account:<br><b>truong.haicambodia@gmail.com</b> / admin123";
+    ? "Đăng nhập bằng tài khoản email công ty đã được cấp (Firebase Authentication)."
+    : "Sign in with your company email account (Firebase Authentication).";
 }
 
-function handleLoginClick() {
+async function handleLoginClick() {
   const email = document.getElementById("loginEmail").value;
   const password = document.getElementById("loginPassword").value;
   const errEl = document.getElementById("loginError");
@@ -2038,14 +2059,24 @@ function handleLoginClick() {
     return;
   }
 
+  // (1) Xác thực với Firebase Auth TRƯỚC — sai mật khẩu thì dừng ở đây,
+  // KHÔNG chạm tới dữ liệu Finance.
+  const result = await attemptLogin(email, password);
+  if (!result.success) {
+    errEl.textContent = t("toastLoginError");
+    return;
+  }
+
+  // (2) Đúng mật khẩu rồi mới tải dữ liệu Finance.
   initRealtimeSync(() => {
     ensureStructure();
-    const result = attemptLogin(email, password);
-    if (!result.success) {
+    // (3) Tra hồ sơ vai trò theo email — chưa được cấp hồ sơ thì chặn lại.
+    if (loadProfileAfterAuth()) {
+      bootApp();
+    } else {
+      auth.signOut();
       errEl.textContent = t("toastLoginError");
-      return;
     }
-    bootApp();
   });
 }
 
@@ -4314,22 +4345,26 @@ function renderUserMgmt() {
   `).join("");
 }
 
+// Không còn admin tự đặt mật khẩu mới cho người khác được nữa (Firebase
+// Auth không cho phép client SDK làm việc này). Thay vào đó, gửi email
+// đặt lại mật khẩu thật qua Firebase — người dùng tự đặt mật khẩu mới.
 function openResetPasswordPrompt(userId) {
   const u = STORE.users.find(u2 => u2.id === userId);
   if (!u) return;
-  const newPass = prompt(t("promptNewPasswordFor") + " " + u.name + ":");
-  if (newPass === null) return;
-  if (!newPass || newPass.length < 4) {
-    showToast(t("toastPasswordTooShort"), "error");
-    return;
-  }
-  u.password = newPass;
-  addAuditLog({
-    userId: currentUser.id, userName: currentUser.name, action: "edited",
-    targetType: currentLang === "vi" ? "mật khẩu" : "password", detail: u.name
+  if (!confirm((currentLang === "vi"
+    ? "Gửi email đặt lại mật khẩu tới: "
+    : "Send password reset email to: ") + u.email + "?")) return;
+
+  auth.sendPasswordResetEmail(u.email).then(() => {
+    addAuditLog({
+      userId: currentUser.id, userName: currentUser.name, action: "edited",
+      targetType: currentLang === "vi" ? "mật khẩu" : "password", detail: u.name
+    });
+    persistDebounced();
+    showToast(t("toastSaved"), "success");
+  }).catch(err => {
+    showToast((currentLang === "vi" ? "Lỗi: " : "Error: ") + err.message, "error");
   });
-  persistDebounced();
-  showToast(t("toastSaved"), "success");
 }
 
 function toggleUserActive(userId) {
@@ -4353,9 +4388,18 @@ function openUserModal(userId) {
   document.getElementById("userModalTitle").textContent = u ? t("userModalEdit") : t("userModalTitle");
   document.getElementById("newUserName").value = u ? u.name : "";
   document.getElementById("newUserEmail").value = u ? u.email : "";
-  document.getElementById("newUserPassword").value = "";
-  document.getElementById("newUserPassword").placeholder = u ? "••••••••" : "••••••••";
-  document.getElementById("newUserPasswordHint").textContent = u ? t("lblUserPasswordEditHint") : "";
+  // Ô mật khẩu không còn dùng để đặt mật khẩu nữa (Firebase Auth quản lý
+  // mật khẩu riêng) — ẩn đi, tránh gây hiểu nhầm là còn set được ở đây.
+  const pwField = document.getElementById("newUserPassword");
+  if (pwField) {
+    pwField.value = "";
+    pwField.closest(".form-group")?.style.setProperty("display", "none");
+  }
+  document.getElementById("newUserPasswordHint").textContent = u
+    ? ""
+    : (currentLang === "vi"
+        ? "Sau khi lưu, chạy script tạo tài khoản đăng nhập cho email này (xem README)."
+        : "After saving, run the account-creation script for this email (see README).");
   document.getElementById("newUserRole").value = u ? u.role : "member";
   document.getElementById("newUserBranch").value = u ? (u.branch || "cambodia") : "cambodia";
 
@@ -4365,7 +4409,6 @@ function openUserModal(userId) {
 function saveUser() {
   const name = document.getElementById("newUserName").value.trim();
   const email = document.getElementById("newUserEmail").value.trim().toLowerCase();
-  const password = document.getElementById("newUserPassword").value;
   const role = document.getElementById("newUserRole").value;
   const branch = document.getElementById("newUserBranch").value;
 
@@ -4385,7 +4428,7 @@ function saveUser() {
     u.email = email;
     u.role = role;
     u.branch = branch;
-    if (password) u.password = password;
+    // Mật khẩu không còn chỉnh ở đây — dùng nút "Đặt lại mật khẩu" (gửi email thật qua Firebase).
 
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name, action: "edited",
@@ -4404,15 +4447,19 @@ function saveUser() {
       renderAll();
     }
   } else {
-    if (!password) {
-      showToast(t("toastFillRequired"), "error");
-      return;
-    }
     if (STORE.users.some(u => u.email.toLowerCase() === email)) {
       showToast(currentLang === "vi" ? "Email đã tồn tại" : "Email already exists", "error");
       return;
     }
-    STORE.users.push({ id: genId("user"), name, email, password, role, branch, active: true });
+    // LƯU Ý: thêm ở đây chỉ tạo HỒ SƠ VAI TRÒ, KHÔNG tạo được tài khoản
+    // đăng nhập thật (Firebase Auth không cho phép trình duyệt tạo tài
+    // khoản cho người khác). Người này sẽ KHÔNG đăng nhập được cho tới
+    // khi anh chạy script create-finance-accounts.js (xem README) để
+    // tạo tài khoản đăng nhập thật khớp đúng email này.
+    STORE.users.push({ id: genId("user"), name, email, role, branch, active: true });
+    showToast(currentLang === "vi"
+      ? "Đã thêm hồ sơ. Nhớ chạy script tạo tài khoản đăng nhập cho email này!"
+      : "Profile added. Remember to run the account-creation script for this email!", "success");
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name, action: "created",
       targetType: currentLang === "vi" ? "tài khoản" : "account", detail: `${name} (${roleLabel(role)} - ${branchLabel(branch)})`
@@ -4456,7 +4503,9 @@ function setupSettingsHandlers() {
   setupCategoryHandlers();
 }
 
-function changeOwnPassword() {
+// Đổi mật khẩu qua Firebase Auth thật: cần xác thực lại (reauthenticate)
+// bằng mật khẩu hiện tại trước khi Firebase cho phép đổi sang mật khẩu mới.
+async function changeOwnPassword() {
   const currentPass = document.getElementById("currentPasswordInput").value;
   const newPass = document.getElementById("newPasswordInput").value;
   const confirmPass = document.getElementById("confirmPasswordInput").value;
@@ -4465,13 +4514,7 @@ function changeOwnPassword() {
     showToast(t("toastFillRequired"), "error");
     return;
   }
-
-  const u = STORE.users.find(u2 => u2.id === currentUser.id);
-  if (!u || u.password !== currentPass) {
-    showToast(t("toastCurrentPasswordWrong"), "error");
-    return;
-  }
-  if (newPass.length < 4) {
+  if (newPass.length < 6) {
     showToast(t("toastPasswordTooShort"), "error");
     return;
   }
@@ -4480,12 +4523,25 @@ function changeOwnPassword() {
     return;
   }
 
-  u.password = newPass;
+  const fbUser = auth.currentUser;
+  if (!fbUser) {
+    showToast(t("toastCurrentPasswordWrong"), "error");
+    return;
+  }
+
+  try {
+    const cred = firebase.auth.EmailAuthProvider.credential(fbUser.email, currentPass);
+    await fbUser.reauthenticateWithCredential(cred);
+    await fbUser.updatePassword(newPass);
+  } catch (err) {
+    showToast(t("toastCurrentPasswordWrong"), "error");
+    return;
+  }
+
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "edited",
     targetType: currentLang === "vi" ? "mật khẩu" : "password", detail: currentLang === "vi" ? "Tự đổi mật khẩu" : "Self password change"
   });
-
   persistDebounced();
   document.getElementById("currentPasswordInput").value = "";
   document.getElementById("newPasswordInput").value = "";
