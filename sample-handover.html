@@ -318,15 +318,40 @@ let USERS_CACHE = [];
 async function loadUsersCache(){
   try{
     const snap = await db.collection('users').get();
-    USERS_CACHE = snap.docs.map(d=>({email:d.id,...d.data()})).filter(u=>u.active!==false);
-  }catch(e){ USERS_CACHE = []; }
+    USERS_CACHE = snap.docs
+      .map(d=>({email:d.id,...d.data()}))
+      .filter(u=>u.active!==false && u.email);
+    console.log('[HAIC] Users loaded:', USERS_CACHE.length, USERS_CACHE.map(u=>u.email));
+  }catch(e){
+    console.warn('[HAIC] loadUsersCache error:', e.code, e.message);
+    USERS_CACHE = [];
+    if(e.code==='permission-denied'){
+      toast('Firestore rules chưa được publish — danh sách nhân viên không load được.');
+    }
+  }
+}
+
+async function reloadAndPopulatePicker(selectId, nameId, emailId, countryFilter){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  sel.innerHTML = '<option>Đang tải... / Loading...</option>';
+  await loadUsersCache();
+  sel.innerHTML = buildUserOpts(countryFilter, document.getElementById(emailId)?.value||'');
 }
 
 function buildUserOpts(countryFilter, selectedEmail){
-  const list = countryFilter ? USERS_CACHE.filter(u=>u.country===countryFilter) : USERS_CACHE;
-  const opts = list.map(u=>`<option value="${u.email}" data-name="${u.displayName||u.email}" ${u.email===selectedEmail?'selected':''}>${u.displayName||u.email} (${u.country})</option>`).join('');
-  const isManual = selectedEmail && !list.find(u=>u.email===selectedEmail);
-  return `<option value="">${t('selectFromList')}...</option>${opts}<option value="__manual__" ${isManual?'selected':''}>${t('manualEntry')}</option>`;
+  const list = countryFilter
+    ? USERS_CACHE.filter(u=>u.country===countryFilter)
+    : USERS_CACHE;
+  const notInList = selectedEmail && !list.find(u=>u.email===selectedEmail);
+  const label0 = LANG==='vi' ? '-- Chọn từ danh sách --' : '-- Select from list --';
+  const labelM = LANG==='vi' ? '✏ Nhập tay' : '✏ Manual entry';
+  const opts = list.map(u=>{
+    const name = u.displayName||u.email;
+    const sel = u.email===selectedEmail ? 'selected' : '';
+    return `<option value="${u.email}" ${sel}>${name} (${u.country})</option>`;
+  }).join('');
+  return `<option value="">${label0}</option>${opts}<option value="__manual__" ${notInList?'selected':''}>${labelM}</option>`;
 }
 
 function onPickUser(nameId, emailId, selectId){
@@ -621,6 +646,7 @@ async function loadFormsList(){
 function blankRow(no){ return {no, borehole:'', depth:'', soil:0, rock:0, spt:0, water:0, stainless:0, pvc:0, remarks:''}; }
 
 async function openFormEditor(formId){
+  if(!USERS_CACHE.length) await loadUsersCache();
   let form;
   if(formId){
     const snap = await db.collection('handovers').doc(formId).get();
@@ -682,9 +708,9 @@ function renderFormEditorView(){
 
       <div class="section-title">${t('labReceiver')}</div>
       <div class="row">
-        ${!isCompleted ? `<div class="field"><label>${t('pickReceiver')}</label>
+        ${!isCompleted ? `<div class="field"><label>${t('pickReceiver')} <button type="button" onclick="reloadAndPopulatePicker('f-receiver-pick','f-rname','f-remail','')" style="font-size:10px;padding:2px 7px;margin-left:6px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);cursor:pointer;color:var(--muted)">↻</button></label>
           <select id="f-receiver-pick" onchange="onPickUser('f-rname','f-remail','f-receiver-pick')"
-            style="font-size:13px">${buildUserOpts('', form.receiverEmail)}</select></div>` : ''}
+            style="font-size:13px"><option>Đang tải... / Loading...</option></select></div>` : ''}
         <div class="field"><label>${t('estimatedArrival')}</label>
           <input id="f-eta" type="date" value="${form.estimatedArrival||''}" ${dis}></div>
       </div>
@@ -739,6 +765,17 @@ function renderFormEditorView(){
         <div style="background:var(--table-head);border-radius:8px;padding:10px;font-size:13px">${form.receiveNote}</div>` : ''}
     </div>`;
   renderRows(isCompleted);
+  // Populate receiver dropdown sau khi HTML đã render xong
+  const fpick = document.getElementById('f-receiver-pick');
+  if(fpick){
+    if(USERS_CACHE.length){
+      fpick.innerHTML = buildUserOpts('', form.receiverEmail);
+    } else {
+      loadUsersCache().then(()=>{
+        if(fpick) fpick.innerHTML = buildUserOpts('', form.receiverEmail||'');
+      });
+    }
+  }
 }
 
 function changeFormCountry(){
@@ -1179,6 +1216,7 @@ async function loadGoodsList(){
 function blankGoodsRow(){ return {name:'',qty:'',unit:'',condition:'',remarks:''}; }
 
 async function openGoodsEditor(formId){
+  if(!USERS_CACHE.length) await loadUsersCache();
   let g;
   if(formId){
     const snap = await db.collection('goods_handovers').doc(formId).get();
@@ -1226,9 +1264,9 @@ function renderGoodsEditorView(){
       <div class="row">
         <div class="field"><label>${t('receiverCountry')}</label>
           <select id="g-rcountry" onchange="onGoodsRcountryChange()" ${dis}>${rOpts}</select></div>
-        ${!isDelivered ? `<div class="field"><label>${t('pickReceiver')}</label>
+        ${!isDelivered ? `<div class="field"><label>${t('pickReceiver')} <button type="button" onclick="reloadAndPopulatePicker('g-receiver-pick','g-rname','g-remail', document.getElementById('g-rcountry').value)" style="font-size:10px;padding:2px 7px;margin-left:6px;border-radius:6px;border:1px solid var(--border);background:var(--input-bg);cursor:pointer;color:var(--muted)">↻</button></label>
           <select id="g-receiver-pick" onchange="onPickUser('g-rname','g-remail','g-receiver-pick')"
-            style="font-size:13px">${buildUserOpts(g.receiverCountry, g.receiverEmail)}</select></div>` : ''}
+            style="font-size:13px"><option>Đang tải... / Loading...</option></select></div>` : ''}
       </div>
       <div class="row">
         <div class="field"><label>${t('receiverName')}</label>
@@ -1290,6 +1328,18 @@ function renderGoodsEditorView(){
       </div>`}
     </div>`;
   renderGoodsRows();
+  // Populate receiver dropdown sau khi HTML đã render xong
+  const gpick = document.getElementById('g-receiver-pick');
+  if(gpick){
+    if(USERS_CACHE.length){
+      gpick.innerHTML = buildUserOpts(g.receiverCountry, g.receiverEmail);
+    } else {
+      // Thử load lại nếu cache rỗng
+      loadUsersCache().then(()=>{
+        if(gpick) gpick.innerHTML = buildUserOpts(g.receiverCountry, g.receiverEmail||'');
+      });
+    }
+  }
 }
 
 function renderGoodsRows(){
