@@ -1,0 +1,2588 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAIC Lab Management System</title>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+<style>
+  :root{
+    --ink:#1a2421;
+    --paper:#f6f3ec;
+    --slate:#3c4a47;
+    --line:#d8d2c4;
+    --accent:#c4622d;
+    --accent2:#3f6b5e;
+    --ok:#3f6b5e;
+    --warn:#c8932a;
+    --danger:#b3402f;
+    --card:#ffffff;
+    --sans:'Helvetica Neue',Arial,sans-serif;
+    --serif:'Georgia','Times New Roman',serif;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:var(--sans);background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;}
+
+  /* ===== LOGIN ===== */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#2c3a36 0%,#1a2421 100%);}
+  .login-box{background:var(--paper);padding:48px 44px;border-radius:2px;width:380px;box-shadow:0 30px 60px -20px rgba(0,0,0,.5);border-top:5px solid var(--accent);}
+  .login-box h1{font-family:var(--serif);font-size:26px;margin:0 0 4px;letter-spacing:.5px;}
+  .login-box .sub{font-size:11px;color:var(--slate);text-transform:uppercase;letter-spacing:2px;margin-bottom:32px;}
+  .login-box label{font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--slate);display:block;margin-bottom:6px;margin-top:16px;}
+  .login-box input{width:100%;padding:11px 12px;border:1px solid var(--line);background:#fff;font-size:15px;border-radius:1px;}
+  .login-box input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .login-box button{margin-top:28px;width:100%;padding:13px;background:var(--ink);color:#fff;border:none;font-size:13px;text-transform:uppercase;letter-spacing:2px;cursor:pointer;border-radius:1px;transition:background .15s;}
+  .login-box button:hover{background:var(--accent);}
+  .login-box button:disabled{opacity:.6;cursor:wait;}
+  .login-err{color:var(--danger);font-size:13px;margin-top:14px;min-height:18px;}
+  .login-foot{margin-top:20px;font-size:11px;color:var(--slate);line-height:1.7;border-top:1px solid var(--line);padding-top:14px;}
+
+  /* ===== APP SHELL ===== */
+  #app{display:none;min-height:100vh;}
+  header{background:var(--ink);color:#fff;padding:14px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+  header .brand{display:flex;align-items:baseline;gap:14px;}
+  header .brand h1{font-family:var(--serif);font-size:20px;margin:0;font-weight:600;letter-spacing:.5px;}
+  header .brand .tag{font-size:9px;text-transform:uppercase;letter-spacing:2.5px;color:#9fb0ab;}
+  header .who{display:flex;align-items:center;gap:12px;font-size:12.5px;}
+  header .who .role-pill{background:var(--accent);color:#fff;padding:3px 10px;border-radius:20px;font-size:10.5px;text-transform:uppercase;letter-spacing:1px;}
+  header .logout{background:transparent;border:1px solid #5a6c67;color:#cfd9d6;padding:6px 14px;border-radius:1px;cursor:pointer;font-size:11.5px;letter-spacing:1px;}
+  header .logout:hover{background:#5a6c67;}
+
+  nav{background:#243530;display:flex;gap:2px;padding:0 28px;overflow-x:auto;}
+  nav button{background:transparent;border:none;color:#aebfba;padding:13px 16px;font-size:12.5px;cursor:pointer;border-bottom:3px solid transparent;letter-spacing:.3px;white-space:nowrap;font-family:var(--sans);line-height:1.3;}
+  nav button .en{display:block;}
+  nav button .vi{display:block;font-size:10px;opacity:.7;}
+  nav button:hover{color:#fff;}
+  nav button.active{color:#fff;border-bottom-color:var(--accent);font-weight:600;}
+
+  main{padding:26px 28px 60px;max-width:1400px;margin:0 auto;}
+  .view{display:none;}
+  .view.active{display:block;animation:fadeIn .25s ease;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px);}to{opacity:1;transform:translateY(0);}}
+
+  h2.view-title{font-family:var(--serif);font-size:23px;margin:0 0 2px;}
+  h2.view-title .vi{font-size:14px;font-weight:400;color:var(--slate);font-family:var(--sans);}
+  .view-sub{color:var(--slate);font-size:12.5px;margin:6px 0 22px;line-height:1.6;}
+
+  .stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:14px;margin-bottom:24px;}
+  .stat-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:16px 18px;border-left:4px solid var(--accent2);}
+  .stat-card.red{border-left-color:var(--danger);}
+  .stat-card.yellow{border-left-color:var(--warn);}
+  .stat-card .num{font-family:var(--serif);font-size:30px;font-weight:700;line-height:1;}
+  .stat-card .lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--slate);margin-top:6px;line-height:1.5;}
+
+  .table-wrap{background:var(--card);border:1px solid var(--line);border-radius:3px;overflow:hidden;margin-bottom:24px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:700px;}
+  thead th{background:#eee7d8;text-align:left;padding:10px 12px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;color:var(--slate);font-weight:600;border-bottom:1px solid var(--line);line-height:1.4;}
+  thead th .vi{display:block;font-size:9px;opacity:.75;text-transform:none;letter-spacing:0;}
+  tbody td{padding:10px 12px;border-bottom:1px solid #ece7da;vertical-align:middle;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:#fbf9f3;}
+
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;font-weight:600;white-space:nowrap;}
+  .badge.green{background:#e3efe9;color:var(--ok);}
+  .badge.yellow{background:#fbf0d8;color:#9a6f1c;}
+  .badge.red{background:#f7e2dd;color:var(--danger);}
+  .badge.grey{background:#ece7da;color:var(--slate);}
+  .badge.purple{background:#eae3f3;color:#6a4c93;}
+
+  .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;}
+  .dot.green{background:var(--ok);}
+  .dot.yellow{background:var(--warn);}
+  .dot.red{background:var(--danger);}
+
+  .progress-bar{background:#ece7da;border-radius:20px;height:8px;width:100px;overflow:hidden;}
+  .progress-bar .fill{height:100%;background:var(--accent2);}
+
+  .btn{display:inline-block;padding:9px 18px;border:none;border-radius:2px;font-size:12px;cursor:pointer;letter-spacing:.4px;font-family:var(--sans);text-transform:uppercase;font-weight:600;line-height:1.3;}
+  .btn .vi{display:block;font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;opacity:.8;}
+  .btn-primary{background:var(--ink);color:#fff;}
+  .btn-primary:hover{background:var(--accent);}
+  .btn-secondary{background:transparent;color:var(--ink);border:1px solid var(--line);}
+  .btn-secondary:hover{border-color:var(--ink);}
+  .btn-danger{background:transparent;color:var(--danger);border:1px solid var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .btn-sm{padding:5px 12px;font-size:11px;}
+  .btn-sm .vi{font-size:9px;}
+  .btn:disabled{opacity:.5;cursor:not-allowed;}
+  .toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap;}
+
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(20,28,25,.55);z-index:100;align-items:center;justify-content:center;padding:20px;}
+  .modal-bg.active{display:flex;}
+  .modal{background:var(--paper);width:100%;max-width:640px;max-height:88vh;overflow-y:auto;border-radius:3px;padding:30px 32px;border-top:5px solid var(--accent);position:relative;}
+  .modal h3{font-family:var(--serif);margin:0 0 4px;font-size:19px;}
+  .modal h3 .vi{display:block;font-size:13px;font-weight:400;color:var(--slate);font-family:var(--sans);margin-top:2px;margin-bottom:14px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  .form-grid .full{grid-column:1/-1;}
+  .form-grid label{font-size:10.5px;text-transform:uppercase;letter-spacing:1px;color:var(--slate);display:block;margin-bottom:5px;line-height:1.5;}
+  .form-grid label .vi{display:block;font-size:9.5px;opacity:.75;text-transform:none;letter-spacing:0;}
+  .form-grid input,.form-grid select,.form-grid textarea{width:100%;padding:9px 10px;border:1px solid var(--line);background:#fff;font-size:14px;border-radius:1px;font-family:var(--sans);}
+  .form-grid textarea{resize:vertical;min-height:60px;}
+  .checklist{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid var(--line);padding:12px;border-radius:2px;max-height:320px;overflow-y:auto;}
+  .test-group{margin-bottom:10px;}
+  .test-group:last-child{margin-bottom:0;}
+  .test-group-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent2);background:#f3f0e6;padding:6px 8px;border-radius:2px;margin-bottom:4px;line-height:1.4;}
+  .test-group-title .vi{font-weight:400;text-transform:none;letter-spacing:0;color:var(--slate);}
+  .checklist label{display:flex;align-items:center;gap:8px;font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);margin:0;cursor:pointer;}
+  .checklist input[type=checkbox]{width:auto;}
+  .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px;}
+  .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:22px;cursor:pointer;color:var(--slate);}
+
+  .empty-state{text-align:center;padding:50px 20px;color:var(--slate);}
+  .empty-state .icon{font-size:34px;margin-bottom:10px;}
+  .empty-state .vi{font-size:.88em;}
+
+  .pill-row{display:flex;gap:6px;flex-wrap:wrap;}
+  .pill{background:#ece7da;padding:3px 9px;border-radius:14px;font-size:11px;}
+
+  .test-status-grid{display:flex;flex-direction:column;gap:10px;}
+  .test-status-item{background:#fff;border:1px solid var(--line);border-radius:2px;padding:12px 14px;}
+  .test-status-item .tname{font-weight:600;font-size:13px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;}
+  .test-status-item .steps{display:flex;flex-wrap:wrap;gap:14px;}
+  .test-status-item .steps label{display:flex;align-items:center;gap:6px;font-size:11.5px;cursor:pointer;line-height:1.3;}
+  .test-status-item .steps label .vi{display:block;font-size:9.5px;color:var(--slate);}
+  .test-status-item .steps input{width:auto;}
+
+  .section-card{background:var(--card);border:1px solid var(--line);border-radius:3px;padding:18px 20px;margin-bottom:18px;}
+  .section-card h3{font-family:var(--serif);font-size:16px;margin:0 0 14px;}
+
+  .search-input{padding:8px 12px;border:1px solid var(--line);border-radius:2px;font-size:13px;background:#fff;}
+
+  .small-muted{font-size:12px;color:var(--slate);}
+  .small-muted .vi{font-size:.9em;}
+  .login-quickref b{color:var(--ink);}
+
+  .role-actions{display:flex;gap:6px;flex-wrap:wrap;}
+
+  @media(max-width:760px){
+    .form-grid{grid-template-columns:1fr;}
+    nav{padding:0 10px;}
+    main{padding:18px 12px 50px;}
+    table{font-size:12px;}
+    thead th, tbody td{padding:8px 8px;}
+    nav button .vi{display:none;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>HAIC Lab System</h1>
+    <div class="sub">Laboratory Workload &amp; Progress Management</div>
+
+    <label><span class="en">Email</span> <span style="text-transform:none;">/ Email</span></label>
+    <input type="email" id="loginUser" placeholder="name@gmail.com" autocomplete="username">
+    <label><span class="en">Password</span> <span style="text-transform:none;">/ Mật khẩu</span></label>
+    <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    <button id="loginBtn" onclick="doLogin()">Sign in / Đăng nhập</button>
+    <div class="login-err" id="loginErr"></div>
+
+    <div class="login-foot">
+      <div class="login-quickref">
+        <b>First-time setup / Thiết lập lần đầu:</b><br>
+        The Super Admin account is created automatically on first login using the configured email below.<br>
+        <span class="vi">Tài khoản Super Admin được tạo tự động ở lần đăng nhập đầu tiên với email đã cấu hình sẵn.</span><br><br>
+        Other accounts (Admin, Technician, Report Team) are created by Admins inside the "Staff" tab using Gmail addresses.<br>
+        <span class="vi">Các tài khoản khác do Admin tạo trong tab "Nhân sự", dùng địa chỉ Gmail.</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app">
+  <header>
+    <div class="brand">
+      <h1>HAIC Lab System</h1>
+      <span class="tag">Workload &amp; Progress Management</span>
+    </div>
+    <div class="who">
+      <span id="whoName"></span>
+      <span class="role-pill" id="whoRole"></span>
+      <button class="logout" onclick="logout()">Sign out / Đăng xuất</button>
+    </div>
+  </header>
+
+  <nav id="navBar"></nav>
+
+  <main>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <section class="view" id="view-dashboard">
+      <h2 class="view-title">Today Status <span class="vi">— Tổng quan hôm nay</span></h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+        <p class="view-sub" id="dashDate" style="margin:0;"></p>
+        <select id="dashCountryFilter" class="search-input" onchange="renderDashboard()" style="min-width:200px;">
+          <option value="">🌏 All countries / Tất cả quốc gia</option>
+          <option value="KH">🇰🇭 Cambodia (KH)</option>
+          <option value="LA">🇱🇦 Laos (LA)</option>
+          <option value="VN">🇻🇳 Vietnam (VN)</option>
+        </select>
+      </div>
+
+      <div class="stat-row" id="dashStats"></div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff<span class="vi">Nhân viên</span></th>
+              <th>Current Work<span class="vi">Công việc đang làm</span></th>
+              <th>Samples<span class="vi">Số mẫu</span></th>
+              <th>Progress<span class="vi">% hoàn thành</span></th>
+              <th>Deadline</th>
+              <th>Status<span class="vi">Trạng thái</span></th>
+            </tr>
+          </thead>
+          <tbody id="dashTableBody"></tbody>
+        </table>
+      </div>
+
+      <div class="section-card">
+        <h3>Deadline Alerts <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Cảnh báo Deadline</span></h3>
+        <div id="dashAlerts"></div>
+      </div>
+
+      <div class="section-card">
+        <h3>Plan Alerts <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Cảnh báo Kế hoạch</span></h3>
+        <div id="dashPlanAlerts"></div>
+      </div>
+
+      <div class="section-card">
+        <div class="toolbar" style="margin-bottom:14px;">
+          <h3 style="margin:0;">Completed in Period <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Hoàn thành theo khoảng thời gian</span></h3>
+          <select id="dashPeriod" class="search-input" onchange="renderDashboard()">
+            <option value="week">This week / Tuần này</option>
+            <option value="month">This month / Tháng này</option>
+            <option value="all">All time / Tất cả</option>
+          </select>
+        </div>
+        <div id="dashPeriodStats"></div>
+      </div>
+    </section>
+
+    <!-- ===================== PROJECTS ===================== -->
+    <section class="view" id="view-projects">
+      <h2 class="view-title">Projects <span class="vi">— Dự án</span></h2>
+      <p class="view-sub">Each project groups multiple samples/tasks. Overall progress is calculated from its child tasks.<br><span class="vi">Mỗi dự án (mẹ) gồm nhiều mẫu/đầu việc (con). Tiến độ tổng được tính từ các task con.</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="projectCountryFilter" class="search-input" onchange="setProjectsCountryFilter(this.value)">
+            <option value="">All countries / Tất cả quốc gia</option>
+            <option value="KH">🇰🇭 Cambodia (KH)</option>
+            <option value="LA">🇱🇦 Laos (LA)</option>
+            <option value="VN">🇻🇳 Vietnam (VN)</option>
+          </select>
+          <select id="projectTypeFilter" class="search-input" onchange="setProjectsTypeFilter(this.value)">
+            <option value="">All types / Tất cả loại dự án</option>
+          </select>
+          <select id="projectClientFilter" class="search-input" onchange="setProjectsClientFilter(this.value)">
+            <option value="">All clients / Tất cả khách hàng</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnNewProject" onclick="openProjectModal()">+ New Project <span class="vi">/ Dự án mới</span></button>
+      </div>
+
+      <div id="projectList"></div>
+    </section>
+
+    <!-- ===================== TASK ASSIGNMENT ===================== -->
+    <section class="view" id="view-tasks">
+      <h2 class="view-title">Task Assignment <span class="vi">— Phân việc &amp; Mẫu thử</span></h2>
+      <p class="view-sub">Create new samples, assign tests and responsible staff. Track raw data progress.<br><span class="vi">Tạo mẫu mới, gán test và người phụ trách. Theo dõi tiến độ raw data.</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="filterCountry" class="search-input" onchange="renderTasks()">
+            <option value="">All countries / Tất cả quốc gia</option>
+            <option value="KH">🇰🇭 Cambodia (KH)</option>
+            <option value="LA">🇱🇦 Laos (LA)</option>
+            <option value="VN">🇻🇳 Vietnam (VN)</option>
+          </select>
+          <select id="filterStaff" class="search-input" onchange="renderTasks()">
+            <option value="">All staff / Tất cả nhân viên</option>
+          </select>
+          <select id="filterStatus" class="search-input" onchange="renderTasks()">
+            <option value="">All status / Tất cả trạng thái</option>
+            <option value="pending">Not started / Chưa bắt đầu</option>
+            <option value="progress">In progress / Đang làm</option>
+            <option value="done">Completed / Hoàn tất</option>
+            <option value="overdue">Overdue / Quá hạn</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" id="btnNewTask" onclick="openTaskModal()">+ New Sample <span class="vi">/ Mẫu mới</span></button>
+      </div>
+
+      <div id="taskList"></div>
+    </section>
+
+    <!-- ===================== DAILY REPORT ===================== -->
+    <section class="view" id="view-daily">
+      <h2 class="view-title">Daily Activity Report <span class="vi">— Báo cáo hằng ngày</span></h2>
+      <p class="view-sub">Update today's work — completed / in progress / problem.<br><span class="vi">Cập nhật công việc trong ngày — đã làm / đang làm / vấn đề.</span></p>
+
+      <div class="section-card" id="dailyEntryCard">
+        <h3>Today's Report <span style="font-size:13px;font-weight:400;color:var(--slate);">/ Báo cáo hôm nay</span></h3>
+        <div class="form-grid">
+          <div class="full">
+            <label><span class="en">Completed (one item per line)</span><span class="vi">Đã hoàn thành (mỗi dòng 1 mục)</span></label>
+            <textarea id="dailyCompleted" placeholder="Sample BH01 moisture&#10;Sieve analysis BH02"></textarea>
+          </div>
+          <div class="full">
+            <label><span class="en">In progress</span><span class="vi">Đang thực hiện</span></label>
+            <textarea id="dailyProgress" placeholder="Direct shear BH02"></textarea>
+          </div>
+          <div class="full">
+            <label><span class="en">Problem / blocker</span><span class="vi">Vấn đề / vướng mắc</span></label>
+            <textarea id="dailyProblem" placeholder="Waiting specimen preparation..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions" style="margin-top:18px;">
+          <button class="btn btn-primary" onclick="submitDailyReport()">Save report <span class="vi">/ Lưu báo cáo</span></button>
+        </div>
+      </div>
+
+      <h3 style="font-family:var(--serif);margin:26px 0 12px;">Report History <span style="font-size:14px;font-weight:400;color:var(--slate);">/ Lịch sử báo cáo</span></h3>
+      <div id="dailyHistory"></div>
+    </section>
+
+    <!-- ===================== RAW DATA ===================== -->
+    <section class="view" id="view-rawdata">
+      <h2 class="view-title">Raw Data &amp; Test Status <span class="vi">— Theo dõi Raw Data</span></h2>
+      <p class="view-sub">Track test progress per role — Technician: 3 steps / Report Team: 2 steps / Admin: all 7 steps.<br><span class="vi">Theo dõi tiến độ theo vai trò — Kỹ thuật viên: 3 bước / Report Team: 2 bước / Admin: toàn bộ 7 bước.</span></p>
+      <div id="rawDataList"></div>
+    </section>
+
+    <!-- ===================== REPORT TEAM ===================== -->
+    <section class="view" id="view-report">
+      <h2 class="view-title">Ready for Report <span class="vi">— Sẵn sàng làm báo cáo</span></h2>
+      <p class="view-sub">Samples with the full checklist completed, ready for the report team.<br><span class="vi">Các mẫu đã hoàn tất toàn bộ checklist, sẵn sàng làm report.</span></p>
+      <div id="reportReadyList"></div>
+    </section>
+
+    <!-- ===================== PERFORMANCE ===================== -->
+    <section class="view" id="view-performance">
+      <h2 class="view-title">Performance Tracking <span class="vi">— Theo dõi hiệu suất</span></h2>
+      <p class="view-sub">Per-staff statistics — total tests, average delay.<br><span class="vi">Thống kê theo nhân viên — tổng số test, độ trễ trung bình.</span></p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Staff / Role<span class="vi">Nhân viên / Vai trò</span></th>
+              <th>Assigned<span class="vi">Được giao</span></th>
+              <th>Tests done<span class="vi">Test hoàn thành</span></th>
+              <th>On time<span class="vi">Đúng hạn</span></th>
+              <th>Late<span class="vi">Trễ hạn</span></th>
+              <th>Avg delay (days)<span class="vi">Trễ TB (ngày)</span></th>
+              <th>On-time rate<span class="vi">Tỷ lệ đúng hạn</span></th>
+            </tr>
+          </thead>
+          <tbody id="perfTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ===================== PLANS ===================== -->
+    <section class="view" id="view-plans">
+      <h2 class="view-title">Plans <span class="vi">— Kế hoạch nhiệm vụ</span></h2>
+      <p class="view-sub">Personal and team action plans with checklists and deadlines. Dashboard alerts when deadline is near.<br><span class="vi">Kế hoạch cá nhân và nhóm với checklist và deadline. Dashboard cảnh báo khi gần hạn.</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="planFilterOwner" class="search-input" onchange="renderPlans()">
+            <option value="">All / Tất cả</option>
+            <option value="mine">My plans / Kế hoạch của tôi</option>
+          </select>
+          <select id="planFilterStatus" class="search-input" onchange="renderPlans()">
+            <option value="">All status / Tất cả</option>
+            <option value="active">Active / Đang thực hiện</option>
+            <option value="done">Done / Hoàn tất</option>
+            <option value="overdue">Overdue / Quá hạn</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" onclick="openPlanModal()">+ New Plan <span class="vi">/ Kế hoạch mới</span></button>
+      </div>
+
+      <div id="planList"></div>
+    </section>
+
+    <!-- ===================== STAFF ===================== -->
+    <section class="view" id="view-staff">
+      <h2 class="view-title">Staff &amp; Accounts <span class="vi">— Nhân sự &amp; Tài khoản</span></h2>
+      <p class="view-sub">Create accounts, assign roles, and promote/demote Admins.<br><span class="vi">Tạo tài khoản, gán vai trò, bổ nhiệm/hạ cấp Admin.</span></p>
+      <div class="toolbar">
+        <div></div>
+        <button class="btn btn-primary" onclick="openStaffModal()">+ Add staff <span class="vi">/ Thêm nhân viên</span></button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Name<span class="vi">Tên</span></th>
+            <th>Email</th>
+            <th>Role<span class="vi">Vai trò</span></th>
+            <th>Country<span class="vi">Quốc gia</span></th>
+            <th>Actions<span class="vi">Hành động</span></th>
+          </tr></thead>
+          <tbody id="staffTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- ===================== MODAL: NEW PROJECT ===================== -->
+<div class="modal-bg" id="projectModalBg">
+  <div class="modal" style="max-width:520px;">
+    <button class="modal-close" onclick="closeModal('projectModalBg')">&times;</button>
+    <h3 id="projectModalHeading">New Project <span class="vi">/ Dự án mới</span></h3>
+    <div class="form-grid">
+      <div>
+        <label>Project Code<span class="vi">Mã dự án</span></label>
+        <div style="display:flex;gap:6px;">
+          <input id="pCode" placeholder="SI-2026-001" style="flex:1;">
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap;" onclick="suggestProjectCode()">Suggest <span class="vi">Gợi ý</span></button>
+        </div>
+      </div>
+      <div><label>Project Name<span class="vi">Tên dự án</span></label><input id="pName"></div>
+      <div><label>Client (payer/contractor)<span class="vi">Khách hàng (đơn vị trả tiền / có thể là nhà thầu)</span></label><input id="pClient" placeholder="VD: KDC, SOB, CBC..."></div>
+      <div><label>True Investor / Owner<span class="vi">Chủ đầu tư thật</span></label><input id="pInvestor" placeholder="VD: Ngân hàng ABC, Công ty XYZ..."></div>
+      <div>
+        <label>Country<span class="vi">Quốc gia</span></label>
+        <select id="pCountry" onchange="suggestProjectCode()">
+          <option value="KH">🇰🇭 Cambodia / Campuchia (KH)</option>
+          <option value="LA">🇱🇦 Laos / Lào (LA)</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam (VN)</option>
+        </select>
+      </div>
+      <div>
+        <label>Project Type<span class="vi">Loại dự án</span></label>
+        <select id="pType" onchange="suggestProjectCode()">
+          <option value="soil">Soil Investigation / Khảo sát địa kỹ thuật</option>
+          <option value="materials">Construction Materials Testing / Kiểm tra vật liệu xây dựng</option>
+          <option value="topo">Topographical Survey / Khảo sát địa hình</option>
+          <option value="calibration">Equipment Calibration / Hiệu chuẩn thiết bị</option>
+          <option value="other">Other / Khác</option>
+        </select>
+      </div>
+      <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
+      <div class="full">
+        <label>Status<span class="vi">Trạng thái</span></label>
+        <select id="pStatus">
+          <option value="active">Active / Đang triển khai</option>
+          <option value="onhold">On hold / Tạm dừng</option>
+          <option value="completed">Completed / Hoàn tất</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Notes<span class="vi">Ghi chú</span></label>
+        <textarea id="pNotes"></textarea>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('projectModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveProject()">Save project <span class="vi">/ Lưu dự án</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: NEW / EDIT TASK ===================== -->
+<div class="modal-bg" id="taskModalBg">
+  <div class="modal" style="max-width:720px;">
+    <button class="modal-close" onclick="closeModal('taskModalBg')">&times;</button>
+    <h3 id="taskModalHeading">New Sample <span class="vi">/ Mẫu mới</span></h3>
+    <div class="form-grid">
+      <div><label>Client</label><input id="tClient"></div>
+      <div>
+        <label>Project<span class="vi">Dự án</span></label>
+        <select id="tProject"></select>
+      </div>
+      <div><label>Sample ID</label><input id="tSampleId" placeholder="BH-03-5.0m"></div>
+      <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
+      <div>
+        <label>Start time<span class="vi">Thời gian bắt đầu</span></label>
+        <input type="datetime-local" id="tStartTime">
+      </div>
+      <div>
+        <label>Deadline (date &amp; time)<span class="vi">Deadline (ngày &amp; giờ)</span></label>
+        <input type="datetime-local" id="tDeadline">
+      </div>
+      <div class="full">
+        <label>Assigned to (select multiple / Chọn nhiều người)<span class="vi">Người phụ trách — giữ Ctrl/Cmd để chọn nhiều</span></label>
+        <select id="tAssignee" multiple style="height:110px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
+        <div class="small-muted" style="margin-top:4px;"><span class="en">Hold Ctrl (Windows) or Cmd (Mac) to select multiple people.</span> <span class="vi">Giữ Ctrl (Windows) hoặc Cmd (Mac) để chọn nhiều người.</span></div>
+      </div>
+      <div class="full" id="tTestsSection">
+        <label>Tests required (select multiple)<span class="vi">Loại test (chọn nhiều)</span></label>
+        <div class="checklist" id="tTestsChecklist"></div>
+      </div>
+      <div class="full" id="tCustomTestsSection">
+        <label>Other tests, comma-separated<span class="vi">Thêm loại test khác, phân cách bằng dấu phẩy</span></label>
+        <input id="tCustomTests" placeholder="e.g. Point Load Test, Vane Shear">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('taskModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveTask()">Save sample <span class="vi">/ Lưu mẫu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: STAFF ===================== -->
+<div class="modal-bg" id="staffModalBg">
+  <div class="modal" style="max-width:480px;">
+    <button class="modal-close" onclick="closeModal('staffModalBg')">&times;</button>
+    <h3 id="staffModalHeading">Add Staff <span class="vi">/ Thêm nhân viên</span></h3>
+    <div class="form-grid">
+      <div class="full"><label>Full name<span class="vi">Họ tên</span></label><input id="sName"></div>
+      <div class="full"><label>Email (Gmail) — used as username<span class="vi">Email (Gmail) — dùng làm username</span></label><input id="sUser" type="email" placeholder="name@gmail.com"></div>
+      <div class="full" id="sPassSection"><label>Temporary password<span class="vi">Mật khẩu tạm</span></label><input id="sPass" placeholder="min 6 characters"></div>
+      <div>
+        <label>Role<span class="vi">Vai trò</span></label>
+        <select id="sRole">
+          <option value="technician">Technician</option>
+          <option value="report">Report Team</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div>
+        <label>Country<span class="vi">Quốc gia</span></label>
+        <select id="sCountry">
+          <option value="">🌏 All / Tất cả</option>
+          <option value="KH">🇰🇭 Cambodia / Campuchia (KH)</option>
+          <option value="LA">🇱🇦 Laos / Lào (LA)</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam (VN)</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('staffModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveStaff()">Save <span class="vi">/ Lưu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: NEW / EDIT PLAN ===================== -->
+<div class="modal-bg" id="planModalBg">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('planModalBg')">&times;</button>
+    <h3 id="planModalHeading">New Plan <span class="vi">/ Kế hoạch mới</span></h3>
+    <div class="form-grid">
+      <div class="full"><label>Plan title<span class="vi">Tiêu đề kế hoạch</span></label><input id="planTitle" placeholder="VD: Kế hoạch tháng 7/2026"></div>
+      <div class="full"><label>Goal / Objective<span class="vi">Mục tiêu kết quả</span></label><textarea id="planGoal" placeholder="Mô tả mục tiêu cần đạt được..."></textarea></div>
+      <div>
+        <label>Assigned to<span class="vi">Giao cho</span></label>
+        <select id="planAssignee"></select>
+      </div>
+      <div><label>Deadline (date &amp; time)<span class="vi">Deadline</span></label><input type="datetime-local" id="planDeadline"></div>
+      <div>
+        <label>Priority<span class="vi">Ưu tiên</span></label>
+        <select id="planPriority">
+          <option value="high">🔴 High / Cao</option>
+          <option value="medium" selected>🟡 Medium / Trung bình</option>
+          <option value="low">🟢 Low / Thấp</option>
+        </select>
+      </div>
+      <div>
+        <label>Alert before deadline<span class="vi">Cảnh báo trước deadline</span></label>
+        <select id="planAlertDays">
+          <option value="1">1 day / 1 ngày</option>
+          <option value="2" selected>2 days / 2 ngày</option>
+          <option value="3">3 days / 3 ngày</option>
+          <option value="5">5 days / 5 ngày</option>
+          <option value="7">7 days / 1 tuần</option>
+        </select>
+      </div>
+      <div class="full">
+        <label>Checklist steps (one per line)<span class="vi">Các bước thực hiện (mỗi dòng 1 bước)</span></label>
+        <textarea id="planChecklist" rows="6" placeholder="Bước 1: Liên hệ bên kho&#10;Bước 2: Xác nhận thông tin&#10;Bước 3: Báo cáo cho công ty"></textarea>
+      </div>
+      <div class="full"><label>Notes<span class="vi">Ghi chú</span></label><textarea id="planNotes"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('planModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="savePlan()">Save plan <span class="vi">/ Lưu kế hoạch</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: SUB-TASK ===================== -->
+<div class="modal-bg" id="subtaskModalBg">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('subtaskModalBg')">&times;</button>
+    <h3 id="subtaskModalHeading">New Sub-task <span class="vi">/ Giao việc con</span></h3>
+    <div class="small-muted" id="subtaskParentInfo" style="margin-bottom:14px;padding:8px 10px;background:#f3f0e6;border-radius:2px;"></div>
+    <div class="form-grid">
+      <div class="full"><label>Sub-task description<span class="vi">Mô tả đầu việc</span></label><input id="stDesc" placeholder="VD: Thực hiện thí nghiệm Direct Shear cho BH-03"></div>
+      <div>
+        <label>Assigned to<span class="vi">Giao cho</span></label>
+        <select id="stAssignee"></select>
+      </div>
+      <div><label>Start time<span class="vi">Thời gian bắt đầu</span></label><input type="datetime-local" id="stStartTime"></div>
+      <div><label>Deadline<span class="vi">Deadline</span></label><input type="datetime-local" id="stDeadline"></div>
+      <div class="full">
+        <label>Tests / Steps (select from parent task)<span class="vi">Test/bước từ task gốc</span></label>
+        <div class="checklist" id="stTestsChecklist" style="max-height:200px;overflow-y:auto;"></div>
+      </div>
+      <div class="full"><label>Notes<span class="vi">Ghi chú</span></label><textarea id="stNotes"></textarea></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('subtaskModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveSubTask()">Save <span class="vi">/ Lưu</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: VIEW SAMPLE DETAIL / CHECKLIST ===================== -->
+<div class="modal-bg" id="detailModalBg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('detailModalBg')">&times;</button>
+    <h3 id="detailTitle"></h3>
+    <div id="detailBody"></div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   HAIC LAB MANAGEMENT SYSTEM — Firebase version
+   ============================================================ */
+
+/* ---------- CONFIG: replace with your Firebase project config ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
+};
+
+/* Super Admin email — fixed, first login auto-creates this account with role=superadmin */
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Full 7-step pipeline — roles control which steps are visible/editable
+// Admin/SuperAdmin: all 7 steps
+// Technician: steps with tech:true
+// Report Team: steps with report:true
+const STEP_LABELS = [
+  {k:'inprogress',  en:'Testing in progress',   vi:'Đang thực hiện',        tech:true,  report:false},
+  {k:'testing',     en:'Testing completed',      vi:'Kết thúc thí nghiệm',   tech:true,  report:false},
+  {k:'rawdata',     en:'Raw data uploaded',      vi:'Raw data đã upload',     tech:true,  report:false},
+  {k:'calculation', en:'Calculation done',       vi:'Đã tính toán',          tech:false, report:false},
+  {k:'reviewed',    en:'Reviewed by Admin',      vi:'Admin đã review',       tech:false, report:false},
+  {k:'writing',     en:'Writing report',         vi:'Đang làm báo cáo',      tech:false, report:true},
+  {k:'submitted',   en:'Report submitted',       vi:'Đã nộp báo cáo',        tech:false, report:true}
+];
+
+function stepsForRole(role){
+  if(isAdminLike(role)) return STEP_LABELS;
+  if(role==='technician') return STEP_LABELS.filter(s=>s.tech);
+  if(role==='report') return STEP_LABELS.filter(s=>s.report);
+  return STEP_LABELS;
+}
+
+const TEST_GROUPS = [
+  { key:'A', en:'Soil Identification & Classification Tests', vi:'Thí nghiệm nhận dạng và phân loại đất', tests:[
+    'Moisture Content Test','Particle Size Distribution (Sieve Analysis)','Hydrometer Analysis',
+    'Atterberg Limits Test (Liquid Limit, Plastic Limit)','Bulk Density / Unit Weight Test',
+    'Soil Classification (USCS Classification)','Visual Soil Classification','Organic Content Test','Loss on Ignition (LOI)'
+  ]},
+  { key:'B', en:'Soil Strength Tests', vi:'Thí nghiệm sức kháng cắt', tests:[
+    'Consolidated Direct Shear Test','Unconfined Compressive Strength Test (UCS)','Triaxial Compression Test (UU)',
+    'Consolidated Undrained Triaxial Test (CU)','Consolidated Drained Triaxial Test (CD)'
+  ]},
+  { key:'C', en:'Compressibility & Settlement Tests', vi:'Biến dạng - lún', tests:[
+    'One-Dimensional Consolidation Test (Oedometer Test)','Swell Test / Expansion Index'
+  ]},
+  { key:'D', en:'Compaction & Earthwork Tests', vi:'Đầm nén đất', tests:[
+    'Standard Proctor Compaction Test','Modified Proctor Compaction Test','California Bearing Ratio (CBR) Test'
+  ]},
+  { key:'E', en:'Soil Permeability Tests', vi:'Thấm nước', tests:[
+    'Constant Head Permeability Test','Falling Head Permeability Test'
+  ]},
+  { key:'F', en:'Chemical Tests', vi:'Thí nghiệm hóa đất/nước', tests:[
+    'pH Value Test','Chloride Content Test','Sulfate Content Test','Carbonate Content'
+  ]},
+  { key:'G', en:'Rock Laboratory Tests', vi:'Thí nghiệm đá', tests:[
+    'Rock Description & Petrography','Point Load Strength Test','Uniaxial Compressive Strength of Rock',
+    'Rock Density & Porosity','Water Absorption of Rock','Slake Durability Test','Brazilian Tensile Strength Test'
+  ]},
+  { key:'H', en:'Construction Materials Testing', vi:'Kiểm tra vật liệu xây dựng', tests:[
+    'Cement Testing','Aggregate Testing','Concrete Compressive Strength Test (Bê tông)',
+    'Mortar & Grout Testing (Vữa, grout)','Asphalt Testing (Bê tông nhựa)','Steel Reinforcement Testing (Thép)'
+  ]},
+  { key:'I', en:'Equipment Calibration', vi:'Hiệu chuẩn thiết bị', tests:[
+    'Hydraulic Jack','Compression Machine','Tension Machine','Dial Gauge','Pressure Gauge',
+    'Weight Scale','Oven','Batching/Mixing Plant','Auto Level','Total Station'
+  ]},
+  { key:'K', en:'Topographical Survey', vi:'Khảo sát địa hình', tests:[
+    'Drone Survey','RTK Survey','Benchmark Establishment','Total Station Survey','Auto Level Survey'
+  ]}
+];
+
+const ROLE_LABEL = {
+  superadmin: {en:'Super Admin', vi:'Quản trị tối cao'},
+  admin:      {en:'Admin',       vi:'Quản trị'},
+  technician: {en:'Technician',  vi:'Kỹ thuật viên'},
+  report:     {en:'Report Team', vi:'Tổ Report'}
+};
+
+function nowISO(){ return new Date().toISOString(); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){
+  if(!iso) return '-';
+  const [y,m,d] = iso.split('-');
+  return `${d}/${m}/${y}`;
+}
+function daysBetween(a,b){
+  const A = new Date(a), B = new Date(b);
+  return Math.round((B-A)/(1000*60*60*24));
+}
+function roleLabel(role){
+  const r = ROLE_LABEL[role] || {en:role,vi:role};
+  return `${r.en} / ${r.vi}`;
+}
+function roleBadgeClass(role){
+  return {superadmin:'purple',admin:'green',technician:'yellow',report:'grey'}[role] || 'grey';
+}
+
+/* ---------- Global state ---------- */
+let SESSION = null;   // {uid,name,email,role}
+let USERS = [];
+let TASKS = [];
+let DAILY_REPORTS = [];
+let PROJECTS = [];
+let PLANS = [];
+let TASKS_PROJECT_FILTER = '';
+let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null, unsubPlans=null;
+
+/* ============================================================
+   AUTH
+   ============================================================ */
+function setLoginBusy(busy, msg){
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = busy;
+  if(msg!==undefined) document.getElementById('loginErr').textContent = msg;
+}
+
+async function doLogin(){
+  const email = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if(!email || !pass){
+    setLoginBusy(false,'Please enter email and password / Vui lòng nhập email và mật khẩu.');
+    return;
+  }
+  setLoginBusy(true,'');
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(err){
+    if(err.code==='auth/user-not-found' || err.code==='auth/invalid-credential'){
+      if(email.toLowerCase()===SUPER_ADMIN_EMAIL.toLowerCase()){
+        try{
+          const cred = await auth.createUserWithEmailAndPassword(email, pass);
+          await db.collection('users').doc(cred.user.uid).set({
+            name:'Truong', email:email, role:'superadmin', createdAt: nowISO()
+          });
+          return;
+        }catch(err2){
+          setLoginBusy(false, translateAuthError(err2));
+          return;
+        }
+      }
+      setLoginBusy(false,'Account not found / Không tìm thấy tài khoản.');
+      return;
+    }
+    setLoginBusy(false, translateAuthError(err));
+  }
+}
+
+function translateAuthError(err){
+  const map = {
+    'auth/wrong-password':'Wrong password / Sai mật khẩu.',
+    'auth/invalid-email':'Invalid email / Email không hợp lệ.',
+    'auth/weak-password':'Password too weak (min 6 chars) / Mật khẩu quá yếu (tối thiểu 6 ký tự).',
+    'auth/email-already-in-use':'Email already in use / Email đã được sử dụng.',
+    'auth/too-many-requests':'Too many attempts, try later / Thử lại sau ít phút.',
+    'auth/network-request-failed':'Network error / Lỗi kết nối mạng.'
+  };
+  return map[err.code] || (err.message || 'Login error / Lỗi đăng nhập.');
+}
+
+function logout(){
+  auth.signOut();
+}
+
+auth.onAuthStateChanged(async (user)=>{
+  setLoginBusy(false,'');
+  if(!user){
+    SESSION=null;
+    detachListeners();
+    document.getElementById('app').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+    return;
+  }
+  let snap = await db.collection('users').doc(user.uid).get();
+  if(!snap.exists){
+    if(user.email.toLowerCase()===SUPER_ADMIN_EMAIL.toLowerCase()){
+      await db.collection('users').doc(user.uid).set({name:'Truong', email:user.email, role:'superadmin', createdAt:nowISO()});
+      snap = await db.collection('users').doc(user.uid).get();
+    } else {
+      setLoginBusy(false,'Account has no profile, contact Admin / Tài khoản chưa được cấp quyền, liên hệ Admin.');
+      await auth.signOut();
+      return;
+    }
+  }
+  const profile = snap.data();
+  SESSION = {uid:user.uid, email:user.email, name:profile.name, role:profile.role};
+  enterApp();
+});
+
+/* ============================================================
+   FIRESTORE LISTENERS
+   ============================================================ */
+function detachListeners(){
+  if(unsubUsers) unsubUsers();
+  if(unsubTasks) unsubTasks();
+  if(unsubDaily) unsubDaily();
+  if(unsubProjects) unsubProjects();
+  if(unsubPlans) unsubPlans();
+  unsubUsers=unsubTasks=unsubDaily=unsubProjects=unsubPlans=null;
+}
+
+function attachListeners(){
+  unsubUsers = db.collection('users').onSnapshot(snap=>{
+    USERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubTasks = db.collection('tasks').onSnapshot(snap=>{
+    TASKS = snap.docs.map(d=>{
+      const task = {id:d.id, ...d.data()};
+      // Migrate old tasks: ensure all 7 step keys exist on every test
+      const allKeys = ['inprogress','testing','rawdata','calculation','reviewed','writing','submitted'];
+      const oldToNew = {'sent':'submitted'}; // old key → new key mapping
+      if(task.tests && Array.isArray(task.tests)){
+        task.tests = task.tests.map(test=>{
+          const s = test.steps || {};
+          // Map old keys to new keys
+          Object.keys(oldToNew).forEach(oldK=>{
+            const newK = oldToNew[oldK];
+            if(s[oldK]!==undefined && s[newK]===undefined) s[newK] = s[oldK];
+          });
+          // Fill missing keys with false
+          allKeys.forEach(k=>{ if(s[k]===undefined) s[k]=false; });
+          return {...test, steps:s};
+        });
+      }
+      // Migrate old single assigneeId → assigneeIds array
+      if(!task.assigneeIds && task.assigneeId){
+        task.assigneeIds = [task.assigneeId];
+      }
+      return task;
+    });
+    rerenderCurrentView();
+  });
+  unsubDaily = db.collection('dailyReports').onSnapshot(snap=>{
+    DAILY_REPORTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubProjects = db.collection('projects').onSnapshot(snap=>{
+    PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubPlans = db.collection('plans').onSnapshot(snap=>{
+    PLANS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+}
+
+let CURRENT_VIEW = 'dashboard';
+function rerenderCurrentView(){
+  if(document.getElementById('app').style.display==='none') return;
+  goView(CURRENT_VIEW);
+}
+
+/* ============================================================
+   NAV / ROLES
+   ============================================================ */
+const NAV_ITEMS = {
+  superadmin: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
+    ['tasks','Tasks','Phân việc'],
+    ['plans','Plans','Kế hoạch'],
+    ['daily','Daily Reports','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['performance','Performance','Hiệu suất'],
+    ['staff','Staff','Nhân sự']
+  ],
+  admin: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
+    ['tasks','Tasks','Phân việc'],
+    ['plans','Plans','Kế hoạch'],
+    ['daily','Daily Reports','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['performance','Performance','Hiệu suất'],
+    ['staff','Staff','Nhân sự']
+  ],
+  technician: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
+    ['tasks','My Tasks','Việc của tôi'],
+    ['plans','Plans','Kế hoạch'],
+    ['daily','Daily Report','Báo cáo ngày'],
+    ['rawdata','Raw Data','Raw Data']
+  ],
+  report: [
+    ['dashboard','Dashboard','Tổng quan'],
+    ['projects','Projects','Dự án'],
+    ['plans','Plans','Kế hoạch'],
+    ['daily','Daily Report','Báo cáo ngày'],
+    ['report','Ready for Report','Sẵn sàng Report'],
+    ['rawdata','Raw Data','Raw Data']
+  ]
+};
+
+function isAdminLike(role){ return role==='superadmin' || role==='admin'; }
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('whoName').textContent = SESSION.name || SESSION.email;
+  document.getElementById('whoRole').textContent = (ROLE_LABEL[SESSION.role]||{en:SESSION.role}).en;
+
+  detachListeners();
+  attachListeners();
+  buildNav();
+  goView(NAV_ITEMS[SESSION.role][0][0]);
+}
+
+function buildNav(){
+  const nav = document.getElementById('navBar');
+  nav.innerHTML='';
+  NAV_ITEMS[SESSION.role].forEach(([key,en,vi])=>{
+    const b=document.createElement('button');
+    b.innerHTML = `<span class="en">${en}</span><span class="vi">${vi}</span>`;
+    b.dataset.view=key;
+    b.onclick=()=>goView(key);
+    nav.appendChild(b);
+  });
+}
+
+function goView(key){
+  CURRENT_VIEW = key;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('#navBar button').forEach(b=>b.classList.toggle('active', b.dataset.view===key));
+  const el = document.getElementById('view-'+key);
+  if(el) el.classList.add('active');
+
+  if(key==='dashboard') renderDashboard();
+  if(key==='projects') renderProjects();
+  if(key==='tasks') renderTasks();
+  if(key==='daily') renderDaily();
+  if(key==='rawdata') renderRawData();
+  if(key==='report') renderReportReady();
+  if(key==='performance') renderPerformance();
+  if(key==='plans') renderPlans();
+  if(key==='staff') renderStaff();
+}
+
+function closeModal(id){
+  document.getElementById(id).classList.remove('active');
+  if(id==='taskModalBg') EDIT_TASK_ID = null;
+  if(id==='projectModalBg') EDIT_PROJECT_ID = null;
+  if(id==='planModalBg') EDIT_PLAN_ID = null;
+  if(id==='staffModalBg') EDIT_STAFF_ID = null;
+  if(id==='subtaskModalBg'){ SUBTASK_PARENT_ID=null; EDIT_SUBTASK_ID=null; }
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+
+/* ---------- Progress & status helpers ---------- */
+function taskProgress(task){
+  if(!task.tests || task.tests.length===0) return 0;
+  const total = task.tests.length * STEP_LABELS.length;
+  if(total===0) return 0;
+  let done=0;
+  task.tests.forEach(t=>{ STEP_LABELS.forEach(s=>{ if(t.steps && t.steps[s.k]) done++; }); });
+  return Math.round(done/total*100);
+}
+function taskAllDone(task){
+  if(!task.tests || task.tests.length===0) return false;
+  return task.tests.every(t=> STEP_LABELS.every(s=>t.steps && t.steps[s.k]) );
+}
+
+// Steps that count as "done" for a given staff role
+function roleCompletionSteps(role){
+  if(role==='report') return STEP_LABELS.filter(s=>s.report);
+  if(isAdminLike(role)) return STEP_LABELS.filter(s=>!s.report); // admin: all except report steps
+  return STEP_LABELS.filter(s=>s.tech); // technician
+}
+
+// Check if a staff member has completed their part of a task
+function staffPartDone(task, role){
+  if(!task.tests || task.tests.length===0) return false;
+  const steps = roleCompletionSteps(role);
+  return task.tests.every(test=> steps.every(s=>test.steps && test.steps[s.k]));
+}
+
+// Get/compute the timestamp when a staff's part was "done"
+// We store techCompletedAt / adminCompletedAt / reportCompletedAt on the task
+function getStaffCompletedAt(task, role){
+  if(role==='report') return task.reportCompletedAt || null;
+  if(isAdminLike(role)) return task.adminCompletedAt || null;
+  return task.techCompletedAt || null;
+}
+function taskStatus(task){
+  const pct = taskProgress(task);
+  const today = todayStr();
+  if(pct>=100) return 'done';
+  if(task.deadline && task.deadline.slice(0,10) < today) return 'overdue';
+  if(pct===0) return 'pending';
+  return 'progress';
+}
+function statusBadge(status){
+  const map = {
+    pending:['grey','Not started','Chưa bắt đầu'],
+    progress:['yellow','In progress','Đang làm'],
+    done:['green','Completed','Hoàn tất'],
+    overdue:['red','Overdue','Quá hạn'],
+    active:['yellow','In progress','Đang thực hiện']
+  };
+  const entry = map[status] || ['grey', status, status];
+  const [c,en,vi] = entry;
+  return `<span class="badge ${c}">${en} / ${vi}</span>`;
+}
+function trafficDot(task){
+  const pct=taskProgress(task);
+  const today=todayStr();
+  if(pct>=100) return 'green';
+  if(task.deadline){
+    const diff = daysBetween(today, task.deadline);
+    if(diff<0) return 'red';
+    if(diff<=2) return 'yellow';
+  }
+  return 'green';
+}
+function findUser(id){ return USERS.find(u=>u.id===id); }
+
+function fmtDateTime(iso){
+  if(!iso) return '-';
+  if(iso.includes('T')){
+    const [datePart, timePart] = iso.split('T');
+    const [y,m,d] = datePart.split('-');
+    return `${d}/${m}/${y} ${timePart.slice(0,5)}`;
+  }
+  return fmtDate(iso);
+}
+function getAssigneeIds(task){
+  if(!task) return [];
+  if(Array.isArray(task.assigneeIds) && task.assigneeIds.length>0) return task.assigneeIds;
+  if(task.assigneeId) return [task.assigneeId];
+  return [];
+}
+function getAssigneeNames(task){
+  return getAssigneeIds(task).map(id=>{ const u=findUser(id); return u?u.name:'?'; }).join(', ');
+}
+function assigneeUsers(){
+  const ids = new Set(TASKS.flatMap(t=>getAssigneeIds(t)));
+  return USERS.filter(u=>u.role==='technician' || ids.has(u.id));
+}
+
+/* ============================================================
+   DASHBOARD
+   ============================================================ */
+function renderDashboard(){
+  document.getElementById('dashDate').textContent = 'Today / Hôm nay: ' + fmtDate(todayStr());
+
+  const dashCountry = document.getElementById('dashCountryFilter') ? document.getElementById('dashCountryFilter').value : '';
+  const countryInfo = dashCountry ? COUNTRY_LABEL[dashCountry] : null;
+
+  const filterByCountry = (taskList) => {
+    if(!dashCountry) return taskList;
+    return taskList.filter(t=>{
+      const proj = PROJECTS.find(p=>p.id===t.projectId);
+      return proj && proj.country===dashCountry;
+    });
+  };
+
+  let tasks = filterByCountry(TASKS);
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
+
+  const total = tasks.length;
+  const overdue = tasks.filter(t=>taskStatus(t)==='overdue').length;
+  const atRisk = tasks.filter(t=>{
+    if(taskStatus(t)==='done'||taskStatus(t)==='overdue') return false;
+    if(!t.deadline) return false;
+    return daysBetween(todayStr(), (t.deadline||"").slice(0,10)) <= 2;
+  }).length;
+  const done = tasks.filter(t=>taskStatus(t)==='done').length;
+
+  document.getElementById('dashStats').innerHTML = `
+    ${countryInfo?`<div style="grid-column:1/-1;font-size:13px;color:var(--slate);padding:4px 0;">${countryInfo.flag} Showing: ${countryInfo.name} / ${countryInfo.vi}</div>`:''}
+    <div class="stat-card"><div class="num">${total}</div><div class="lbl">Total samples<br>Tổng số mẫu</div></div>
+    <div class="stat-card"><div class="num">${done}</div><div class="lbl">Completed<br>Hoàn tất</div></div>
+    <div class="stat-card yellow"><div class="num">${atRisk}</div><div class="lbl">At risk (≤2 days)<br>Nguy cơ trễ (≤2 ngày)</div></div>
+    <div class="stat-card red"><div class="num">${overdue}</div><div class="lbl">Overdue<br>Quá hạn</div></div>
+  `;
+
+  const techs = assigneeUsers();
+  const staffList = SESSION.role==='technician' ? USERS.filter(u=>u.id===SESSION.uid) : techs;
+
+  let rows='';
+  if(staffList.length===0){
+    rows = `<tr><td colspan="6"><div class="empty-state"><div class="icon">🧪</div><span class="en">No technicians yet.</span><br><span class="vi">Chưa có technician nào.</span></div></td></tr>`;
+  } else {
+    staffList.forEach(staff=>{
+      const myTasks = filterByCountry(TASKS).filter(t=>getAssigneeIds(t).includes(staff.id) && taskStatus(t)!=='done');
+      if(myTasks.length===0){
+        rows += `<tr>
+          <td><strong>${staff.name}</strong></td>
+          <td colspan="3" class="small-muted"><span class="en">No active work</span> / <span class="vi">Không có việc đang chạy</span></td>
+          <td>-</td>
+          <td><span class="badge grey">Idle / Trống</span></td>
+        </tr>`;
+        return;
+      }
+      myTasks.forEach(t=>{
+        const pct = taskProgress(t);
+        const dotc = trafficDot(t);
+        rows += `<tr>
+          <td><strong>${staff.name}</strong></td>
+          <td>${t.project} — ${t.sampleId}<div class="small-muted">${t.tests.map(x=>x.name).join(', ')}</div></td>
+          <td>${t.tests.length}</td>
+          <td>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="progress-bar"><div class="fill" style="width:${pct}%"></div></div>
+              <span>${pct}%</span>
+            </div>
+          </td>
+          <td>${fmtDateTime(t.deadline)}</td>
+          <td><span class="dot ${dotc}"></span>${statusBadge(taskStatus(t))}</td>
+        </tr>`;
+      });
+    });
+  }
+  document.getElementById('dashTableBody').innerHTML = rows;
+
+  const alertTasks = filterByCountry(TASKS).filter(t=>{
+    const st=taskStatus(t);
+    if(SESSION.role==='technician' && !getAssigneeIds(t).includes(SESSION.uid)) return false;
+    return st==='overdue' || (st==='progress' && t.deadline && daysBetween(todayStr(),t.deadline)<=2);
+  });
+  if(alertTasks.length===0){
+    document.getElementById('dashAlerts').innerHTML = `<div class="small-muted"><span class="en">✅ No samples at risk.</span> <span class="vi">Không có mẫu nào nguy cơ trễ.</span></div>`;
+  } else {
+    let html='';
+    alertTasks.forEach(t=>{
+      const st=taskStatus(t);
+      
+      const diff = daysBetween(todayStr(), (t.deadline||"").slice(0,10));
+      let msg;
+      if(st==='overdue') msg = `<span class="badge red">Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày</span>`;
+      else msg = `<span class="badge yellow">${diff}d left / Còn ${diff} ngày</span>`;
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;">
+        <div><strong>${t.project} — ${t.sampleId}</strong> <span class="small-muted">(${getAssigneeNames(t)}) — deadline ${fmtDateTime(t.deadline)}</span></div>
+        <div>${msg}</div>
+      </div>`;
+    });
+    document.getElementById('dashAlerts').innerHTML = html;
+  }
+
+  renderDashPeriodStats();
+  renderDashPlanAlerts();
+}
+
+function renderDashPlanAlerts(){
+  const el = document.getElementById('dashPlanAlerts');
+  if(!el) return;
+
+  let plans = PLANS.filter(p=>{
+    if(!isAdminLike(SESSION.role) && p.assigneeId!==SESSION.uid) return false;
+    const st = planStatus(p);
+    return st==='overdue' || planIsAtRisk(p);
+  });
+  plans.sort((a,b)=>(a.deadline||'').localeCompare(b.deadline||''));
+
+  if(plans.length===0){
+    el.innerHTML = `<div class="small-muted">✅ <span class="en">No plans at risk.</span> <span class="vi">Không có kế hoạch nào nguy cơ trễ.</span></div>`;
+    return;
+  }
+
+  let html='';
+  plans.forEach(p=>{
+    const assignee = findUser(p.assigneeId);
+    const st = planStatus(p);
+    const diff = p.deadline ? daysBetween(todayStr(), p.deadline.slice(0,10)) : null;
+    const pr = PRIORITY_LABEL[p.priority] || PRIORITY_LABEL.medium;
+    let msg;
+    if(st==='overdue') msg = `<span class="badge red">Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày</span>`;
+    else msg = `<span class="badge yellow">${diff}d left / Còn ${diff} ngày</span>`;
+
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);flex-wrap:wrap;gap:6px;">
+      <div>
+        <span class="badge ${pr.cls}" style="margin-right:6px;">${pr.en}</span>
+        <strong>${p.title}</strong>
+        <span class="small-muted"> — ${assignee?assignee.name:'?'} | ${fmtDateTime(p.deadline)}</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        ${msg}
+        <button class="btn btn-secondary btn-sm" onclick="goView('plans')">View <span class="vi">Xem</span></button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+function getPeriodRange(period){
+  const today = new Date();
+  let start;
+  if(period==='week'){
+    const day = today.getDay(); // 0=Sun
+    const diffToMonday = (day===0?6:day-1);
+    start = new Date(today);
+    start.setDate(today.getDate()-diffToMonday);
+  } else if(period==='month'){
+    start = new Date(today.getFullYear(), today.getMonth(), 1);
+  } else {
+    start = null; // all time
+  }
+  return start ? start.toISOString().slice(0,10) : null;
+}
+
+function renderDashPeriodStats(){
+  const period = document.getElementById('dashPeriod').value;
+  const startDate = getPeriodRange(period);
+  const todayD = todayStr();
+
+  // For each task, find which assigned staff have completed their part in the period
+  const byStaff = {};
+  TASKS.forEach(t=>{
+    getAssigneeIds(t).forEach(uid=>{
+      if(SESSION.role==='technician' && uid!==SESSION.uid) return;
+      const staff = findUser(uid);
+      if(!staff) return;
+      const role = staff.role;
+      if(!staffPartDone(t, role)) return;
+      const completedAt = getStaffCompletedAt(t, role);
+      if(!completedAt) return;
+      const completedDate = completedAt.slice(0,10);
+      if(startDate && completedDate < startDate) return;
+      if(completedDate > todayD) return;
+      if(!byStaff[uid]) byStaff[uid] = {name:staff.name, role, samples:0, tests:0};
+      byStaff[uid].samples++;
+      byStaff[uid].tests += t.tests.length;
+    });
+  });
+
+  const totalSamples = Object.values(byStaff).reduce((s,d)=>s+d.samples,0);
+  const totalTests = Object.values(byStaff).reduce((s,d)=>s+d.tests,0);
+
+  let rows='';
+  Object.keys(byStaff).forEach(uid=>{
+    const d = byStaff[uid];
+    const roleLabel2 = {superadmin:'Super Admin',admin:'Admin',technician:'Technician',report:'Report Team'}[d.role]||d.role;
+    rows += `<tr>
+      <td><strong>${d.name}</strong><div class="small-muted">${roleLabel2}</div></td>
+      <td>${d.samples}</td>
+      <td>${d.tests}</td>
+    </tr>`;
+  });
+
+  if(totalSamples===0){
+    document.getElementById('dashPeriodStats').innerHTML = `<div class="small-muted"><span class="en">No samples completed in this period.</span> <span class="vi">Không có mẫu nào hoàn thành trong khoảng này.</span></div>`;
+    return;
+  }
+
+  document.getElementById('dashPeriodStats').innerHTML = `
+    <div class="stat-row" style="margin-bottom:16px;">
+      <div class="stat-card"><div class="num">${totalSamples}</div><div class="lbl">Samples completed<br>Mẫu hoàn thành</div></div>
+      <div class="stat-card"><div class="num">${totalTests}</div><div class="lbl">Tests completed<br>Test hoàn thành</div></div>
+    </div>
+    <div class="table-wrap" style="margin-bottom:0;">
+      <table>
+        <thead><tr>
+          <th>Staff<span class="vi">Nhân viên</span></th>
+          <th>Samples<span class="vi">Số mẫu</span></th>
+          <th>Tests<span class="vi">Số test</span></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+/* ============================================================
+   TASK ASSIGNMENT
+   ============================================================ */
+function renderTasks(){
+  const filterSel = document.getElementById('filterStaff');
+  const currentVal = filterSel.value;
+  filterSel.innerHTML = '<option value="">All staff / Tất cả nhân viên</option>';
+  USERS.filter(u=>u.role==='technician' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
+    filterSel.appendChild(o);
+  });
+  filterSel.value = currentVal;
+
+  document.getElementById('btnNewTask').style.display = isAdminLike(SESSION.role) ? '' : 'none';
+
+  let tasks = [...TASKS];
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
+  const fStaff = filterSel.value;
+  const fStatus = document.getElementById('filterStatus').value;
+  const fCountry = document.getElementById('filterCountry').value;
+  if(fStaff) tasks = tasks.filter(t=>getAssigneeIds(t).includes(fStaff));
+  if(fStatus) tasks = tasks.filter(t=>taskStatus(t)===fStatus);
+  if(fCountry){
+    tasks = tasks.filter(t=>{
+      const proj = PROJECTS.find(p=>p.id===t.projectId);
+      return proj && proj.country===fCountry;
+    });
+  }
+  if(TASKS_PROJECT_FILTER) tasks = tasks.filter(t=>t.projectId===TASKS_PROJECT_FILTER);
+
+  tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  // project filter banner
+  let bannerHtml='';
+  if(TASKS_PROJECT_FILTER){
+    const proj = PROJECTS.find(p=>p.id===TASKS_PROJECT_FILTER);
+    bannerHtml = `<div class="section-card" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding:12px 16px;">
+      <div class="small-muted">Filtering by project / Lọc theo dự án: <strong>${proj ? (proj.code?proj.code+' — ':'')+proj.name : '(unknown)'}</strong></div>
+      <button class="btn btn-secondary btn-sm" onclick="clearProjectFilter()">Clear filter <span class="vi">Bỏ lọc</span></button>
+    </div>`;
+  }
+
+  if(tasks.length===0){
+    document.getElementById('taskList').innerHTML = bannerHtml + `<div class="empty-state"><div class="icon">📋</div>
+      <span class="en">No samples yet.${isAdminLike(SESSION.role)?' Click "+ New Sample" to create one.':''}</span><br>
+      <span class="vi">Chưa có mẫu nào.${isAdminLike(SESSION.role)?' Bấm "+ Mẫu mới" để tạo.':''}</span>
+    </div>`;
+    return;
+  }
+
+  let html='';
+  tasks.forEach(t=>{
+    try {
+      // Filter out sub-tasks from main list (they show inside parent card)
+      if(t.parentTaskId) return;
+      const pct = taskProgressWithSubs(t, TASKS);
+      const subs = getSubTasks(t.id);
+      html += `<div class="section-card">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+          <div>
+            <h3 style="margin-bottom:4px;">${(()=>{ const proj=PROJECTS.find(p=>p.id===t.projectId); const cy=proj&&COUNTRY_LABEL[proj.country]; return cy?`<span style="font-size:14px;">${cy.flag}</span> `:''; })()} ${t.project||'(no project)'} — ${t.sampleId||''}</h3>
+            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
+            </div>
+          </div>
+          <div style="text-align:right;">
+            ${statusBadge(taskStatus(t))}
+            <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDateTime(t.deadline)}</div>
+          </div>
+        </div>
+        <div class="pill-row" style="margin:10px 0;">
+          ${(t.tests||[]).map(x=>`<span class="pill">${x.name}</span>`).join('')}
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+          <div class="progress-bar" style="width:160px;"><div class="fill" style="width:${pct}%"></div></div>
+          <span class="small-muted">${pct}% complete / hoàn thành${subs.length>0?` <span style="color:var(--accent2);">(${subs.length} sub-tasks / việc con)</span>`:''}</span>
+        </div>
+        ${subs.length>0?`<div style="margin-bottom:10px;padding:10px;background:#f3f0e6;border-radius:2px;border-left:3px solid var(--accent2);">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--accent2);margin-bottom:8px;">Sub-tasks / Việc con</div>
+          ${subs.map(s=>{
+            const spct=taskProgress(s);
+            return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--line);gap:8px;flex-wrap:wrap;">
+              <div>
+                <span style="font-size:12.5px;font-weight:600;">${s.sampleId||'?'}</span>
+                <span class="small-muted"> — ${getAssigneeNames(s)}${s.deadline?' | '+fmtDateTime(s.deadline):''}</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:6px;">
+                <div class="progress-bar" style="width:80px;"><div class="fill" style="width:${spct}%"></div></div>
+                <span class="small-muted">${spct}%</span>
+                <button class="btn btn-secondary btn-sm" onclick="openDetail('${s.id}')">View</button>
+                ${isAdminLike(SESSION.role)||getAssigneeIds(t).includes(SESSION.uid)?`<button class="btn btn-secondary btn-sm" onclick="openSubTaskModal('${t.id}','${s.id}')">Edit</button>`:''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>`:''}
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">View / update <span class="vi">Xem / cập nhật</span></button>
+          ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openTaskModal('${t.id}')">Edit <span class="vi">Sửa</span></button>`:''}
+          ${(isAdminLike(SESSION.role) && getAssigneeIds(t).includes(SESSION.uid)) || SESSION.role==='admin'?`<button class="btn btn-secondary btn-sm" style="color:var(--accent2);border-color:var(--accent2);" onclick="openSubTaskModal('${t.id}')">+ Sub-task <span class="vi">Việc con</span></button>`:''}
+          ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteTask('${t.id}')">Delete <span class="vi">Xoá</span></button>`:''}
+        </div>
+      </div>`;
+    } catch(e){
+      console.error('Error rendering task', t.id, e);
+    }
+  });
+  document.getElementById('taskList').innerHTML = bannerHtml + html;
+}
+
+function clearProjectFilter(){
+  TASKS_PROJECT_FILTER='';
+  renderTasks();
+}
+
+let EDIT_TASK_ID = null;
+
+function openTaskModal(taskId){
+  EDIT_TASK_ID = taskId || null;
+  const t = EDIT_TASK_ID ? TASKS.find(x=>x.id===EDIT_TASK_ID) : null;
+
+  document.getElementById('tClient').value = t ? (t.client||'') : '';
+  document.getElementById('tSampleId').value = t ? t.sampleId : '';
+  document.getElementById('tStandard').value = t ? (t.standard||'') : '';
+  document.getElementById('tStartTime').value = t ? (t.startTime||'') : '';
+  document.getElementById('tDeadline').value = t ? (t.deadline||'') : '';
+  document.getElementById('tCustomTests').value = '';
+
+  const psel = document.getElementById('tProject');
+  psel.innerHTML='';
+  if(PROJECTS.length===0){
+    psel.innerHTML='<option value="">-- No projects yet, create one in Projects tab / Chưa có dự án, tạo ở tab Projects --</option>';
+  } else {
+    PROJECTS.forEach(p=>{
+      const o=document.createElement('option');
+      o.value=p.id;
+      o.textContent = `${p.code ? p.code+' — ' : ''}${p.name}`;
+      psel.appendChild(o);
+    });
+  }
+  if(t && t.projectId) psel.value = t.projectId;
+
+  const sel = document.getElementById('tAssignee');
+  sel.innerHTML='';
+  USERS.filter(u=>u.role==='technician' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
+    sel.appendChild(o);
+  });
+  if(sel.options.length===0){
+    sel.innerHTML='<option value="">-- No staff available / Chưa có nhân viên --</option>';
+  }
+  // pre-select current assignees
+  const currentAssignees = t ? (Array.isArray(t.assigneeIds) ? t.assigneeIds : (t.assigneeId ? [t.assigneeId] : [])) : [];
+  Array.from(sel.options).forEach(o=>{ o.selected = currentAssignees.includes(o.value); });
+
+  const cl = document.getElementById('tTestsChecklist');
+  const testSection = document.getElementById('tTestsSection');
+  testSection.style.display='';
+  document.getElementById('tCustomTestsSection').style.display='';
+
+  // Build checklist; in edit mode pre-tick existing tests and warn about deletion
+  const existingTests = t ? t.tests.map(x=>x.name) : [];
+  cl.innerHTML = TEST_GROUPS.map(g=>`
+    <div class="test-group">
+      <div class="test-group-title">${g.key}. ${g.en} <span class="vi">/ ${g.vi}</span></div>
+      ${g.tests.map(name=>`<label><input type="checkbox" value="${name}" ${existingTests.includes(name)?'checked':''}> ${name}</label>`).join('')}
+    </div>
+  `).join('');
+
+  if(EDIT_TASK_ID){
+    // Show any existing custom tests (not in groups) pre-ticked via custom input
+    const groupTestNames = TEST_GROUPS.flatMap(g=>g.tests);
+    const customExisting = existingTests.filter(n=>!groupTestNames.includes(n));
+    if(customExisting.length>0) document.getElementById('tCustomTests').value = customExisting.join(', ');
+  }
+
+  document.getElementById('taskModalHeading').innerHTML = EDIT_TASK_ID
+    ? `Edit Sample <span class="vi">/ Sửa mẫu</span>`
+    : `New Sample <span class="vi">/ Mẫu mới</span>`;
+
+  openModal('taskModalBg');
+}
+
+async function saveTask(){
+  const client=document.getElementById('tClient').value.trim();
+  const projectId=document.getElementById('tProject').value;
+  const sampleId=document.getElementById('tSampleId').value.trim();
+  const standard=document.getElementById('tStandard').value.trim();
+  const startTime=document.getElementById('tStartTime').value;
+  const deadline=document.getElementById('tDeadline').value;
+
+  // multi-select assignees
+  const sel=document.getElementById('tAssignee');
+  const assigneeIds = Array.from(sel.selectedOptions).map(o=>o.value).filter(Boolean);
+
+  if(!projectId||!sampleId||assigneeIds.length===0||!deadline){
+    alert('Please fill in Project, Sample ID, at least one Assignee and Deadline.\nVui lòng chọn Project, Sample ID, ít nhất 1 người phụ trách và Deadline.');
+    return;
+  }
+  const projectObj = PROJECTS.find(p=>p.id===projectId);
+  const project = projectObj ? `${projectObj.code ? projectObj.code+' — ':''}${projectObj.name}` : '(unknown project)';
+
+  // Build test list
+  const checked = Array.from(document.querySelectorAll('#tTestsChecklist input:checked')).map(c=>c.value);
+  const custom=document.getElementById('tCustomTests').value.trim();
+  const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allTestNames = [...new Set([...checked, ...customList])];
+
+  if(EDIT_TASK_ID){
+    const t = TASKS.find(x=>x.id===EDIT_TASK_ID);
+    // Merge: keep existing steps for retained tests, add new tests fresh, drop removed ones
+    if(allTestNames.length===0){
+      alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+      return;
+    }
+    const removedWithProgress = t.tests.filter(existing=>{
+      if(allTestNames.includes(existing.name)) return false;
+      return Object.values(existing.steps).some(v=>v);
+    });
+    if(removedWithProgress.length>0){
+      const names = removedWithProgress.map(x=>x.name).join(', ');
+      if(!confirm(`Warning: removing "${names}" will delete their progress. Continue?\nCảnh báo: xoá "${names}" sẽ mất tiến độ đã tích. Tiếp tục?`)) return;
+    }
+    const newTests = allTestNames.map(name=>{
+      const existing = t.tests.find(x=>x.name===name);
+      return existing ? existing : {name, steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}};
+    });
+    let completedAt = t.completedAt;
+    const allDone = newTests.every(t=>STEP_LABELS.every(s=>t.steps[s.k]));
+    if(!allDone) completedAt = null;
+
+    await db.collection('tasks').doc(EDIT_TASK_ID).update({
+      client, project, projectId, sampleId, standard,
+      assigneeIds, assigneeId: assigneeIds[0],
+      startTime, deadline, tests: newTests, completedAt
+    });
+    EDIT_TASK_ID = null;
+    closeModal('taskModalBg');
+    return;
+  }
+
+  if(allTestNames.length===0){
+    alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+    return;
+  }
+  const task = {
+    client, project, projectId, sampleId, standard,
+    assigneeIds, assigneeId: assigneeIds[0],
+    startTime, deadline,
+    createdAt: nowISO(),
+    completedAt: null,
+    tests: allTestNames.map(name=>({
+      name,
+      steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}
+    }))
+  };
+  await db.collection('tasks').add(task);
+  closeModal('taskModalBg');
+}
+
+async function deleteTask(id){
+  if(!confirm('Delete this sample? / Xoá mẫu này?')) return;
+  await db.collection('tasks').doc(id).delete();
+}
+
+/* ============================================================
+   PROJECTS
+   ============================================================ */
+const PROJECT_STATUS_LABEL = {
+  active:    {en:'Active',    vi:'Đang triển khai', cls:'green'},
+  onhold:    {en:'On hold',   vi:'Tạm dừng',        cls:'yellow'},
+  completed: {en:'Completed', vi:'Hoàn tất',        cls:'grey'}
+};
+const PROJECT_TYPE_LABEL = {
+  soil:        {en:'Soil Investigation',              vi:'Khảo sát địa kỹ thuật',     cls:'purple'},
+  materials:   {en:'Construction Materials Testing',  vi:'Kiểm tra vật liệu xây dựng', cls:'yellow'},
+  topo:        {en:'Topographical Survey',            vi:'Khảo sát địa hình',          cls:'green'},
+  calibration: {en:'Equipment Calibration',           vi:'Hiệu chuẩn thiết bị',        cls:'grey'},
+  other:       {en:'Other',                           vi:'Khác',                        cls:'grey'}
+};
+const COUNTRY_LABEL = {
+  KH: {name:'Cambodia',  vi:'Campuchia', flag:'🇰🇭'},
+  LA: {name:'Laos',      vi:'Lào',       flag:'🇱🇦'},
+  VN: {name:'Vietnam',   vi:'Việt Nam',  flag:'🇻🇳'}
+};
+
+const PROJECT_CODE_PREFIX = {
+  soil:        'SI',
+  materials:   'CMT',
+  topo:        'TOPO',
+  calibration: 'CAL',
+  other:       'OTH'
+};
+
+function suggestProjectCode(){
+  const type = document.getElementById('pType').value;
+  const country = document.getElementById('pCountry').value || 'KH';
+  const typePrefix = PROJECT_CODE_PREFIX[type] || 'PRJ';
+  const fullPrefix = `${country}-${typePrefix}`;
+  const year = new Date().getFullYear();
+  const pattern = new RegExp(`^${country}-${typePrefix}-${year}-(\\d+)$`, 'i');
+
+  let maxNum = 0;
+  PROJECTS.forEach(p=>{
+    if(!p.code) return;
+    const m = p.code.trim().match(pattern);
+    if(m){
+      const n = parseInt(m[1],10);
+      if(n>maxNum) maxNum = n;
+    }
+  });
+
+  const nextNum = maxNum+1;
+  const code = `${fullPrefix}-${year}-${String(nextNum).padStart(3,'0')}`;
+  document.getElementById('pCode').value = code;
+}
+let PROJECTS_TYPE_FILTER = '';
+let PROJECTS_CLIENT_FILTER = '';
+let PROJECTS_COUNTRY_FILTER = '';
+
+function projectTaskList(projectId){
+  return TASKS.filter(t=>t.projectId===projectId);
+}
+function projectProgress(projectId){
+  const tasks = projectTaskList(projectId);
+  if(tasks.length===0) return 0;
+  const sum = tasks.reduce((s,t)=>s+taskProgress(t),0);
+  return Math.round(sum/tasks.length);
+}
+
+function renderProjects(){
+  document.getElementById('btnNewProject').style.display = isAdminLike(SESSION.role) ? '' : 'none';
+
+  // populate type filter
+  const typeSel = document.getElementById('projectTypeFilter');
+  if(typeSel.options.length<=1){
+    Object.keys(PROJECT_TYPE_LABEL).forEach(k=>{
+      const o=document.createElement('option');
+      o.value=k;
+      o.textContent = `${PROJECT_TYPE_LABEL[k].en} / ${PROJECT_TYPE_LABEL[k].vi}`;
+      typeSel.appendChild(o);
+    });
+  }
+
+  // populate client filter
+  const clientSel = document.getElementById('projectClientFilter');
+  const currentClient = clientSel.value;
+  clientSel.innerHTML = '<option value="">All clients / Tất cả khách hàng</option>';
+  const clients = [...new Set(PROJECTS.map(p=>p.client).filter(Boolean))].sort();
+  clients.forEach(c=>{
+    const o=document.createElement('option'); o.value=c; o.textContent=c;
+    clientSel.appendChild(o);
+  });
+  clientSel.value = currentClient;
+
+  if(PROJECTS.length===0){
+    document.getElementById('projectList').innerHTML = `<div class="empty-state"><div class="icon">📁</div>
+      <span class="en">No projects yet.${isAdminLike(SESSION.role)?' Click "+ New Project" to create one.':''}</span><br>
+      <span class="vi">Chưa có dự án nào.${isAdminLike(SESSION.role)?' Bấm "+ Dự án mới" để tạo.':''}</span>
+    </div>`;
+    return;
+  }
+
+  let projects = [...PROJECTS];
+  if(PROJECTS_TYPE_FILTER) projects = projects.filter(p=>p.type===PROJECTS_TYPE_FILTER);
+  if(PROJECTS_CLIENT_FILTER) projects = projects.filter(p=>p.client===PROJECTS_CLIENT_FILTER);
+  if(PROJECTS_COUNTRY_FILTER) projects = projects.filter(p=>p.country===PROJECTS_COUNTRY_FILTER);
+  projects.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  if(projects.length===0){
+    document.getElementById('projectList').innerHTML = `<div class="empty-state"><div class="icon">🔍</div>
+      <span class="en">No projects match this filter.</span><br>
+      <span class="vi">Không có dự án phù hợp với bộ lọc.</span>
+    </div>`;
+    return;
+  }
+
+  let html='';
+  projects.forEach(p=>{
+    const tasks = projectTaskList(p.id);
+    const pct = projectProgress(p.id);
+    const st = PROJECT_STATUS_LABEL[p.status] || PROJECT_STATUS_LABEL.active;
+    const ty = PROJECT_TYPE_LABEL[p.type];
+    const cy = COUNTRY_LABEL[p.country];
+    const overdueCount = tasks.filter(t=>taskStatus(t)==='overdue').length;
+
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${p.code ? p.code+' — ' : ''}${p.name}</h3>
+          <div class="small-muted">Client: ${p.client||'-'}${p.investor?` &nbsp;|&nbsp; Investor: ${p.investor}`:''} &nbsp;|&nbsp; Deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
+        </div>
+        <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="badge ${st.cls}">${st.en} / ${st.vi}</span>
+          ${cy?`<span class="badge grey">${cy.flag} ${cy.name} / ${cy.vi}</span>`:''}
+          ${ty?`<span class="badge ${ty.cls}">${ty.en} / ${ty.vi}</span>`:''}
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+        <div class="progress-bar" style="width:200px;"><div class="fill" style="width:${pct}%"></div></div>
+        <span class="small-muted">${pct}% overall / tổng tiến độ</span>
+      </div>
+      ${p.notes?`<div class="small-muted" style="margin-bottom:10px;">${p.notes}</div>`:''}
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="filterTasksByProject('${p.id}')">View tasks <span class="vi">Xem việc</span></button>
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">Edit <span class="vi">Sửa</span></button>`:''}
+        ${isAdminLike(SESSION.role)?`<button class="btn btn-danger btn-sm" onclick="deleteProject('${p.id}')">Delete <span class="vi">Xoá</span></button>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('projectList').innerHTML = html;
+}
+
+function setProjectsTypeFilter(val){ PROJECTS_TYPE_FILTER=val; renderProjects(); }
+function setProjectsClientFilter(val){ PROJECTS_CLIENT_FILTER=val; renderProjects(); }
+function setProjectsCountryFilter(val){ PROJECTS_COUNTRY_FILTER=val; renderProjects(); }
+
+function filterTasksByProject(projectId){
+  goView('tasks');
+  // store filter and re-render
+  TASKS_PROJECT_FILTER = projectId;
+  renderTasks();
+}
+
+let EDIT_PROJECT_ID = null;
+
+function openProjectModal(projectId){
+  EDIT_PROJECT_ID = projectId || null;
+  const p = EDIT_PROJECT_ID ? PROJECTS.find(x=>x.id===EDIT_PROJECT_ID) : null;
+
+  document.getElementById('pCode').value = p ? (p.code||'') : '';
+  document.getElementById('pName').value = p ? p.name : '';
+  document.getElementById('pClient').value = p ? (p.client||'') : '';
+  document.getElementById('pInvestor').value = p ? (p.investor||'') : '';
+  document.getElementById('pCountry').value = p ? (p.country||'KH') : 'KH';
+  document.getElementById('pType').value = p ? (p.type||'soil') : 'soil';
+  document.getElementById('pDeadline').value = p ? p.deadline : '';
+  document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
+  document.getElementById('pNotes').value = p ? (p.notes||'') : '';
+
+  document.getElementById('projectModalHeading').innerHTML = EDIT_PROJECT_ID
+    ? `Edit Project <span class="vi">/ Sửa dự án</span>`
+    : `New Project <span class="vi">/ Dự án mới</span>`;
+
+  if(!EDIT_PROJECT_ID) suggestProjectCode();
+
+  openModal('projectModalBg');
+}
+
+async function saveProject(){
+  const code=document.getElementById('pCode').value.trim();
+  const name=document.getElementById('pName').value.trim();
+  const client=document.getElementById('pClient').value.trim();
+  const investor=document.getElementById('pInvestor').value.trim();
+  const country=document.getElementById('pCountry').value;
+  const type=document.getElementById('pType').value;
+  const deadline=document.getElementById('pDeadline').value;
+  const status=document.getElementById('pStatus').value;
+  const notes=document.getElementById('pNotes').value.trim();
+
+  if(!name||!deadline){
+    alert('Please fill in Project Name and Deadline.\nVui lòng điền Tên dự án và Deadline.');
+    return;
+  }
+
+  if(EDIT_PROJECT_ID){
+    await db.collection('projects').doc(EDIT_PROJECT_ID).update({
+      code, name, client, investor, country, type, deadline, status, notes
+    });
+    EDIT_PROJECT_ID = null;
+    closeModal('projectModalBg');
+    return;
+  }
+
+  await db.collection('projects').add({
+    code, name, client, investor, country, type, deadline, status, notes, createdAt: nowISO()
+  });
+  closeModal('projectModalBg');
+}
+
+async function deleteProject(id){
+  const hasTasks = TASKS.some(t=>t.projectId===id);
+  if(hasTasks){
+    if(!confirm('This project has tasks linked to it. Delete anyway? (tasks will remain but show an unknown project)\nDự án này có task đang gắn vào. Vẫn xoá? (task sẽ giữ nguyên nhưng hiện dự án không xác định)')) return;
+  } else {
+    if(!confirm('Delete this project? / Xoá dự án này?')) return;
+  }
+  await db.collection('projects').doc(id).delete();
+}
+
+/* ---------- Detail / checklist modal ---------- */
+function openDetail(taskId){
+  const t = TASKS.find(x=>x.id===taskId);
+  if(!t) return;
+
+  document.getElementById('detailTitle').innerHTML = `${t.project} — ${t.sampleId}`;
+
+  const isAssignee = getAssigneeIds(t).includes(SESSION.uid);
+  const canEdit = isAdminLike(SESSION.role) || isAssignee || SESSION.role==='report';
+
+  // Steps visible to this role
+  const visibleSteps = stepsForRole(SESSION.role);
+
+  // Role label for note
+  const roleNote = {
+    technician: '3 steps: Testing in progress → Testing completed → Raw data uploaded',
+    report: '2 steps: Writing report → Report submitted',
+  }[SESSION.role] || 'Full 7-step view';
+
+  let html = `<div class="small-muted" style="margin-bottom:6px;">
+    Client: ${t.client||'-'} | Standard: ${t.standard||'-'} | Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` | Start: ${fmtDateTime(t.startTime)}`:''} | Deadline: ${fmtDateTime(t.deadline)}
+  </div>`;
+
+  if(!isAdminLike(SESSION.role)){
+    html += `<div class="small-muted" style="margin-bottom:14px;color:var(--accent2);"><em>${roleNote}</em></div>`;
+  }
+
+  html += `<div class="test-status-grid">`;
+
+  t.tests.forEach((test,idx)=>{
+    const allDone = STEP_LABELS.every(s=>test.steps[s.k]);
+    const visibleDone = visibleSteps.every(s=>test.steps[s.k]);
+    html += `<div class="test-status-item">
+      <div class="tname"><span>${test.name}</span> ${allDone?'<span class="badge green">Done / Xong</span>':visibleDone?'<span class="badge yellow">My part done / Xong phần mình</span>':''}</div>
+      <div class="steps">`;
+    visibleSteps.forEach(s=>{
+      const canCheck = canEdit && (SESSION.role!=='report' || !s.tech) && (!s.report || SESSION.role==='report' || isAdminLike(SESSION.role));
+      html += `<label>
+        <input type="checkbox" ${test.steps[s.k]?'checked':''} ${canCheck?'':'disabled'}
+          onchange="toggleStep('${t.id}',${idx},'${s.k}',this.checked)">
+        <span><span class="en">${s.en}</span><span class="vi">${s.vi}</span></span>
+      </label>`;
+    });
+    html += `</div></div>`;
+  });
+  html += `</div>`;
+
+  if(!canEdit){
+    html += `<div class="small-muted" style="margin-top:12px;"><span class="en">Only an Admin or assigned staff can update this checklist.</span><br><span class="vi">Chỉ Admin hoặc người được giao mới có thể cập nhật checklist.</span></div>`;
+  }
+
+  document.getElementById('detailBody').innerHTML = html;
+  openModal('detailModalBg');
+}
+
+async function toggleStep(taskId, testIdx, stepKey, value){
+  const t = TASKS.find(x=>x.id===taskId);
+  if(!t) return;
+  const test = t.tests[testIdx];
+
+  // Enforce order only within the full STEP_LABELS sequence
+  const fullOrder = STEP_LABELS.map(s=>s.k);
+  const i = fullOrder.indexOf(stepKey);
+
+  if(value){
+    // Only enforce prerequisite check within the steps visible to this role
+    const myStepKeys = stepsForRole(SESSION.role).map(s=>s.k);
+    const prereqsInMySteps = fullOrder.slice(0,i).filter(k=>myStepKeys.includes(k));
+    for(const k of prereqsInMySteps){
+      if(!test.steps[k]){
+        const lbl = STEP_LABELS.find(s=>s.k===k);
+        alert(`Please complete "${lbl.en}" first.\nPhải hoàn thành "${lbl.vi}" trước.`);
+        openDetail(taskId);
+        return;
+      }
+    }
+  } else {
+    // Unticking: also untick later steps in full order
+    for(let j=i+1;j<fullOrder.length;j++) test.steps[fullOrder[j]]=false;
+  }
+
+  test.steps[stepKey]=value;
+
+  const now = nowISO();
+  const updates = { tests: t.tests };
+
+  // Track overall completedAt
+  if(taskAllDone(t) && !t.completedAt){
+    updates.completedAt = now;
+  } else if(!taskAllDone(t)){
+    updates.completedAt = null;
+  }
+
+  // Track per-role completedAt for performance evaluation
+  // Technician part: inprogress + testing + rawdata
+  if(staffPartDone(t,'technician') && !t.techCompletedAt){
+    updates.techCompletedAt = now;
+  } else if(!staffPartDone(t,'technician')){
+    updates.techCompletedAt = null;
+  }
+  // Admin part: inprogress + testing + rawdata + calculation + reviewed
+  if(staffPartDone(t,'admin') && !t.adminCompletedAt){
+    updates.adminCompletedAt = now;
+  } else if(!staffPartDone(t,'admin')){
+    updates.adminCompletedAt = null;
+  }
+  // Report part: writing + submitted
+  if(staffPartDone(t,'report') && !t.reportCompletedAt){
+    updates.reportCompletedAt = now;
+  } else if(!staffPartDone(t,'report')){
+    updates.reportCompletedAt = null;
+  }
+
+  await db.collection('tasks').doc(taskId).update(updates);
+  openDetail(taskId);
+}
+
+/* ============================================================
+   DAILY ACTIVITY REPORT
+   ============================================================ */
+function renderDaily(){
+  const entryCard = document.getElementById('dailyEntryCard');
+  entryCard.style.display = '';
+
+  let reports = [...DAILY_REPORTS];
+  reports.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+
+  if(reports.length===0){
+    document.getElementById('dailyHistory').innerHTML = `<div class="empty-state"><div class="icon">📝</div><span class="en">No reports yet.</span><br><span class="vi">Chưa có báo cáo nào.</span></div>`;
+    return;
+  }
+
+  let html='';
+  reports.forEach(r=>{
+    const user = findUser(r.userId);
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px;">
+        <strong>${user?user.name:'?'}</strong>
+        <span class="small-muted">${fmtDate(r.date)}</span>
+      </div>
+      <div style="margin-top:10px;">
+        <div><strong>✓ Completed / Đã hoàn thành:</strong></div>
+        <div class="small-muted" style="white-space:pre-line;margin:4px 0 10px;">${r.completed||'-'}</div>
+        <div><strong>→ In progress / Đang thực hiện:</strong></div>
+        <div class="small-muted" style="white-space:pre-line;margin:4px 0 10px;">${r.progress||'-'}</div>
+        ${r.problem?`<div><strong>⚠ Problem / Vấn đề:</strong></div><div class="small-muted" style="white-space:pre-line;margin:4px 0;">${r.problem}</div>`:''}
+      </div>
+    </div>`;
+  });
+  document.getElementById('dailyHistory').innerHTML = html;
+}
+
+async function submitDailyReport(){
+  const completed = document.getElementById('dailyCompleted').value.trim();
+  const progress = document.getElementById('dailyProgress').value.trim();
+  const problem = document.getElementById('dailyProblem').value.trim();
+
+  if(!completed && !progress && !problem){
+    alert('Please enter at least one item.\nNhập ít nhất một nội dung.');
+    return;
+  }
+
+  const today = todayStr();
+  let report = DAILY_REPORTS.find(r=>r.userId===SESSION.uid && r.date===today);
+  const data = { userId: SESSION.uid, date: today, completed, progress, problem };
+
+  if(report){
+    await db.collection('dailyReports').doc(report.id).update(data);
+  } else {
+    await db.collection('dailyReports').add(data);
+  }
+
+  document.getElementById('dailyCompleted').value='';
+  document.getElementById('dailyProgress').value='';
+  document.getElementById('dailyProblem').value='';
+  alert('Report saved / Đã lưu báo cáo hôm nay.');
+}
+
+/* ============================================================
+   RAW DATA TRACKING
+   ============================================================ */
+function renderRawData(){
+  let tasks = [...TASKS];
+  if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
+  tasks = tasks.filter(t=>!taskAllDone(t));
+
+  if(tasks.length===0){
+    document.getElementById('rawDataList').innerHTML = `<div class="empty-state"><div class="icon">✅</div><span class="en">No tests pending raw data.</span><br><span class="vi">Không có test nào đang chờ raw data.</span></div>`;
+    return;
+  }
+
+  let html='';
+  const visibleSteps = stepsForRole(SESSION.role);
+  tasks.forEach(t=>{
+    html += `<div class="section-card">
+      <h3 style="margin-bottom:2px;">${t.project} — ${t.sampleId}</h3>
+      <div class="small-muted" style="margin-bottom:10px;">Assigned to / Phụ trách: ${getAssigneeNames(t)} | Deadline: ${fmtDateTime(t.deadline)}</div>
+      <div class="test-status-grid">`;
+    t.tests.forEach(test=>{
+      const myPartDone = visibleSteps.every(s=>test.steps[s.k]);
+      if(myPartDone) return;
+      html += `<div class="test-status-item"><div class="tname"><span>${test.name}</span></div><div class="steps">`;
+      visibleSteps.forEach(s=>{
+        html += `<span class="badge ${test.steps[s.k]?'green':'grey'}">${test.steps[s.k]?'✓':'○'} ${s.en} / ${s.vi}</span>`;
+      });
+      html += `</div></div>`;
+    });
+    html += `</div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-secondary btn-sm" onclick="openDetail('${t.id}')">Update <span class="vi">Cập nhật</span></button>
+      </div>
+    </div>`;
+  });
+  document.getElementById('rawDataList').innerHTML = html;
+}
+
+/* ============================================================
+   READY FOR REPORT
+   ============================================================ */
+function renderReportReady(){
+  const tasks = TASKS.filter(t=>taskAllDone(t));
+  if(tasks.length===0){
+    document.getElementById('reportReadyList').innerHTML = `<div class="empty-state"><div class="icon">📄</div><span class="en">No samples ready for report yet.</span><br><span class="vi">Chưa có mẫu nào sẵn sàng làm report.</span></div>`;
+    return;
+  }
+  let html='';
+  tasks.forEach(t=>{
+    
+    html += `<div class="section-card">
+      <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${t.project} — ${t.sampleId}</h3>
+          <div class="small-muted">Client: ${t.client||'-'} | ${t.tests.length} test(s) completed | By / Thực hiện: ${getAssigneeNames(t)}</div>
+        </div>
+        <div><span class="badge green">Raw data available · Reviewed ✓</span></div>
+      </div>
+      <div class="pill-row" style="margin-top:10px;">
+        ${t.tests.map(x=>`<span class="pill">${x.name}</span>`).join('')}
+      </div>
+    </div>`;
+  });
+  document.getElementById('reportReadyList').innerHTML = html;
+}
+
+/* ============================================================
+   PERFORMANCE TRACKING
+   ============================================================ */
+function renderPerformance(){
+  const staffWithTasks = assigneeUsers();
+  if(staffWithTasks.length===0){
+    document.getElementById('perfTableBody').innerHTML = `<tr><td colspan="7"><div class="empty-state"><span class="en">No staff with assigned tasks.</span><br><span class="vi">Chưa có nhân viên nào được giao việc.</span></div></td></tr>`;
+    return;
+  }
+  let rows='';
+  staffWithTasks.forEach(staff=>{
+    const role = staff.role; // technician, admin, superadmin, report
+    const myTasks = TASKS.filter(t=>getAssigneeIds(t).includes(staff.id) && !t.parentTaskId);
+
+    // Count tasks where this person's part is done
+    const doneTasks = myTasks.filter(t=>staffPartDone(t, role));
+    const totalTests = doneTasks.reduce((sum,t)=>sum+t.tests.length, 0);
+
+    // Evaluate on-time vs late based on role-specific completedAt
+    let onTime=0, late=0, totalDelay=0, pending=0;
+    myTasks.forEach(t=>{
+      if(!staffPartDone(t, role)){
+        pending++;
+        return;
+      }
+      const completedAt = getStaffCompletedAt(t, role);
+      if(!completedAt){ pending++; return; }
+      const completedDate = completedAt.slice(0,10);
+      const delay = daysBetween((t.deadline||'').slice(0,10), completedDate);
+      if(delay<=0) onTime++; else late++;
+      totalDelay += Math.max(0,delay);
+    });
+
+    const evaluated = onTime + late;
+    const avgDelay = evaluated ? (totalDelay/evaluated).toFixed(1) : '-';
+    const rate = evaluated ? Math.round(onTime/evaluated*100)+'%' : '-';
+
+    const roleLabel2 = {superadmin:'Super Admin',admin:'Admin',technician:'Technician',report:'Report Team'}[role]||role;
+    const evalNote = {
+      technician:'3 steps / 3 bước',
+      report:'2 steps / 2 bước',
+      admin:'5 steps / 5 bước',
+      superadmin:'5 steps / 5 bước'
+    }[role]||'';
+
+    rows += `<tr>
+      <td><strong>${staff.name}</strong><div class="small-muted">${roleLabel2} — ${evalNote}</div></td>
+      <td>${myTasks.length}</td>
+      <td>${totalTests}</td>
+      <td>${onTime}</td>
+      <td>${late}</td>
+      <td>${avgDelay}</td>
+      <td>${rate}</td>
+    </tr>`;
+  });
+  document.getElementById('perfTableBody').innerHTML = rows;
+}
+
+/* ============================================================
+   PLANS — Kế hoạch nhiệm vụ
+   ============================================================ */
+const PRIORITY_LABEL = {
+  high:   {en:'High',   vi:'Cao',        cls:'red'},
+  medium: {en:'Medium', vi:'Trung bình', cls:'yellow'},
+  low:    {en:'Low',    vi:'Thấp',       cls:'green'}
+};
+
+function planStatus(plan){
+  const today = todayStr();
+  const steps = plan.steps || [];
+  const allDone = steps.length > 0 && steps.every(s=>s.done);
+  if(allDone) return 'done';
+  if(plan.deadline && plan.deadline.slice(0,10) < today) return 'overdue';
+  return 'active';
+}
+
+function planProgress(plan){
+  const steps = plan.steps || [];
+  if(steps.length===0) return 0;
+  return Math.round(steps.filter(s=>s.done).length / steps.length * 100);
+}
+
+function planIsAtRisk(plan){
+  if(planStatus(plan)==='done') return false;
+  if(!plan.deadline) return false;
+  const alertDays = parseInt(plan.alertDays||2);
+  const diff = daysBetween(todayStr(), plan.deadline.slice(0,10));
+  return diff >= 0 && diff <= alertDays;
+}
+
+let EDIT_PLAN_ID = null;
+
+function openPlanModal(planId){
+  EDIT_PLAN_ID = planId || null;
+  const p = EDIT_PLAN_ID ? PLANS.find(x=>x.id===EDIT_PLAN_ID) : null;
+
+  document.getElementById('planTitle').value = p ? p.title : '';
+  document.getElementById('planGoal').value = p ? (p.goal||'') : '';
+  document.getElementById('planDeadline').value = p ? (p.deadline||'') : '';
+  document.getElementById('planPriority').value = p ? (p.priority||'medium') : 'medium';
+  document.getElementById('planAlertDays').value = p ? (p.alertDays||2) : 2;
+  document.getElementById('planNotes').value = p ? (p.notes||'') : '';
+  document.getElementById('planChecklist').value = p ? (p.steps||[]).map(s=>s.text).join('\n') : '';
+
+  const sel = document.getElementById('planAssignee');
+  sel.innerHTML = '';
+  USERS.forEach(u=>{
+    const o = document.createElement('option');
+    o.value = u.id;
+    o.textContent = `${u.name} (${(ROLE_LABEL[u.role]||{en:u.role}).en})`;
+    sel.appendChild(o);
+  });
+  if(p && p.assigneeId) sel.value = p.assigneeId;
+  else sel.value = SESSION.uid; // default to self
+
+  document.getElementById('planModalHeading').innerHTML = EDIT_PLAN_ID
+    ? `Edit Plan <span class="vi">/ Sửa kế hoạch</span>`
+    : `New Plan <span class="vi">/ Kế hoạch mới</span>`;
+
+  openModal('planModalBg');
+}
+
+async function savePlan(){
+  const title = document.getElementById('planTitle').value.trim();
+  const goal = document.getElementById('planGoal').value.trim();
+  const assigneeId = document.getElementById('planAssignee').value;
+  const deadline = document.getElementById('planDeadline').value;
+  const priority = document.getElementById('planPriority').value;
+  const alertDays = parseInt(document.getElementById('planAlertDays').value);
+  const notes = document.getElementById('planNotes').value.trim();
+  const checklistRaw = document.getElementById('planChecklist').value;
+
+  if(!title || !deadline){
+    alert('Please fill in Title and Deadline.\nVui lòng điền Tiêu đề và Deadline.');
+    return;
+  }
+
+  const stepLines = checklistRaw.split('\n').map(s=>s.trim()).filter(Boolean);
+
+  if(EDIT_PLAN_ID){
+    const existing = PLANS.find(x=>x.id===EDIT_PLAN_ID);
+    // Merge steps: keep done status for existing steps by text match
+    const existingSteps = existing.steps || [];
+    const steps = stepLines.map(text=>{
+      const found = existingSteps.find(s=>s.text===text);
+      return {text, done: found ? found.done : false};
+    });
+    await db.collection('plans').doc(EDIT_PLAN_ID).update({
+      title, goal, assigneeId, deadline, priority, alertDays, notes, steps
+    });
+    EDIT_PLAN_ID = null;
+  } else {
+    const steps = stepLines.map(text=>({text, done:false}));
+    await db.collection('plans').add({
+      title, goal, assigneeId, deadline, priority, alertDays, notes, steps,
+      createdBy: SESSION.uid, createdAt: nowISO(), completedAt: null
+    });
+  }
+  closeModal('planModalBg');
+}
+
+async function togglePlanStep(planId, stepIdx, value){
+  const plan = PLANS.find(x=>x.id===planId);
+  if(!plan) return;
+  const steps = [...(plan.steps||[])];
+  steps[stepIdx] = {...steps[stepIdx], done: value};
+  const allDone = steps.every(s=>s.done);
+  const completedAt = allDone ? (plan.completedAt || nowISO()) : null;
+  await db.collection('plans').doc(planId).update({steps, completedAt});
+}
+
+async function deletePlan(planId){
+  if(!confirm('Delete this plan?\nXoá kế hoạch này?')) return;
+  await db.collection('plans').doc(planId).delete();
+}
+
+function renderPlans(){
+  const fOwner = document.getElementById('planFilterOwner').value;
+  const fStatus = document.getElementById('planFilterStatus').value;
+
+  let plans = [...PLANS];
+
+  // Non-admin can only see their own plans
+  if(!isAdminLike(SESSION.role)){
+    plans = plans.filter(p=>p.assigneeId===SESSION.uid);
+  } else if(fOwner==='mine'){
+    plans = plans.filter(p=>p.assigneeId===SESSION.uid);
+  }
+
+  if(fStatus) plans = plans.filter(p=>planStatus(p)===fStatus);
+  plans.sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
+
+  if(plans.length===0){
+    document.getElementById('planList').innerHTML = `<div class="empty-state"><div class="icon">📋</div>
+      <span class="en">No plans yet. Click "+ New Plan" to create one.</span><br>
+      <span class="vi">Chưa có kế hoạch nào. Bấm "+ Kế hoạch mới" để tạo.</span>
+    </div>`;
+    return;
+  }
+
+  let html = '';
+  plans.forEach(p=>{
+    const assignee = findUser(p.assigneeId);
+    const pct = planProgress(p);
+    const st = planStatus(p);
+    const pr = PRIORITY_LABEL[p.priority] || PRIORITY_LABEL.medium;
+    const steps = p.steps || [];
+    const atRisk = planIsAtRisk(p);
+    const diff = p.deadline ? daysBetween(todayStr(), p.deadline.slice(0,10)) : null;
+
+    const canEdit = isAdminLike(SESSION.role) || p.assigneeId===SESSION.uid || p.createdBy===SESSION.uid;
+
+    html += `<div class="section-card" style="border-left:4px solid ${st==='done'?'var(--ok)':st==='overdue'?'var(--danger)':atRisk?'var(--warn)':'var(--line)'};">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
+        <div>
+          <h3 style="margin-bottom:4px;">${p.title}</h3>
+          <div class="small-muted">
+            Assigned to / Giao cho: <strong>${assignee?assignee.name:'?'}</strong>
+            &nbsp;|&nbsp; Deadline: <strong>${fmtDateTime(p.deadline)}</strong>
+            ${diff!==null && st!=='done' ? `&nbsp;|&nbsp; <span style="color:${diff<0?'var(--danger)':diff<=parseInt(p.alertDays||2)?'var(--warn)':'var(--slate)'}">${diff<0?`Overdue ${Math.abs(diff)}d / Quá hạn ${Math.abs(diff)} ngày`:`${diff}d left / Còn ${diff} ngày`}</span>` : ''}
+          </div>
+          ${p.goal?`<div class="small-muted" style="margin-top:4px;font-style:italic;">${p.goal}</div>`:''}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+          <span class="badge ${pr.cls}">${pr.en} / ${pr.vi}</span>
+          ${statusBadge(st)}
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:10px;margin:10px 0;">
+        <div class="progress-bar" style="width:180px;"><div class="fill" style="width:${pct}%"></div></div>
+        <span class="small-muted">${pct}% (${steps.filter(s=>s.done).length}/${steps.length} steps)</span>
+      </div>
+
+      ${steps.length>0?`<div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+        ${steps.map((s,idx)=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:${canEdit?'pointer':'default'};">
+          <input type="checkbox" ${s.done?'checked':''} ${canEdit?'':'disabled'}
+            onchange="togglePlanStep('${p.id}',${idx},this.checked)">
+          <span style="${s.done?'text-decoration:line-through;color:var(--slate)':''}">${s.text}</span>
+        </label>`).join('')}
+      </div>`:''}
+
+      ${p.notes?`<div class="small-muted" style="margin-bottom:10px;padding:8px;background:#f9f6ee;border-radius:2px;">📝 ${p.notes}</div>`:''}
+
+      ${canEdit?`<div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="openPlanModal('${p.id}')">Edit <span class="vi">Sửa</span></button>
+        <button class="btn btn-danger btn-sm" onclick="deletePlan('${p.id}')">Delete <span class="vi">Xoá</span></button>
+      </div>`:''}
+    </div>`;
+  });
+  document.getElementById('planList').innerHTML = html;
+}
+
+/* ============================================================
+   STAFF MANAGEMENT
+   ============================================================ */
+const COUNTRY_FLAGS = {KH:'🇰🇭',LA:'🇱🇦',VN:'🇻🇳'};
+
+function renderStaff(){
+  let rows='';
+  USERS.forEach(u=>{
+    const isSuper = u.role==='superadmin';
+    const cy = u.country ? (COUNTRY_LABEL[u.country]||{flag:'🌏',name:u.country}) : null;
+    let actions = '';
+
+    if(SESSION.role==='superadmin' && u.id!==SESSION.uid){
+      if(u.role==='admin'){
+        actions += `<button class="btn btn-secondary btn-sm" onclick="changeRole('${u.id}','technician')">Demote <span class="vi">Hạ cấp</span></button> `;
+      } else if(u.role==='technician' || u.role==='report'){
+        actions += `<button class="btn btn-secondary btn-sm" onclick="changeRole('${u.id}','admin')">Make Admin <span class="vi">Bổ nhiệm</span></button> `;
+      }
+    }
+    if(isAdminLike(SESSION.role) && !isSuper && u.id!==SESSION.uid){
+      actions += `<button class="btn btn-secondary btn-sm" onclick="openStaffModal('${u.id}')">Edit <span class="vi">Sửa</span></button> `;
+      actions += `<button class="btn btn-danger btn-sm" onclick="deleteStaff('${u.id}')">Delete <span class="vi">Xoá</span></button>`;
+    }
+    if(isSuper){
+      actions = `<button class="btn btn-secondary btn-sm" onclick="openStaffModal('${u.id}')">Edit <span class="vi">Sửa</span></button>`;
+    }
+
+    rows += `<tr>
+      <td>${u.name}</td>
+      <td><code>${u.email}</code></td>
+      <td><span class="badge ${roleBadgeClass(u.role)}">${roleLabel(u.role)}</span></td>
+      <td>${cy?`${cy.flag} ${cy.name}`:'-'}</td>
+      <td><div class="role-actions">${actions}</div></td>
+    </tr>`;
+  });
+  document.getElementById('staffTableBody').innerHTML = rows;
+}
+
+let EDIT_STAFF_ID = null;
+
+function openStaffModal(userId){
+  EDIT_STAFF_ID = userId || null;
+  const u = EDIT_STAFF_ID ? findUser(EDIT_STAFF_ID) : null;
+
+  document.getElementById('sName').value = u ? u.name : '';
+  document.getElementById('sUser').value = u ? u.email : '';
+  document.getElementById('sPass').value = '';
+  document.getElementById('sRole').value = u ? u.role : 'technician';
+  document.getElementById('sCountry').value = u ? (u.country||'') : '';
+
+  // Hide password field when editing (password change via Firebase Console)
+  document.getElementById('sPassSection').style.display = EDIT_STAFF_ID ? 'none' : '';
+
+  // Lock email when editing
+  document.getElementById('sUser').readOnly = !!EDIT_STAFF_ID;
+  document.getElementById('sUser').style.opacity = EDIT_STAFF_ID ? '.6' : '';
+
+  const roleSel = document.getElementById('sRole');
+  const adminOpt = roleSel.querySelector('option[value="admin"]');
+  adminOpt.style.display = (SESSION.role==='superadmin') ? '' : 'none';
+
+  document.getElementById('staffModalHeading').innerHTML = EDIT_STAFF_ID
+    ? `Edit Staff <span class="vi">/ Sửa thông tin nhân viên</span>`
+    : `Add Staff <span class="vi">/ Thêm nhân viên</span>`;
+
+  openModal('staffModalBg');
+}
+
+async function saveStaff(){
+  const name=document.getElementById('sName').value.trim();
+  const email=document.getElementById('sUser').value.trim();
+  const password=document.getElementById('sPass').value;
+  const role=document.getElementById('sRole').value;
+  const country=document.getElementById('sCountry').value;
+
+  if(!name||!email){ alert('Please fill in name and email.\nĐiền đủ tên và email.'); return; }
+
+  if(EDIT_STAFF_ID){
+    // Edit mode: update profile only (no password change)
+    const u = findUser(EDIT_STAFF_ID);
+    if(u.role==='superadmin' && role!=='superadmin' && SESSION.role!=='superadmin'){
+      alert('Cannot change Super Admin role.\nKhông thể đổi role Super Admin.'); return;
+    }
+    await db.collection('users').doc(EDIT_STAFF_ID).update({name, role, country});
+    EDIT_STAFF_ID = null;
+    closeModal('staffModalBg');
+    alert('Profile updated / Đã cập nhật thông tin.');
+    return;
+  }
+
+  // Create new account
+  if(!password){ alert('Please enter a password.\nVui lòng nhập mật khẩu.'); return; }
+  if(password.length<6){ alert('Password must be at least 6 characters.\nMật khẩu tối thiểu 6 ký tự.'); return; }
+  if(role==='admin' && SESSION.role!=='superadmin'){
+    alert('Only Super Admin can create Admin accounts.\nChỉ Super Admin được tạo tài khoản Admin.'); return;
+  }
+  try{
+    const secondaryApp = firebase.apps.find(a=>a.name==='secondary') || firebase.initializeApp(firebaseConfig,'secondary');
+    const secondaryAuth = secondaryApp.auth();
+    const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
+    await db.collection('users').doc(cred.user.uid).set({
+      name, email, role, country, createdAt: nowISO()
+    });
+    await secondaryAuth.signOut();
+    closeModal('staffModalBg');
+    alert('Account created / Đã tạo tài khoản.');
+  }catch(err){
+    alert(translateAuthError(err));
+  }
+}
+
+async function changeRole(userId, newRole){
+  if(SESSION.role!=='superadmin'){
+    alert('Only Super Admin can change Admin roles.\nChỉ Super Admin được thay đổi cấp Admin.');
+    return;
+  }
+  const u = findUser(userId);
+  const confirmMsg = newRole==='admin'
+    ? `Promote ${u.name} to Admin?\nBổ nhiệm ${u.name} làm Admin?`
+    : `Demote ${u.name} to Technician?\nHạ cấp ${u.name} xuống Technician?`;
+  if(!confirm(confirmMsg)) return;
+  await db.collection('users').doc(userId).update({role:newRole});
+}
+
+async function deleteStaff(userId){
+  const u = findUser(userId);
+  if(u.role==='superadmin'){ alert('Cannot delete Super Admin.\nKhông thể xoá Super Admin.'); return; }
+  if(u.role==='admin' && SESSION.role!=='superadmin'){
+    alert('Only Super Admin can delete an Admin account.\nChỉ Super Admin được xoá tài khoản Admin.');
+    return;
+  }
+  if(TASKS.some(t=>getAssigneeIds(t).includes(userId))){
+    if(!confirm('This staff has assigned samples. Delete anyway?\nNhân viên này có mẫu đang gán. Vẫn xoá?')) return;
+  } else {
+    if(!confirm(`Delete account for ${u.name}?\nXoá tài khoản của ${u.name}?`)) return;
+  }
+  await db.collection('users').doc(userId).delete();
+  alert('Profile removed. Firebase Auth record must be removed separately via Firebase Console.\nĐã xoá hồ sơ. Tài khoản Auth cần xoá riêng qua Firebase Console.');
+}
+
+/* ============================================================
+   SUB-TASK (Task con)
+   ============================================================ */
+let SUBTASK_PARENT_ID = null;
+let EDIT_SUBTASK_ID = null;
+
+// Override taskProgress to account for sub-tasks
+function taskProgressWithSubs(task, subtasks){
+  const mySubs = subtasks.filter(s=>s.parentTaskId===task.id);
+  if(mySubs.length===0) return taskProgress(task);
+  // Progress = average of sub-task progresses
+  const avg = mySubs.reduce((sum,s)=>sum+taskProgress(s),0) / mySubs.length;
+  return Math.round(avg);
+}
+
+// Get all sub-tasks for a task (from TASKS collection with parentTaskId field)
+function getSubTasks(taskId){
+  return TASKS.filter(t=>t.parentTaskId===taskId);
+}
+
+function canCreateSubTask(task){
+  // Admin/SuperAdmin assigned to this task can create sub-tasks
+  return isAdminLike(SESSION.role) && getAssigneeIds(task).includes(SESSION.uid);
+}
+
+function openSubTaskModal(parentTaskId, subTaskId){
+  SUBTASK_PARENT_ID = parentTaskId;
+  EDIT_SUBTASK_ID = subTaskId || null;
+
+  const parent = TASKS.find(t=>t.id===parentTaskId);
+  const sub = EDIT_SUBTASK_ID ? TASKS.find(t=>t.id===EDIT_SUBTASK_ID) : null;
+
+  document.getElementById('subtaskParentInfo').innerHTML =
+    `Parent task / Task gốc: <strong>${parent?parent.project+' — '+parent.sampleId:'?'}</strong>`;
+
+  document.getElementById('stDesc').value = sub ? (sub.sampleId||'') : '';
+  document.getElementById('stStartTime').value = sub ? (sub.startTime||'') : '';
+  document.getElementById('stDeadline').value = sub ? (sub.deadline||'') : '';
+  document.getElementById('stNotes').value = sub ? (sub.client||'') : '';
+
+  // Assignee: only technicians and non-admin users
+  const sel = document.getElementById('stAssignee');
+  sel.innerHTML='';
+  USERS.filter(u=>u.role==='technician'||u.role==='report').forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+    sel.appendChild(o);
+  });
+  if(sub) sel.value = getAssigneeIds(sub)[0]||'';
+
+  // Tests from parent: show checklist of parent's test names
+  const cl = document.getElementById('stTestsChecklist');
+  const existingTests = sub ? sub.tests.map(x=>x.name) : [];
+  if(parent && parent.tests && parent.tests.length>0){
+    cl.innerHTML = parent.tests.map(t=>`<label><input type="checkbox" value="${t.name}" ${existingTests.includes(t.name)?'checked':''}> ${t.name}</label>`).join('');
+  } else {
+    cl.innerHTML = '<div class="small-muted">No tests in parent task. / Không có test trong task gốc.</div>';
+  }
+
+  document.getElementById('subtaskModalHeading').innerHTML = EDIT_SUBTASK_ID
+    ? `Edit Sub-task <span class="vi">/ Sửa việc con</span>`
+    : `New Sub-task <span class="vi">/ Giao việc con</span>`;
+
+  openModal('subtaskModalBg');
+}
+
+async function saveSubTask(){
+  const desc = document.getElementById('stDesc').value.trim();
+  const assigneeId = document.getElementById('stAssignee').value;
+  const startTime = document.getElementById('stStartTime').value;
+  const deadline = document.getElementById('stDeadline').value;
+  const notes = document.getElementById('stNotes').value.trim();
+
+  if(!desc||!assigneeId||!deadline){
+    alert('Please fill in description, assignee and deadline.\nVui lòng điền mô tả, người phụ trách và deadline.');
+    return;
+  }
+
+  const checked = Array.from(document.querySelectorAll('#stTestsChecklist input:checked')).map(c=>c.value);
+  if(checked.length===0){
+    alert('Select at least one test.\nChọn ít nhất 1 loại test.');
+    return;
+  }
+
+  const parent = TASKS.find(t=>t.id===SUBTASK_PARENT_ID);
+  const projectObj = parent ? PROJECTS.find(p=>p.id===parent.projectId) : null;
+
+  if(EDIT_SUBTASK_ID){
+    const existing = TASKS.find(t=>t.id===EDIT_SUBTASK_ID);
+    const newTests = checked.map(name=>{
+      const ex = existing.tests.find(x=>x.name===name);
+      return ex ? ex : {name, steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}};
+    });
+    await db.collection('tasks').doc(EDIT_SUBTASK_ID).update({
+      sampleId:desc, assigneeIds:[assigneeId], assigneeId,
+      startTime, deadline, client:notes, tests:newTests
+    });
+    EDIT_SUBTASK_ID=null; SUBTASK_PARENT_ID=null;
+    closeModal('subtaskModalBg');
+    return;
+  }
+
+  const subTask = {
+    parentTaskId: SUBTASK_PARENT_ID,
+    projectId: parent ? parent.projectId : '',
+    project: parent ? parent.project : '',
+    sampleId: desc,
+    client: notes,
+    standard: parent ? parent.standard : '',
+    assigneeIds: [assigneeId], assigneeId,
+    startTime, deadline,
+    createdAt: nowISO(), completedAt: null,
+    tests: checked.map(name=>({
+      name,
+      steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}
+    }))
+  };
+  await db.collection('tasks').add(subTask);
+  SUBTASK_PARENT_ID=null;
+  closeModal('subtaskModalBg');
+  alert('Sub-task created / Đã tạo việc con.');
+}
+
+/* ============================================================
+   BOOTSTRAP
+   ============================================================ */
+document.getElementById('loginPass').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doLogin();
+});
+document.getElementById('loginUser').addEventListener('keydown', e=>{
+  if(e.key==='Enter') doLogin();
+});
+</script>
+</body>
+</html>
