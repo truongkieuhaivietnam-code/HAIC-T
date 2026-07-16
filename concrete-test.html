@@ -294,6 +294,10 @@
   <button class="accent" id="updateBtn" onclick="updateReport()" style="display:none;">✏️ Cập nhật</button>
   <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
   <button class="accent" onclick="exportPDF()">📄 PDF</button>
+  <select id="minuteLangMode" style="width:auto; padding:8px 6px; font-size:12px; display:inline-block;">
+    <option value="bilingual">🇻🇳/🇬🇧 Song ngữ</option>
+    <option value="en">🇬🇧 English only</option>
+  </select>
   <button onclick="exportMinutePDF()" style="background:#6c3483;">📋 Biên Bản TN</button>
   <button class="accent" onclick="exportExcel()">📊 Excel</button>
 </div>
@@ -551,13 +555,41 @@ async function loadProjectsDropdown(){
       projectsCache.map(p => `<option value="${p.id}">${p.name}${p.location?' — '+p.location:''}</option>`).join('');
   }catch(e){ sel.innerHTML = '<option value="">(Lỗi tải dự án)</option>'; }
 }
-function onProjectSelectChange(){
+async function onProjectSelectChange(){
   const id = document.getElementById('projectSelect').value;
   if(!id){ currentProjectId = null; return; }
   const p = projectsCache.find(x => x.id === id);
   if(!p) return;
   currentProjectId = id;
   sv('fProject', p.name||''); sv('fLocation', p.location||'');
+
+  // Tự động điền lại các thông tin cố định của dự án (nhà thầu, tư vấn GS,
+  // nhà cung cấp, thiết bị, người chứng kiến...) từ báo cáo GẦN NHẤT cùng
+  // dự án này — để không phải gõ lại mỗi lần thử nghiệm mới cho cùng 1
+  // công trình. KHÔNG điền lại: hạng mục (item), độ sụt, cường độ yêu cầu,
+  // ghi chú, ngày báo cáo — vì các giá trị này thường khác nhau theo từng
+  // lần đổ bê tông/thử nghiệm.
+  try{
+    const snap = await db.collection('concrete_reports')
+      .where('projectId','==', id)
+      .orderBy('updatedAt','desc')
+      .limit(1)
+      .get();
+    if(!snap.empty){
+      const last = snap.docs[0].data();
+      sv('fSupervisor', last.supervisor); sv('fContractor', last.contractor);
+      sv('fSupplier', last.supplier);
+      sv('fEquipment', last.equipment); sv('fFieldSupervisor', last.fieldSupervisor);
+      sv('fQC', last.qc);
+      sv('fLabTech', last.labTech); sv('fCheckedBy', last.checkedBy);
+      sv('fDirector', last.director); sv('fDirectorDisplay', last.director);
+      sv('fReportCity', last.reportCity||'Phnom Penh');
+      sv('fWitnessContractor', last.witnessContractor); sv('fWitnessConsultant', last.witnessConsultant);
+      sv('fWitnessClient', last.witnessClient); sv('fWitnessSupplier', last.witnessSupplier);
+      showToast('Đã áp dụng dự án + thông tin cũ: ' + p.name);
+      return;
+    }
+  }catch(e){ console.warn('Không tải được báo cáo trước đó của dự án:', e); }
   showToast('Đã áp dụng dự án: ' + p.name);
 }
 function openNewProjectModal(){ document.getElementById('newProjectError').textContent = ''; document.getElementById('newProjectModal').style.display = 'flex'; }
@@ -1261,6 +1293,11 @@ function exportPDF(){
 function exportMinutePDF(){
   const d = collectFormData();
   const isAstm = d.standard === 'astm';
+  const langMode = document.getElementById('minuteLangMode')?.value || 'bilingual';
+  const isEN = langMode === 'en';
+  // bi(vi, en): trả về "vi / en" ở chế độ song ngữ, hoặc chỉ "en" ở chế độ English only.
+  const bi = (vi, en) => isEN ? en : `${vi} / ${en}`;
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   registerFonts(doc);
@@ -1284,7 +1321,8 @@ function exportMinutePDF(){
   }
 
   // ── OUTER BORDER ─────────────────────────────────────────
-  doc.setDrawColor(0,0,0); doc.setLineWidth(1.2);
+  // Viền ngoài làm NHẠT hơn (trước: đen đậm 1.2) — giờ xám nhạt, mảnh hơn.
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.5);
   doc.roundedRect(4,4,pageW-8,pageH-8,2,2,'S');
 
   // ── HEADER ───────────────────────────────────────────────
@@ -1301,14 +1339,16 @@ function exportMinutePDF(){
   // Title — blue title + purple "BIÊN BẢN" subtitle
   const TX=ML+48, TW=RX-ML-50;
   BLUE(); B(12);
-  doc.text('CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG XM', TX+TW/2, HY+8, {align:'center'});
-  I(9.5); BLUE();
-  doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+15, {align:'center'});
+  doc.text(isEN ? 'COMPRESSIVE STRENGTH OF CONCRETE' : 'CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG XM', TX+TW/2, HY+8, {align:'center'});
+  if(!isEN){
+    I(9.5); BLUE();
+    doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+15, {align:'center'});
+  }
   B(9); PURPLE();
-  doc.text('BIÊN BẢN THÍ NGHIỆM / TESTING MINUTE', TX+TW/2, HY+23, {align:'center'});
+  doc.text(isEN ? 'TESTING MINUTE' : 'BIÊN BẢN THÍ NGHIỆM / TESTING MINUTE', TX+TW/2, HY+23, {align:'center'});
   BLACK();
 
-  doc.setDrawColor(0,0,0); doc.setLineWidth(0.8);
+  doc.setDrawColor(0,0,0); doc.setLineWidth(0.6);
   doc.line(ML,HY+HH+1,pageW-MR,HY+HH+1);
 
   let y = HY+HH+5;
@@ -1327,14 +1367,14 @@ function exportMinutePDF(){
     doc.setDrawColor(...blue); doc.setLineWidth(0.4);
     doc.line(ML+2,cy+1,ML+2+tw,cy+1); BLACK();
   };
-  secH('I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION', y); y+=6;
+  secH(bi('I. CÁC THÔNG TIN LIÊN QUAN','PROJECT INFORMATION'), y); y+=6;
 
   const bullets=[
-    ['Công trình / Project',    d.project],
-    ['Địa điểm XD / Location',  d.location],
-    ['Tư vấn GS / Consultant',  d.supervisor],
-    ['Nhà thầu / Contractor',   d.contractor],
-    ['Nhà cung cấp / Supplier', d.supplier],
+    [bi('Công trình','Project'),    d.project],
+    [bi('Địa điểm XD','Location'),  d.location],
+    [bi('Tư vấn GS','Consultant'),  d.supervisor],
+    [bi('Nhà thầu','Contractor'),   d.contractor],
+    [bi('Nhà cung cấp','Supplier'), d.supplier],
   ];
   for(const [lbl,val] of bullets){
     N(9); doc.text('- ',ML+2,y);
@@ -1345,7 +1385,7 @@ function exportMinutePDF(){
   y+=3;
 
   // ── SECTION II heading ───────────────────────────────────
-  secH('II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT', y); y+=5.5;
+  secH(bi('II. KẾT QUẢ THÍ NGHIỆM','TESTING RESULT'), y); y+=5.5;
 
   // ── SPECIMEN INFO TABLE ──────────────────────────────────
   const tblStyle={font:'Roboto',fontSize:8,cellPadding:2,halign:'center',valign:'middle',lineColor:[0,0,0],lineWidth:0.25};
@@ -1356,22 +1396,22 @@ function exportMinutePDF(){
     styles:tblStyle,
     head:[
       [
-        {content:'Mẫu thử / Specimen information',colSpan:3,
+        {content:bi('Mẫu thử','Specimen information'),colSpan:3,
          styles:{...headStyle,fontStyle:'normal',fontSize:8.5,halign:'center'}},
-        {content:`Phương pháp thử\nTesting method\n${stdName}`,rowSpan:2,
+        {content:`${bi('Phương pháp thử','Testing method')}\n${stdName}`,rowSpan:2,
          styles:{...headStyle,fontStyle:'italic',fontSize:8,halign:'center',valign:'middle'}},
       ],
       [
-        {content:'Độ sụt\nSlump',styles:{...headStyle,fontSize:7.5}},
-        {content:'Cường độ yêu cầu\nRequest concrete strength',styles:{...headStyle,fontSize:7.5}},
-        {content:'Số lượng tổ mẫu\nQuantity',styles:{...headStyle,fontSize:7.5}},
+        {content:bi('Độ sụt','Slump'),styles:{...headStyle,fontSize:7.5}},
+        {content:bi('Cường độ yêu cầu','Request concrete strength'),styles:{...headStyle,fontSize:7.5}},
+        {content:bi('Số lượng tổ mẫu','Quantity'),styles:{...headStyle,fontSize:7.5}},
       ]
     ],
     body:[[
       {content:d.slump||'',       styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
       {content:d.reqStrength||'', styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
       {content:String(d.groups.length),styles:{font:'Roboto',fontStyle:'normal',fontSize:10,halign:'center',valign:'middle'}},
-      {content:`Thiết bị TN / Equipment\n${d.equipment||''}`,
+      {content:`${bi('Thiết bị TN','Equipment')}\n${d.equipment||''}`,
        styles:{font:'Roboto',fontStyle:'normal',fontSize:8.5,halign:'center',valign:'middle'}},
     ]],
     columnStyles:{0:{cellWidth:usW*0.20},1:{cellWidth:usW*0.32},2:{cellWidth:usW*0.18},3:{cellWidth:usW*0.30}},
@@ -1382,19 +1422,19 @@ function exportMinutePDF(){
   const CW=[12,20,23,23,12,22,22,30,30];
   const hd=[
     [
-      {content:'Stt tổ\nmẫu /\nNo',rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Ký hiệu\nmẫu\nSpecimen\nsymbol',rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Ngày - Date\n(dd/mm/yyyy)',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Tuổi\nmẫu\nAge at\nTest',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:isAstm?'Kích thước mẫu\nDimension\nDxH (mm)':'Kích thước mẫu\nDimension\nLxWxH (mm)',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Tải trọng\nphá hủy\nmẫu\nMaximum\nLoad at\nFailure',rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Cường độ kháng nén\nCompressive Strength',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Stt tổ\nmẫu','No'),rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Ký hiệu\nmẫu','Specimen\nsymbol'),rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Ngày','Date')+'\n(dd/mm/yyyy)',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Tuổi\nmẫu','Age at\nTest'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Kích thước mẫu',isAstm?'Dimension\nDxH (mm)':'Dimension\nLxWxH (mm)'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Tải trọng\nphá hủy\nmẫu','Maximum\nLoad at\nFailure'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Cường độ kháng nén','Compressive Strength'),colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
     ],
     [
-      {content:'Ngày đúc\nDate of\nCast',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
-      {content:'Ngày nén\nDate of\nTest',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
-      {content:'Từng mẫu\nIndividual',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:'Trung bình\nAverage',styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Ngày đúc','Date of\nCast'),styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
+      {content:bi('Ngày nén','Date of\nTest'),styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7}},
+      {content:bi('Từng mẫu','Individual'),styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Trung bình','Average'),styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
     ],
     [
       {content:'(date)',styles:{font:'Roboto',fontStyle:'italic',fontSize:7,halign:'center'}},
@@ -1461,46 +1501,28 @@ function exportMinutePDF(){
   });
   fy+=8;
 
-  // ── SIGN-OFF — WITNESSES (2 rows) ────────────────────────
-  // Row 1: Nhà thầu | Tư vấn GS | Đại diện CĐT
-  // Row 2: Nhà cung cấp | Thí nghiệm viên (HAIC)
-  const R1W = usW/3, R2W = usW/2;
-  const r1x = [ML+R1W*0.5, ML+R1W*1.5, ML+R1W*2.5];
-  const r2x = [ML+R2W*0.5, ML+R2W*1.5];
+  // ── SIGN-OFF — 5 chỗ ký, TẤT CẢ TRÊN 1 HÀNG (trước đây chia 2 hàng) ──
+  const NSIG = 5;
+  const colW = usW/NSIG;
+  const sx = Array.from({length:NSIG}, (_,i) => ML + colW*(i+0.5));
 
-  // Row 1 labels
-  B(9); PURPLE();
-  doc.text('Nhà thầu',      r1x[0], fy, {align:'center'});
-  doc.text('Tư vấn GS',     r1x[1], fy, {align:'center'});
-  doc.text('Đại diện CĐT',  r1x[2], fy, {align:'center'});
-  fy+=4;
-  I(8.5); PURPLE();
-  doc.text('Contractor',    r1x[0], fy, {align:'center'});
-  doc.text('Consultant',    r1x[1], fy, {align:'center'});
-  doc.text('Client / Owner',r1x[2], fy, {align:'center'});
-  fy+=18;  // signature space
-  I(8.5); BLACK();
-  doc.text(d.witnessContractor||'', r1x[0], fy, {align:'center'});
-  doc.text(d.witnessConsultant||'', r1x[1], fy, {align:'center'});
-  doc.text(d.witnessClient||'',     r1x[2], fy, {align:'center'});
-  fy+=10;
+  const sigLabels = [
+    [bi('Nhà thầu','Contractor'), d.witnessContractor],
+    [bi('Tư vấn GS','Consultant'), d.witnessConsultant],
+    [bi('Đại diện CĐT','Client'), d.witnessClient],
+    [bi('Nhà cung cấp','Supplier'), d.witnessSupplier],
+    [bi('TN viên','Lab Tech'), d.labTech],
+  ];
 
-  // Row 2 labels
-  B(9); PURPLE();
-  doc.text('Nhà cung cấp',              r2x[0], fy, {align:'center'});
-  doc.text('Thí nghiệm viên / HAIC',    r2x[1], fy, {align:'center'});
-  fy+=4;
-  I(8.5); PURPLE();
-  doc.text('Supplier',                  r2x[0], fy, {align:'center'});
-  doc.text('Lab Technician',            r2x[1], fy, {align:'center'});
-  fy+=18; // signature space
+  B(8); PURPLE();
+  sigLabels.forEach(([lbl], i) => doc.text(lbl, sx[i], fy, {align:'center'}));
+  fy += 18; // khoảng trống để ký tay
   I(8.5); BLACK();
-  doc.text(d.witnessSupplier||'', r2x[0], fy, {align:'center'});
-  doc.text(d.labTech||'',         r2x[1], fy, {align:'center'});
+  sigLabels.forEach(([,val], i) => doc.text(val||'', sx[i], fy, {align:'center'}));
 
   // ── FOOTER BOX ───────────────────────────────────────────
   const FBH=22, FBY=pageH-4-FBH-2;
-  doc.setDrawColor(0,0,0); doc.setLineWidth(0.5);
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.4);
   doc.rect(ML,FBY,usW,FBH,'S');
   B(8); BLACK();
   doc.text('HAI (CAMBODIA)  SURVEY & CONSTRUCTION CO.,LTD', pageW/2, FBY+6, {align:'center'});
@@ -1511,7 +1533,7 @@ function exportMinutePDF(){
   doc.text(formCode, pageW-MR-2, FBY+FBH-2, {align:'right'});
 
   const fname='TestingMinute_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
-    +'_'+(isAstm?'ASTM':'TCVN')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+    +'_'+(isAstm?'ASTM':'TCVN')+'_'+(isEN?'EN':'BI')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
 
