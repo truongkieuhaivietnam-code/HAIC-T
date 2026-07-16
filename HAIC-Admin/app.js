@@ -103,6 +103,7 @@ const LANGS = {
     nav_finance:     'Finance',
     nav_settings:    'Settings',
     nav_me:          'Me',
+    nav_apps:        'Other Apps',
 
     // Page titles
     page_dashboard:    'Dashboard',
@@ -424,6 +425,7 @@ const LANGS = {
     nav_finance:     'Tài chính',
     nav_settings:    'Cài đặt',
     nav_me:          'Cá nhân',
+    nav_apps:        'Ứng dụng khác',
 
     // Page titles
     page_dashboard:    'Tổng quan',
@@ -792,6 +794,9 @@ const col = {
   empAllowances:() => db.collection('apps').doc('hr').collection('employee_allowances'),
   siteRecords:  () => db.collection('apps').doc('hr').collection('site_records'),
   otRequests:   () => db.collection('apps').doc('hr').collection('ot_requests'),
+  // KPI tổng hợp từ Lab System (ghi bởi script kpi-sync.js chạy tay,
+  // XEM ĐỂ THAM KHẢO — không có logic tự động trừ/thưởng lương ở đây).
+  labKpi:       () => db.collection('apps').doc('hr').collection('lab_kpi'),
 };
 
 // ── App State ─────────────────────────────────────────────────
@@ -878,6 +883,27 @@ function roleBadgeClass(role) {
   return `topbar-role-badge ${m[role] || ''}`;
 }
 
+// ── Ứng dụng khác trong hệ HAIC — mở nhanh sang app khác (link ngoài,
+// mở tab mới). KHÔNG đụng gì tới dữ liệu/quyền — chỉ là nút điều hướng.
+const EXTERNAL_APPS = [
+  { icon: '🧪', label: 'Lab System',      url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/HAIC_Lab_Management.html' },
+  { icon: '🛠️', label: 'Equipment',       url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/HAI%20Equipment%20Management/index.html' },
+  { icon: '💰', label: 'Staff Finance',   url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/HAIC_Staff_Finance.html' },
+  { icon: '📐', label: 'Point Load Test', url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/point-load-test.html' },
+  { icon: '🧱', label: 'Concrete Test',   url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/concrete-test.html' },
+  { icon: '🏖️', label: 'Sand Cone Test',  url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/sand-cone-test.html' },
+  { icon: '📦', label: 'Sample Handover', url: 'https://truongkieuhaivietnam-code.github.io/HAIC-T/sample-handover.html' },
+];
+
+function getExternalAppNavItems() {
+  return EXTERNAL_APPS.map(app => ({
+    section: t('nav_apps'),
+    externalUrl: app.url,
+    icon: app.icon,
+    label: app.label, // tên riêng, không dịch
+  }));
+}
+
 // ── Sidebar nav build ─────────────────────────────────────────
 function buildNav() {
   const role = state.userProfile?.role;
@@ -896,16 +922,24 @@ function buildNav() {
     }
     const el = document.createElement('div');
     el.className = 'nav-item';
-    el.dataset.page = item.page;
+    if (item.page) el.dataset.page = item.page;
     el.innerHTML = `
       <span class="nav-icon">${item.icon}</span>
       <span class="nav-label">${item.label}</span>
       ${item.badge ? `<span class="nav-badge" id="badge-${item.page}">${item.badge}</span>` : ''}
+      ${item.externalUrl ? `<span class="nav-external-icon" title="${t('nav_apps')}">↗</span>` : ''}
     `;
-    el.addEventListener('click', () => {
-      showPage(item.page);
-      loadPageData(item.page);
-    });
+    if (item.externalUrl) {
+      // Link ngoài — mở tab mới, KHÔNG điều hướng nội bộ (showPage/loadPageData)
+      el.addEventListener('click', () => {
+        window.open(item.externalUrl, '_blank', 'noopener');
+      });
+    } else {
+      el.addEventListener('click', () => {
+        showPage(item.page);
+        loadPageData(item.page);
+      });
+    }
     nav.appendChild(el);
   });
 }
@@ -923,7 +957,9 @@ function getNavItems(role) {
       { section: t('nav_finance'),   page: 'site',       icon: '🏗️', label: t('nav_site') },
       { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') },
       { section: t('nav_finance'),   page: 'reports',    icon: '📑', label: t('nav_reports') },
-      { section: t('nav_settings'),  page: 'policies',   icon: '⚙️', label: t('nav_policies') }
+      { section: t('nav_people'),    page: 'lab-kpi',    icon: '🧪', label: lang === 'vi' ? 'KPI Lab System' : 'Lab System KPI' },
+      { section: t('nav_settings'),  page: 'policies',   icon: '⚙️', label: t('nav_policies') },
+      ...getExternalAppNavItems()
     ];
   }
   if (role === ROLES.COUNTRY_MANAGER) {
@@ -936,7 +972,9 @@ function getNavItems(role) {
       { section: t('nav_finance'),   page: 'allowances', icon: '🎁', label: t('nav_allowances') },
       { section: t('nav_finance'),   page: 'ot-manage',  icon: '⏰', label: t('nav_ot_manage') },
       { section: t('nav_finance'),   page: 'site',       icon: '🏗️', label: t('nav_site') },
-      { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') }
+      { section: t('nav_finance'),   page: 'payroll',    icon: '💰', label: t('nav_payroll') },
+      { section: t('nav_people'),    page: 'lab-kpi',    icon: '🧪', label: lang === 'vi' ? 'KPI Lab System' : 'Lab System KPI' },
+      ...getExternalAppNavItems()
     ];
   }
   return [
@@ -945,7 +983,8 @@ function getNavItems(role) {
     { section: t('nav_me'), page: 'my-salary',    icon: '💵', label: t('nav_my_salary') },
     { section: t('nav_me'), page: 'my-penalties', icon: '⚠️', label: t('nav_my_penalties') },
     { section: t('nav_me'), page: 'ot-manage',    icon: '⏰', label: t('nav_ot_manage') },
-    { section: t('nav_me'), page: 'site',         icon: '🏗️', label: t('nav_site') }
+    { section: t('nav_me'), page: 'site',         icon: '🏗️', label: t('nav_site') },
+    ...getExternalAppNavItems()
   ];
 }
 
@@ -1096,6 +1135,7 @@ function loadPageData(page) {
     case 'allowances':  loadAllowances();   break;
     case 'ot-manage':   loadOTManage();     break;
     case 'site':        loadSiteRecords();  break;
+    case 'lab-kpi':     loadLabKpi();       break;
   }
 }
 
@@ -4177,6 +4217,77 @@ window.addEventListener('resize', checkResponsive);
 // Collections: apps/hr/employee_allowances
 // Types: fixed (monthly), phone (auto-calculated), site (per record)
 // ════════════════════════════════════════════════════════════════
+
+// ── LAB KPI (chỉ xem — ghi bởi script kpi-sync.js chạy tay) ────
+async function loadLabKpi() {
+  showLoader();
+  try {
+    let query = col.labKpi();
+    const [kpiSnap, empSnap] = await Promise.all([
+      query.get(),
+      col.users().where('active', '==', true).get(),
+    ]);
+    const kpiByUid = {};
+    kpiSnap.docs.forEach(d => { kpiByUid[d.id] = d.data(); });
+
+    let employees = empSnap.docs.map(d => ({ uid: d.id, ...d.data() }));
+    if (isCountryManager()) employees = employees.filter(e => e.country === state.userProfile.country);
+
+    renderLabKpi(employees, kpiByUid);
+  } catch (e) {
+    toast((lang === 'vi' ? 'Lỗi tải KPI Lab: ' : 'Error loading Lab KPI: ') + e.message, 'error');
+  } finally { hideLoader(); }
+}
+
+function renderLabKpi(employees, kpiByUid) {
+  const withKpi = employees.filter(e => kpiByUid[e.uid]);
+  const period = withKpi.length > 0 ? withKpi[0].period : null;
+
+  $('page-lab-kpi').innerHTML = `
+    <div class="page-header">
+      <div><h2>${lang === 'vi' ? 'KPI Lab System' : 'Lab System KPI'}</h2>
+        <p>${lang === 'vi'
+          ? 'Số liệu tham khảo, tổng hợp thủ công từ Lab System' + (period ? ` — kỳ ${period}` : '') + '. KHÔNG tự động trừ/thưởng lương — Admin tự xem và quyết định.'
+          : 'Reference only, manually synced from Lab System' + (period ? ` — period ${period}` : '') + '. Does NOT auto-adjust payroll — Admin reviews and decides.'}
+        </p>
+      </div>
+    </div>
+    ${withKpi.length === 0 ? `
+      <div class="empty-state"><div class="empty-icon">🧪</div>
+        <h4>${lang === 'vi' ? 'Chưa có dữ liệu KPI' : 'No KPI data yet'}</h4>
+        <p>${lang === 'vi' ? 'Chạy script kpi-sync.js --apply để đồng bộ từ Lab System.' : 'Run kpi-sync.js --apply to sync from Lab System.'}</p>
+      </div>` : `
+    <div class="card">
+      <table class="data-table">
+        <thead><tr>
+          <th>${lang === 'vi' ? 'Nhân viên' : 'Employee'}</th>
+          <th>${lang === 'vi' ? 'Vai trò Lab' : 'Lab role'}</th>
+          <th>${lang === 'vi' ? 'Việc được giao' : 'Assigned'}</th>
+          <th>${lang === 'vi' ? 'Đã xong' : 'Done'}</th>
+          <th>${lang === 'vi' ? 'Quá hạn' : 'Overdue'}</th>
+          <th>${lang === 'vi' ? '% Hoàn thành' : 'Completion %'}</th>
+          <th>${lang === 'vi' ? 'Báo cáo vấn đề (tháng này)' : 'Problem reports (this month)'}</th>
+        </tr></thead>
+        <tbody>
+          ${withKpi.map(e => {
+            const k = kpiByUid[e.uid];
+            const pct = k.completionRate;
+            const pctColor = pct === null ? '' : pct >= 90 ? 'var(--success,#2a8f4d)' : pct >= 60 ? 'var(--warn,#c98a1a)' : 'var(--danger,#c0392b)';
+            return `<tr>
+              <td>${e.name || ''}</td>
+              <td>${k.role || ''}</td>
+              <td>${k.tasksAssigned}</td>
+              <td>${k.tasksDone}</td>
+              <td>${k.tasksOverdue > 0 ? `<b style="color:var(--danger,#c0392b)">${k.tasksOverdue}</b>` : '0'}</td>
+              <td>${pct === null ? '—' : `<b style="color:${pctColor}">${pct}%</b>`}</td>
+              <td>${k.problemReportsThisMonth > 0 ? `<b style="color:var(--danger,#c0392b)">${k.problemReportsThisMonth}</b>` : '0'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>`}
+  `;
+}
 
 async function loadAllowances() {
   showLoader();

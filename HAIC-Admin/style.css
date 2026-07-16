@@ -306,8 +306,15 @@ img { max-width: 100%; display: block; }
   border-radius: 10px;
   flex-shrink: 0;
 }
+.nav-item .nav-external-icon {
+  margin-left: auto;
+  opacity: .5;
+  font-size: .8rem;
+  flex-shrink: 0;
+}
 .sidebar.collapsed .nav-label,
-.sidebar.collapsed .nav-badge { display: none; }
+.sidebar.collapsed .nav-badge,
+.sidebar.collapsed .nav-external-icon { display: none; }
 .sidebar.collapsed .nav-item { justify-content: center; padding: 9px; }
 
 .sidebar-footer {
