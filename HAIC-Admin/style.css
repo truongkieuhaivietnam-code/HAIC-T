@@ -753,19 +753,41 @@ tbody tr:hover { background: var(--bg); }
 .leave-bar { height: 100%; border-radius: 20px; background: var(--green); transition: width .4s; }
 
 /* ── Responsive ─────────────────────────────────────────────── */
+/* Mobile hamburger button — hidden on desktop, shown ≤900px (see below) */
+.mobile-menu-btn {
+  display: none;
+  background: none; border: none; color: var(--text-main);
+  font-size: 1.3rem; cursor: pointer; padding: 4px 8px; line-height: 1;
+}
+.sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.45);
+  z-index: 150;
+}
+.sidebar-backdrop.active { display: block; }
+
 @media (max-width: 900px) {
-  .sidebar { width: var(--sidebar-w-collapsed); }
-  .sidebar .nav-label,
-  .sidebar .nav-badge,
-  .sidebar .nav-section-label,
-  .sidebar .sidebar-title,
-  .sidebar .user-info,
-  .sidebar .logout-btn { display: none; }
+  /* SỬA: trước đây sidebar bị ép về chế độ chỉ-icon vĩnh viễn trên di
+     động, và nút mở rộng (☰) cũng bị ẩn luôn — không có cách nào xem lại
+     chữ. Giờ sidebar hoạt động như "ngăn kéo" (drawer): ẩn ngoài màn hình
+     theo mặc định, trượt ra ĐẦY ĐỦ chữ + icon khi bấm nút menu ở topbar. */
+  .sidebar {
+    width: var(--sidebar-w);
+    transform: translateX(-100%);
+    transition: transform var(--t);
+    z-index: 200;
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
   .sidebar .sidebar-toggle { display: none; }
-  .sidebar .nav-item { justify-content: center; padding: 9px; }
-  .main { margin-left: var(--sidebar-w-collapsed); }
+  .mobile-menu-btn { display: inline-flex; align-items: center; }
+  .main { margin-left: 0; }
   .country-grid { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
+}
+@media (min-width: 901px) {
+  .mobile-menu-btn { display: none !important; }
+  .sidebar-backdrop { display: none !important; }
 }
 @media (max-width: 600px) {
   .page-content { padding: var(--gap); }
@@ -809,37 +831,14 @@ tbody tr:hover { background: var(--bg); }
    ══════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
 
-  /* ── Sidebar mobile ── */
-  .sidebar {
-    width: 64px !important;
-  }
-  .sidebar .nav-label,
-  .sidebar .nav-badge,
-  .sidebar .nav-section-label,
-  .sidebar-title,
-  .sidebar .sidebar-toggle { display: none !important; }
-  .sidebar .nav-item { justify-content: center; padding: 10px 0 !important; }
-  .sidebar .nav-icon { font-size: 1.3rem; }
+  /* ── Sidebar mobile: dùng chung cơ chế "ngăn kéo" (drawer) với khối
+     900px ở trên — không ép icon-only nữa, giữ nguyên chữ + nhãn khi mở. ── */
 
-  /* Sidebar footer — show avatar + logout */
+  /* Sidebar footer — giữ như desktop (đầy đủ avatar + tên + nút đăng xuất) */
   .sidebar-footer { padding: 8px 0; }
-  .user-mini { flex-direction: column; align-items: center; gap: 4px; }
-  .user-info { display: none !important; }
-  /* SHOW logout button on mobile */
-  .logout-btn {
-    display: flex !important;
-    color: rgba(255,255,255,.7);
-    font-size: 1.1rem;
-    padding: 6px;
-  }
-  .logout-btn:hover { color: var(--red); }
-  .user-avatar {
-    width: 32px; height: 32px;
-    font-size: .78rem;
-  }
 
   /* ── Main content ── */
-  .main { margin-left: 64px !important; }
+  .main { margin-left: 0 !important; }
   .page-content { padding: 12px 10px !important; }
 
   /* ── Topbar mobile ── */
@@ -927,6 +926,4 @@ tbody tr:hover { background: var(--bg); }
 /* ── Very small phones ── */
 @media (max-width: 375px) {
   .stats-grid { grid-template-columns: 1fr !important; }
-  .sidebar { width: 52px !important; }
-  .main { margin-left: 52px !important; }
 }

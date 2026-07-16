@@ -1111,10 +1111,32 @@ function friendlyAuthError(code) {
 
 $('logout-btn').addEventListener('click', () => auth.signOut());
 
-// ── Sidebar toggle ────────────────────────────────────────────
+// ── Sidebar toggle (desktop: collapse to icon-only) ────────────
 $('sidebar-toggle').addEventListener('click', () => {
   state.sidebarCollapsed = !state.sidebarCollapsed;
   $('sidebar').classList.toggle('collapsed', state.sidebarCollapsed);
+});
+
+// ── Mobile sidebar drawer (≤900px) — nút menu mở ra sidebar đầy đủ chữ,
+// bấm ra ngoài (backdrop) hoặc chọn 1 mục thì tự đóng lại. ─────────────
+function openMobileSidebar() {
+  $('sidebar').classList.add('mobile-open');
+  $('sidebar-backdrop').classList.add('active');
+}
+function closeMobileSidebar() {
+  $('sidebar').classList.remove('mobile-open');
+  $('sidebar-backdrop').classList.remove('active');
+}
+$('mobile-menu-btn').addEventListener('click', () => {
+  const isOpen = $('sidebar').classList.contains('mobile-open');
+  if (isOpen) closeMobileSidebar(); else openMobileSidebar();
+});
+$('sidebar-backdrop').addEventListener('click', closeMobileSidebar);
+// Tự đóng ngăn kéo sau khi bấm chọn 1 mục trong menu (chỉ áp dụng trên di động)
+$('sidebar-nav').addEventListener('click', (e) => {
+  if (e.target.closest('.nav-item') && window.innerWidth <= 900) {
+    closeMobileSidebar();
+  }
 });
 
 // ── Page router ───────────────────────────────────────────────
