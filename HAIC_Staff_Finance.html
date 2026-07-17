@@ -1866,13 +1866,48 @@ function ensureStructure() {
     }
     // Set default currency for old transactions
     if (!tx.currency) tx.currency = "USD";
-    if (!tx.amountUSD) tx.amountUSD = tx.amount;
+    // QUAN TRỌNG: TRƯỚC ĐÂY dòng này coi amountUSD = amount cho MỌI loại
+    // tiền khi thiếu amountUSD — nếu currency là LAK/VND/KHR, số tiền gốc
+    // (VD 1.330.000 Kip) bị hiểu nhầm thành 1.330.000 ĐÔ LA, gây sai lệch
+    // khổng lồ trong mọi báo cáo tổng hợp (đây chính là nguyên nhân số
+    // "Tất cả chi nhánh" bị thổi phồng lên hàng chục triệu đô). Sửa lại:
+    // chỉ coi amount = amountUSD khi ĐÚNG LÀ USD; còn lại phải quy đổi.
+    if (!tx.amountUSD) {
+      if (tx.currency === "USD") {
+        tx.amountUSD = tx.amount;
+      } else if (tx.exchangeRate) {
+        tx.amountUSD = toUSD(tx.amount, tx.currency, tx.exchangeRate);
+      } else {
+        const fallbackRate = tx.currency === "LAK" ? 21000 : tx.currency === "VND" ? 25000 : tx.currency === "KHR" ? 4100 : 1;
+        tx.amountUSD = tx.amount / fallbackRate;
+      }
+    }
+    // TỰ SỬA dữ liệu cũ đã lỡ bị lỗi trên (dấu hiệu: không phải USD nhưng
+    // amountUSD lại đúng bằng amount y hệt — chỉ đúng nếu tỷ giá là 1:1,
+    // gần như không thể xảy ra thật).
+    if (tx.currency !== "USD" && tx.amountUSD === tx.amount) {
+      const fallbackRate = tx.currency === "LAK" ? 21000 : tx.currency === "VND" ? 25000 : tx.currency === "KHR" ? 4100 : 1;
+      tx.amountUSD = tx.exchangeRate ? toUSD(tx.amount, tx.currency, tx.exchangeRate) : tx.amount / fallbackRate;
+    }
   });
 
   // Set default currency for old advances
   STORE.advances.forEach(adv => {
     if (!adv.currency) adv.currency = "USD";
-    if (!adv.amountUSD) adv.amountUSD = adv.amount;
+    if (!adv.amountUSD) {
+      if (adv.currency === "USD") {
+        adv.amountUSD = adv.amount;
+      } else if (adv.exchangeRate) {
+        adv.amountUSD = toUSD(adv.amount, adv.currency, adv.exchangeRate);
+      } else {
+        const fallbackRate = adv.currency === "LAK" ? 21000 : adv.currency === "VND" ? 25000 : adv.currency === "KHR" ? 4100 : 1;
+        adv.amountUSD = adv.amount / fallbackRate;
+      }
+    }
+    if (adv.currency !== "USD" && adv.amountUSD === adv.amount) {
+      const fallbackRate = adv.currency === "LAK" ? 21000 : adv.currency === "VND" ? 25000 : adv.currency === "KHR" ? 4100 : 1;
+      adv.amountUSD = adv.exchangeRate ? toUSD(adv.amount, adv.currency, adv.exchangeRate) : adv.amount / fallbackRate;
+    }
   });
 
   // Xóa duplicate income tx cho cùng 1 advance (chỉ giữ 1 bản)
@@ -2836,16 +2871,35 @@ function openMemberTxDetail(userId) {
   const user = getUserById(userId);
   const txs = STORE.transactions.filter(tx => tx.userId === userId && monthKey(tx.date) === currentDashMonth);
 
+  // SỬA: trước đây cộng thẳng tx.amount (số tiền GỐC) bất kể loại tiền —
+  // nếu 1 người có cả giao dịch USD lẫn LAK trong tháng, phép cộng này vô
+  // nghĩa (cộng thẳng số Kip với số Đô). Giờ quy về đúng 1 đơn vị hiển thị
+  // theo chi nhánh của người đó: Lào -> Kip (dùng amount gốc nếu đã là
+  // LAK, quy đổi 1 lần bằng tỷ giá hiện tại nếu là USD/VND); chi nhánh
+  // khác -> USD (dùng amountUSD đã quy đổi đúng, không cộng thẳng amount).
+  const isLaosUser = user && user.branch === "laos";
+  const rate = cachedRates.LAK || 21000;
+  const vndRate = cachedRates.VND || 25000;
+  const toDisplayAmount = (tx) => {
+    if (isLaosUser) {
+      const cur = tx.currency || "USD";
+      return cur === "LAK" ? tx.amount : cur === "VND" ? (tx.amount / vndRate) * rate : tx.amount * rate;
+    }
+    return tx.amountUSD != null ? tx.amountUSD : tx.amount;
+  };
+  const fmtMember = isLaosUser ? formatLak : formatCurrency;
+
   let income = 0, expense = 0;
   txs.forEach(tx => {
-    if (tx.type === "income") income += tx.amount;
-    else expense += tx.amount;
+    const amt = toDisplayAmount(tx);
+    if (tx.type === "income") income += amt;
+    else expense += amt;
   });
 
   document.getElementById("memberTxTitle").textContent = `${user.name} — ${formatMonthLabel(currentDashMonth)}`;
-  document.getElementById("memberTxIncome").textContent = "+" + formatCurrency(income);
-  document.getElementById("memberTxExpense").textContent = "-" + formatCurrency(expense);
-  document.getElementById("memberTxBalance").textContent = formatCurrency(income - expense);
+  document.getElementById("memberTxIncome").textContent = "+" + fmtMember(income);
+  document.getElementById("memberTxExpense").textContent = "-" + fmtMember(expense);
+  document.getElementById("memberTxBalance").textContent = fmtMember(income - expense);
 
   const list = document.getElementById("memberTxList");
   const empty = document.getElementById("memberTxEmpty");
