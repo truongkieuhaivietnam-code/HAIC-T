@@ -2036,28 +2036,49 @@ function formatCurrency(amount) {
 }
 
 // ── Dashboard: hiện Kip cho chi nhánh Lào ──────────────────────────────────
-// Tổng quan Dashboard tính bằng amountUSD (baseline chung để cộng được các
-// giao dịch khác loại tiền). Khi đang xem chi nhánh Lào, đổi ĐÚNG số tiền
-// sang Kip bằng tỷ giá thật (dùng lại cơ chế lấy tỷ giá đã có sẵn trong
-// app cho giao dịch/tạm ứng) — KHÔNG chỉ đổi ký hiệu $ -> K mà giữ nguyên
-// số cũ (sẽ sai lệch rất lớn, VD $500 mà hiện "K 500" là sai gấp ~20.000 lần).
+// SAI LẦM ĐàSỬA: bản trước lấy TỔNG đã quy đổi sẵn ra USD (amountUSD, vốn
+// được tính bằng tỷ giá LÚC NHẬP của từng giao dịch — tỷ giá này có thể
+// sai/khác nhau giữa các giao dịch), rồi quy đổi NGƯỢC lại sang Kip bằng
+// tỷ giá HIỆN TẠI — 2 lần quy đổi qua 2 tỷ giá khác nhau cộng dồn sai số,
+// ra số vô lý (hàng nghìn tỷ Kip).
+//
+// Cách đúng: với giao dịch đã nhập bằng LAK, dùng THẲNG số tiền gốc (chính
+// xác tuyệt đối, không quy đổi gì cả). Chỉ giao dịch nhập bằng loại tiền
+// KHÁC (USD/VND) mới quy đổi sang Kip, và chỉ quy đổi 1 LẦN DUY NHẤT bằng
+// tỷ giá hiện tại — không đi vòng qua USD đã lưu trước đó.
+function calcMonthSummaryInLak(monthKeyStr, opts) {
+  const txs = getTxForMonth(monthKeyStr, opts);
+  const usdToLak = cachedRates.LAK || 21000;
+  const usdToVnd = cachedRates.VND || 25000;
+  let income = 0, expense = 0;
+  txs.forEach(tx => {
+    const cur = tx.currency || "USD";
+    let lakAmount;
+    if (cur === "LAK") {
+      lakAmount = tx.amount; // đã là Kip -> dùng nguyên, không quy đổi
+    } else if (cur === "VND") {
+      lakAmount = (tx.amount / usdToVnd) * usdToLak; // quy đổi chéo 1 lần qua tỷ giá hiện tại
+    } else {
+      lakAmount = tx.amount * usdToLak; // USD -> Kip, tỷ giá hiện tại
+    }
+    if (tx.type === "income") income += lakAmount; else expense += lakAmount;
+  });
+  return { income, expense, balance: income - expense };
+}
+
+function formatLak(amount) {
+  return "₭" + Math.round(parseFloat(amount) || 0).toLocaleString("en-US");
+}
+
 async function ensureLakRateForDashboard() {
   if (cachedRates.LAK) return cachedRates.LAK;
   try {
     const res = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
     const data = await res.json();
     if (data.rates && data.rates.LAK) cachedRates.LAK = data.rates.LAK;
-  } catch (e) { /* im lặng, dùng tỷ giá dự phòng bên dưới */ }
+    if (data.rates && data.rates.VND) cachedRates.VND = data.rates.VND;
+  } catch (e) { /* im lặng, dùng tỷ giá dự phòng */ }
   return cachedRates.LAK;
-}
-
-function formatDashboardCurrency(usdAmount) {
-  if (currentDashCompany === "laos") {
-    const rate = cachedRates.LAK || 21000; // tỷ giá dự phòng, dùng tạm khi chưa lấy được tỷ giá thật
-    const lakAmount = (parseFloat(usdAmount) || 0) * rate;
-    return "K " + Math.round(lakAmount).toLocaleString("en-US");
-  }
-  return formatCurrency(usdAmount);
 }
 
 // Chỉ dùng riêng cho Kế hoạch thu chi (số liệu dự kiến/nhập tay) — hệ
@@ -2592,28 +2613,30 @@ function renderDashboard() {
   }
 
   const opts = { scopeUser: true, company: currentDashCompany };
-  const summary = calcMonthSummary(currentDashMonth, opts);
+  const isLaos = currentDashCompany === "laos";
+  const summary = isLaos ? calcMonthSummaryInLak(currentDashMonth, opts) : calcMonthSummary(currentDashMonth, opts);
+  const fmtHero = isLaos ? formatLak : formatCurrency;
 
   // Show company label in hero
   const companyLabel = currentDashCompany === "all"
     ? (currentLang === "vi" ? "Tất cả chi nhánh" : "All Companies")
     : branchLabel(currentDashCompany);
   document.getElementById("heroMonth").textContent = formatMonthLabel(currentDashMonth) + " — " + companyLabel;
-  document.getElementById("heroBalance").textContent = formatDashboardCurrency(summary.balance);
-  document.getElementById("heroIncome").textContent = "+" + formatDashboardCurrency(summary.income);
-  document.getElementById("heroExpense").textContent = "-" + formatDashboardCurrency(summary.expense);
-  document.getElementById("heroSaving").textContent = formatDashboardCurrency(summary.balance);
+  document.getElementById("heroBalance").textContent = fmtHero(summary.balance);
+  document.getElementById("heroIncome").textContent = "+" + fmtHero(summary.income);
+  document.getElementById("heroExpense").textContent = "-" + fmtHero(summary.expense);
+  document.getElementById("heroSaving").textContent = fmtHero(summary.balance);
 
   document.getElementById("dashSub").textContent = t("welcomeBack") + ", " + currentUser.name;
 
   // Cỡ chữ số liệu tổng quan — thu nhỏ khi hiện Kip (số Kip rất nhiều chữ
   // số, VD 10,500,000 — cần thu nhỏ mới thấy hết trong khung Dashboard).
-  document.querySelector(".hero-card")?.classList.toggle("compact-numbers", currentDashCompany === "laos");
+  document.querySelector(".hero-card")?.classList.toggle("compact-numbers", isLaos);
 
   // Nếu đang xem chi nhánh Lào mà chưa có tỷ giá trong bộ nhớ đệm, lấy tỷ
   // giá thật rồi vẽ lại — không chặn hiển thị ban đầu (dùng tỷ giá dự
   // phòng trước, cập nhật số chính xác ngay khi có).
-  if (currentDashCompany === "laos" && !cachedRates.LAK) {
+  if (isLaos && !cachedRates.LAK) {
     ensureLakRateForDashboard().then(rate => { if (rate) renderDashboard(); });
   }
 
@@ -2629,10 +2652,21 @@ function renderDashboard() {
   });
   if (can("approveAdvance") && allPending.length > 0) {
     pendingBanner.classList.remove("hidden");
-    const totalPending = allPending.reduce((s, a) => s + a.amount, 0);
+    let totalPending;
+    if (isLaos) {
+      const rate = cachedRates.LAK || 21000;
+      const vndRate = cachedRates.VND || 25000;
+      totalPending = allPending.reduce((s, a) => {
+        const cur = a.currency || "USD";
+        const lak = cur === "LAK" ? a.amount : cur === "VND" ? (a.amount / vndRate) * rate : a.amount * rate;
+        return s + lak;
+      }, 0);
+    } else {
+      totalPending = allPending.reduce((s, a) => s + a.amount, 0);
+    }
     document.getElementById("pendingBannerTitle").textContent = t("pendingApprovalTitle");
     document.getElementById("pendingBannerSub").textContent = allPending.length + " " + t("pendingApprovalSub");
-    document.getElementById("pendingBannerAmt").textContent = formatDashboardCurrency(totalPending);
+    document.getElementById("pendingBannerAmt").textContent = isLaos ? formatLak(totalPending) : formatCurrency(totalPending);
     pendingBanner.onclick = () => goPage("approvals");
   } else {
     pendingBanner.classList.add("hidden");
@@ -2709,6 +2743,10 @@ function renderCategoryChart(opts) {
 }
 
 function renderTrendChart(opts) {
+  const isLaos = currentDashCompany === "laos";
+  const calcFn = isLaos ? calcMonthSummaryInLak : calcMonthSummary;
+  const fmtFn = isLaos ? formatLak : formatCurrency;
+
   const months = [];
   const [y, m] = currentDashMonth.split("-").map(Number);
   for (let i = 5; i >= 0; i--) {
@@ -2716,8 +2754,8 @@ function renderTrendChart(opts) {
     while (mm <= 0) { mm += 12; yy -= 1; }
     months.push(yy + "-" + String(mm).padStart(2, "0"));
   }
-  const incomeData = months.map(mk => calcMonthSummary(mk, opts).income);
-  const expenseData = months.map(mk => calcMonthSummary(mk, opts).expense);
+  const incomeData = months.map(mk => calcFn(mk, opts).income);
+  const expenseData = months.map(mk => calcFn(mk, opts).expense);
   const labels = months.map(mk => {
     const [, mo] = mk.split("-");
     return currentLang === "vi" ? "Th" + mo : "M" + mo;
@@ -2739,7 +2777,7 @@ function renderTrendChart(opts) {
       plugins: { legend: { position: "bottom", labels: { boxWidth: 10, font: { size: 10 } } } },
       scales: {
         x: { grid: { display: false }, ticks: { font: { size: 10 } } },
-        y: { grid: { color: "#eee" }, ticks: { font: { size: 10 }, callback: v => formatCurrency(v) } }
+        y: { grid: { color: "#eee" }, ticks: { font: { size: 10 }, callback: v => fmtFn(v) } }
       }
     }
   });
@@ -2748,6 +2786,14 @@ function renderTrendChart(opts) {
 function renderMemberSpending() {
   const spendingByUser = {};
   const incomeByUser = {};
+  const isLaos = currentDashCompany === "laos";
+  const rate = cachedRates.LAK || 21000;
+  const vndRate = cachedRates.VND || 25000;
+  const toDisplay = (tx) => {
+    if (!isLaos) return tx.amount;
+    const cur = tx.currency || "USD";
+    return cur === "LAK" ? tx.amount : cur === "VND" ? (tx.amount / vndRate) * rate : tx.amount * rate;
+  };
 
   STORE.transactions
     .filter(tx => {
@@ -2756,10 +2802,11 @@ function renderMemberSpending() {
       return true;
     })
     .forEach(tx => {
+      const amt = toDisplay(tx);
       if (tx.type === "expense") {
-        spendingByUser[tx.userId] = (spendingByUser[tx.userId] || 0) + tx.amount;
+        spendingByUser[tx.userId] = (spendingByUser[tx.userId] || 0) + amt;
       } else {
-        incomeByUser[tx.userId] = (incomeByUser[tx.userId] || 0) + tx.amount;
+        incomeByUser[tx.userId] = (incomeByUser[tx.userId] || 0) + amt;
       }
     });
 
@@ -2767,6 +2814,7 @@ function renderMemberSpending() {
   if (currentDashCompany !== "all") {
     activeUsers = activeUsers.filter(u => (u.branch || "cambodia") === currentDashCompany);
   }
+  const fmtMember = isLaos ? formatLak : formatCurrency;
   const sorted = activeUsers.slice().sort((a, b) => (spendingByUser[b.id] || 0) - (spendingByUser[a.id] || 0));
   document.getElementById("memberSpendingList").innerHTML = sorted.map(u => `
     <div class="member-row" style="cursor:pointer;" onclick="openMemberTxDetail('${u.id}')">
@@ -2776,8 +2824,8 @@ function renderMemberSpending() {
         <div class="role-tag">${roleLabel(u.role)}</div>
       </div>
       <div style="text-align:right;">
-        <div class="member-amt">${formatDashboardCurrency(spendingByUser[u.id] || 0)}</div>
-        ${incomeByUser[u.id] ? `<div style="font-size:11px; color:var(--good)">+${formatDashboardCurrency(incomeByUser[u.id])}</div>` : ""}
+        <div class="member-amt">${fmtMember(spendingByUser[u.id] || 0)}</div>
+        ${incomeByUser[u.id] ? `<div style="font-size:11px; color:var(--good)">+${fmtMember(incomeByUser[u.id])}</div>` : ""}
       </div>
     </div>
   `).join("");
