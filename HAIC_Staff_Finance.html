@@ -115,6 +115,10 @@ main{padding:16px; max-width:880px; margin:0 auto;}
 }
 .hero-card .month{font-size:12px; color:var(--gold-soft); text-transform:uppercase; letter-spacing:.08em; font-weight:700;}
 .hero-card .balance{font-family:'Source Serif 4',serif; font-size:30px; font-weight:700; margin:6px 0 14px; position:relative; z-index:1;}
+/* Số Kip có rất nhiều chữ số (VD 10,500,000) — thu nhỏ cỡ chữ khi hiện Kip
+   (chi nhánh Lào) để vẫn thấy trọn số trong khung Dashboard, không bị tràn. */
+.hero-card.compact-numbers .balance{font-size:20px;}
+.hero-card.compact-numbers .hero-stat .val{font-size:13px;}
 .hero-row{display:flex; gap:18px; position:relative; z-index:1;}
 .hero-stat{flex:1;}
 .hero-stat .lbl{font-size:11px; color:rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:.06em;}
@@ -2031,6 +2035,31 @@ function formatCurrency(amount) {
   return "$" + amount.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+// ── Dashboard: hiện Kip cho chi nhánh Lào ──────────────────────────────────
+// Tổng quan Dashboard tính bằng amountUSD (baseline chung để cộng được các
+// giao dịch khác loại tiền). Khi đang xem chi nhánh Lào, đổi ĐÚNG số tiền
+// sang Kip bằng tỷ giá thật (dùng lại cơ chế lấy tỷ giá đã có sẵn trong
+// app cho giao dịch/tạm ứng) — KHÔNG chỉ đổi ký hiệu $ -> K mà giữ nguyên
+// số cũ (sẽ sai lệch rất lớn, VD $500 mà hiện "K 500" là sai gấp ~20.000 lần).
+async function ensureLakRateForDashboard() {
+  if (cachedRates.LAK) return cachedRates.LAK;
+  try {
+    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+    const data = await res.json();
+    if (data.rates && data.rates.LAK) cachedRates.LAK = data.rates.LAK;
+  } catch (e) { /* im lặng, dùng tỷ giá dự phòng bên dưới */ }
+  return cachedRates.LAK;
+}
+
+function formatDashboardCurrency(usdAmount) {
+  if (currentDashCompany === "laos") {
+    const rate = cachedRates.LAK || 21000; // tỷ giá dự phòng, dùng tạm khi chưa lấy được tỷ giá thật
+    const lakAmount = (parseFloat(usdAmount) || 0) * rate;
+    return "K " + Math.round(lakAmount).toLocaleString("en-US");
+  }
+  return formatCurrency(usdAmount);
+}
+
 // Chỉ dùng riêng cho Kế hoạch thu chi (số liệu dự kiến/nhập tay) — hệ
 // giao dịch/tạm ứng thật của app vẫn quy đổi 1 loại tiền (USD) như cũ,
 // KHÔNG đổi ở đây để tránh ảnh hưởng toàn bộ phần tính toán hiện có.
@@ -2570,12 +2599,23 @@ function renderDashboard() {
     ? (currentLang === "vi" ? "Tất cả chi nhánh" : "All Companies")
     : branchLabel(currentDashCompany);
   document.getElementById("heroMonth").textContent = formatMonthLabel(currentDashMonth) + " — " + companyLabel;
-  document.getElementById("heroBalance").textContent = formatCurrency(summary.balance);
-  document.getElementById("heroIncome").textContent = "+" + formatCurrency(summary.income);
-  document.getElementById("heroExpense").textContent = "-" + formatCurrency(summary.expense);
-  document.getElementById("heroSaving").textContent = formatCurrency(summary.balance);
+  document.getElementById("heroBalance").textContent = formatDashboardCurrency(summary.balance);
+  document.getElementById("heroIncome").textContent = "+" + formatDashboardCurrency(summary.income);
+  document.getElementById("heroExpense").textContent = "-" + formatDashboardCurrency(summary.expense);
+  document.getElementById("heroSaving").textContent = formatDashboardCurrency(summary.balance);
 
   document.getElementById("dashSub").textContent = t("welcomeBack") + ", " + currentUser.name;
+
+  // Cỡ chữ số liệu tổng quan — thu nhỏ khi hiện Kip (số Kip rất nhiều chữ
+  // số, VD 10,500,000 — cần thu nhỏ mới thấy hết trong khung Dashboard).
+  document.querySelector(".hero-card")?.classList.toggle("compact-numbers", currentDashCompany === "laos");
+
+  // Nếu đang xem chi nhánh Lào mà chưa có tỷ giá trong bộ nhớ đệm, lấy tỷ
+  // giá thật rồi vẽ lại — không chặn hiển thị ban đầu (dùng tỷ giá dự
+  // phòng trước, cập nhật số chính xác ngay khi có).
+  if (currentDashCompany === "laos" && !cachedRates.LAK) {
+    ensureLakRateForDashboard().then(rate => { if (rate) renderDashboard(); });
+  }
 
   // Pending banner
   const pendingBanner = document.getElementById("pendingBanner");
@@ -2592,7 +2632,7 @@ function renderDashboard() {
     const totalPending = allPending.reduce((s, a) => s + a.amount, 0);
     document.getElementById("pendingBannerTitle").textContent = t("pendingApprovalTitle");
     document.getElementById("pendingBannerSub").textContent = allPending.length + " " + t("pendingApprovalSub");
-    document.getElementById("pendingBannerAmt").textContent = formatCurrency(totalPending);
+    document.getElementById("pendingBannerAmt").textContent = formatDashboardCurrency(totalPending);
     pendingBanner.onclick = () => goPage("approvals");
   } else {
     pendingBanner.classList.add("hidden");
@@ -2736,8 +2776,8 @@ function renderMemberSpending() {
         <div class="role-tag">${roleLabel(u.role)}</div>
       </div>
       <div style="text-align:right;">
-        <div class="member-amt">${formatCurrency(spendingByUser[u.id] || 0)}</div>
-        ${incomeByUser[u.id] ? `<div style="font-size:11px; color:var(--good)">+${formatCurrency(incomeByUser[u.id])}</div>` : ""}
+        <div class="member-amt">${formatDashboardCurrency(spendingByUser[u.id] || 0)}</div>
+        ${incomeByUser[u.id] ? `<div style="font-size:11px; color:var(--good)">+${formatDashboardCurrency(incomeByUser[u.id])}</div>` : ""}
       </div>
     </div>
   `).join("");
@@ -4552,11 +4592,17 @@ function renderCashPlanPage() {
 
   if (!memberOwnOnly) {
     const filterSelect = document.getElementById("cashPlanEmployeeFilter");
-    const scopedEmployeeIds = Array.from(new Set(allItems.map(it => it.employeeId)));
-    const scopedEmployees = scopedEmployeeIds
-      .map(id => getUserById(id))
-      .filter(Boolean)
-      .sort((a, b) => a.name.localeCompare(b.name));
+    // SỬA: trước đây chỉ liệt kê nhân viên ĐÃ CÓ sẵn khoản thu/chi (nên
+    // Dững, Tâm... không có khoản nào thì biến mất khỏi ô lọc, không chọn
+    // được). Giờ liệt kê TẤT CẢ nhân viên đang hoạt động trong phạm vi —
+    // chọn ai chưa có gì thì hiện "chưa có kế hoạch nào" thay vì ẩn luôn.
+    let scopedActiveUsers = STORE.users.filter(u => u.active !== false);
+    if (currentUser.role === "branch_manager") {
+      scopedActiveUsers = scopedActiveUsers.filter(
+        u => u.role !== "admin" && u.role !== "superadmin" && u.branch === currentUser.branch
+      );
+    }
+    const scopedEmployees = scopedActiveUsers.sort((a, b) => a.name.localeCompare(b.name));
 
     const prevSelection = cashPlanFilterEmployeeId;
     filterSelect.innerHTML = `<option value="">${t("lblCashPlanAllEmployees")}</option>` +
