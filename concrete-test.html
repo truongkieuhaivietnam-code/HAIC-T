@@ -1725,15 +1725,10 @@ function exportWitnessMinutePDF(){
   doc.text(`- ${bi('Độ sụt','Slump')}: ${d.slump||'___'} cm`, ML+2+usW/2, y);
   y+=7;
 
-  // ── KẾT QUẢ THỬ MẪU — 2 bảng độc lập đặt song song, đúng mẫu gốc ──
+  // ── KẾT QUẢ THỬ MẪU — 2 bảng độc lập đặt song song, tối đa 8 TỔ MẪU/trang ──
   B(9.5); doc.text(bi('Kết quả thử mẫu','Test result'), ML+2, y); y+=3;
 
-  // Chia theo TỪNG TỔ MẪU trọn vẹn (không cắt ngang 1 tổ giữa 2 cột) — nửa
-  // đầu số tổ sang bảng trái, nửa sau sang bảng phải.
   const allGroups = d.groups||[];
-  const midIdx = Math.ceil(allGroups.length/2);
-  const leftGroups = allGroups.slice(0, midIdx);
-  const rightGroups = allGroups.slice(midIdx);
 
   // QUAN TRỌNG: chia sẵn chữ tiếng Việt thành nhiều dòng ngắn tại ranh giới
   // TỪ AN TOÀN — không để autoTable tự ngắt dòng trong cột hẹp (cách ngắt
@@ -1745,36 +1740,6 @@ function exportWitnessMinutePDF(){
   const hAvg = isEN ? 'Average\n(MPa)' : 'Trung\nbình\nAverage\n(MPa)';
   const tableHead = [[hSTT, hSym, hLoad, hStr, hAvg]];
 
-  // Dùng đúng cách đã chạy ổn định ở hàm "Biên Bản TN": style áp qua
-  // headStyles/styles CẤP BẢNG (top-level) — không nhúng style vào từng ô,
-  // vì cách đó không ăn đúng font/căn lề trong bản autoTable đang dùng.
-  let sttCounter = 0;
-  function buildRows(groupsSubset){
-    const rows = [];
-    groupsSubset.forEach(g => {
-      const specs = g.specimens || [];
-      const n = specs.length || 1;
-      specs.forEach((s, si) => {
-        sttCounter++;
-        const row = [String(sttCounter), `S${si+1}`, s.load||'', s.strength||''];
-        // Gộp ô Trung bình theo đúng số mẫu của tổ (không cố định 3) — chỉ
-        // đưa ô này vào dòng ĐẦU TIÊN của tổ kèm rowSpan, các dòng sau của
-        // cùng tổ không thêm ô này (autoTable tự đẩy vị trí cho đúng).
-        if(si === 0){
-          row.push({content: g.avg||'', rowSpan: n, styles:{fontStyle:'bold'}});
-        }
-        rows.push(row);
-      });
-    });
-    return rows;
-  }
-  const leftBody = buildRows(leftGroups);
-  const rightBody = buildRows(rightGroups);
-  // Đệm thêm dòng trống cho đủ tối thiểu 6 dòng mỗi bên, giữ đúng hình thức
-  // khung như mẫu giấy gốc kể cả khi ít mẫu.
-  while(leftBody.length < 6) leftBody.push(['','','','','']);
-  while(rightBody.length < 6) rightBody.push(['','','','','']);
-
   const tableStyles = {
     font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle',
     lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.4,
@@ -1784,20 +1749,76 @@ function exportWitnessMinutePDF(){
     lineColor:[0,0,0], lineWidth:0.25,
   };
 
-  const gap = 3, halfW = (usW-gap)/2;
-  doc.autoTable({
-    head: tableHead, body: leftBody, startY:y, margin:{left:ML}, tableWidth:halfW, theme:'grid',
-    styles: tableStyles, headStyles: tableHeadStyles,
-  });
-  const leftFinalY = doc.lastAutoTable.finalY;
-  doc.autoTable({
-    head: tableHead, body: rightBody, startY:y, margin:{left:ML+halfW+gap}, tableWidth:halfW, theme:'grid',
-    styles: tableStyles, headStyles: tableHeadStyles,
-  });
-  const rightFinalY = doc.lastAutoTable.finalY;
-  y = Math.max(leftFinalY, rightFinalY) + 8;
+  // Dùng đúng cách đã chạy ổn định ở hàm "Biên Bản TN": style áp qua
+  // headStyles/styles CẤP BẢNG (top-level) — không nhúng style vào từng ô.
+  // STT và Trung bình đều GỘP theo từng TỔ MẪU (không phải theo từng mẫu):
+  // 1 tổ = 1 số thứ tự duy nhất, gộp xuyên suốt các dòng của tổ đó.
+  let groupCounter = 0;
+  function buildRows(groupsSubset){
+    const rows = [];
+    groupsSubset.forEach(g => {
+      groupCounter++;
+      const specs = g.specimens || [];
+      const n = specs.length || 1;
+      specs.forEach((s, si) => {
+        const row = [];
+        if(si === 0){
+          row.push({content: String(groupCounter), rowSpan: n, styles:{fontStyle:'bold'}});
+        }
+        row.push(`S${si+1}`, s.load||'', s.strength||'');
+        if(si === 0){
+          row.push({content: g.avg||'', rowSpan: n, styles:{fontStyle:'bold'}});
+        }
+        rows.push(row);
+      });
+    });
+    return rows;
+  }
 
-  // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng ──────────────────────
+  // Tối đa 8 tổ mẫu/trang (4 tổ mỗi bảng trái/phải) — nhiều hơn thì tự
+  // tách sang trang PDF mới, đánh số tổ tiếp nối liên tục (9, 10, 11...).
+  const GROUPS_PER_PAGE = 8;
+  const pages = [];
+  for(let i=0; i<allGroups.length; i+=GROUPS_PER_PAGE){
+    pages.push(allGroups.slice(i, i+GROUPS_PER_PAGE));
+  }
+  if(pages.length === 0) pages.push([]);
+
+  const gap = 3, halfW = (usW-gap)/2;
+  pages.forEach((pageGroups, pageIdx) => {
+    if(pageIdx > 0){
+      doc.addPage();
+      doc.setDrawColor(150,150,150); doc.setLineWidth(0.5);
+      doc.rect(4,4,pageW-8,pageH-8,'S');
+      y = 14;
+      B(9.5); BLACK();
+      doc.text(bi('Kết quả thử mẫu (tiếp theo)','Test result (continued)'), ML+2, y);
+      y += 4;
+    }
+    const midIdx = Math.ceil(pageGroups.length/2);
+    const leftGroups = pageGroups.slice(0, midIdx);
+    const rightGroups = pageGroups.slice(midIdx);
+    const leftBody = buildRows(leftGroups);
+    const rightBody = buildRows(rightGroups);
+    // Đệm dòng trống cho đủ tối thiểu 6 dòng mỗi bên, giữ đúng hình thức
+    // khung như mẫu giấy gốc kể cả khi ít mẫu.
+    while(leftBody.length < 6) leftBody.push(['','','','','']);
+    while(rightBody.length < 6) rightBody.push(['','','','','']);
+
+    doc.autoTable({
+      head: tableHead, body: leftBody, startY:y, margin:{left:ML}, tableWidth:halfW, theme:'grid',
+      styles: tableStyles, headStyles: tableHeadStyles,
+    });
+    const leftFinalY = doc.lastAutoTable.finalY;
+    doc.autoTable({
+      head: tableHead, body: rightBody, startY:y, margin:{left:ML+halfW+gap}, tableWidth:halfW, theme:'grid',
+      styles: tableStyles, headStyles: tableHeadStyles,
+    });
+    const rightFinalY = doc.lastAutoTable.finalY;
+    y = Math.max(leftFinalY, rightFinalY) + 8;
+  });
+
+  // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng (luôn ở trang cuối) ────
   N(8.5); BLACK();
   doc.text(bi('Thành phần các bên tham gia xác nhận','Parties confirmation') + ' (' + bi('Họ và tên','Full Name') + ' - ' + bi('Xác nhận','Confirmation') + ')', pageW/2, y, {align:'center', maxWidth:usW});
   y += 10;
