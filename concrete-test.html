@@ -228,6 +228,37 @@
       <div class="field"><label>Cường độ yêu cầu / Required strength</label><input id="fReqStrength" type="text" placeholder="vd: C30 - R28"></div>
       <div class="field"><label>Thiết bị TN / Equipment</label><input id="fEquipment" type="text" placeholder="vd: TYA - 2000kN"></div>
     </div>
+    <div class="grid3">
+      <div class="field">
+        <label>PP thử / Testing method</label>
+        <select id="fTestMethod">
+          <option value="AASHTO T22">AASHTO T22</option>
+          <option value="TCVN 3118-22">TCVN 3118 - 22</option>
+          <option value="ASTM C39-03">ASTM C39 - 03</option>
+          <option value="BS 1881">BS 1881</option>
+          <option value="BS EN 12390-3:2009(E)">BS EN 12390-3 : 2009 (E)</option>
+          <option value="other">Khác / Other...</option>
+        </select>
+      </div>
+      <div class="field"><label>Ghi rõ nếu chọn "Khác" / If "Other"</label><input id="fTestMethodOther" type="text"></div>
+      <div class="field">
+        <label>Điều kiện thử mẫu / Test condition</label>
+        <select id="fTestCondition">
+          <option value="Dry naturally">Khô tự nhiên / Dry naturally</option>
+          <option value="Water saturated sample">Bão hòa nước / Water saturated sample</option>
+        </select>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Cấu kiện bê tông / Concrete structure</label><input id="fConcreteStructure" type="text" placeholder="vd: Cột C1 tầng 3"></div>
+      <div class="field">
+        <label>Tiết diện mẫu / Specimen shape</label>
+        <select id="fSpecimenShape">
+          <option value="cube">Cube (22500mm²)</option>
+          <option value="cylinder">Cylinder (17671.46mm²)</option>
+        </select>
+      </div>
+    </div>
     <div class="grid2">
       <div class="field"><label>Giám sát / Supervisor (tại hiện trường)</label><input id="fFieldSupervisor" type="text" placeholder="Eng. ..."></div>
       <div class="field"><label>Người kiểm tra QC / QC Manager</label><input id="fQC" type="text" placeholder="Eng. Trần Văn Quyết"></div>
@@ -300,6 +331,7 @@
     <option value="en">🇬🇧 English only</option>
   </select>
   <button onclick="exportMinutePDF()" style="background:#6c3483;">📋 Biên Bản TN</button>
+  <button onclick="exportWitnessMinutePDF()" style="background:#8e44ad;">📋 Biên Bản Chứng Kiến (F-73.1)</button>
   <button class="accent" onclick="exportExcel()">📊 Excel</button>
 </div>
 
@@ -794,6 +826,9 @@ function collectFormData(){
     supplier: gv('fSupplier'), item: gv('fItem'),
     slump: gv('fSlump'), reqStrength: gv('fReqStrength'),
     equipment: gv('fEquipment'), fieldSupervisor: gv('fFieldSupervisor'),
+    testMethod: gv('fTestMethod'), testMethodOther: gv('fTestMethodOther'),
+    testCondition: gv('fTestCondition'),
+    concreteStructure: gv('fConcreteStructure'), specimenShape: gv('fSpecimenShape'),
     qc: gv('fQC'), remarks: gv('fRemarks'),
     labTech: gv('fLabTech'), checkedBy: gv('fCheckedBy'),
     director: gv('fDirector'), reportDate: gv('fReportDate'), reportCity: gv('fReportCity')||'Phnom Penh',
@@ -810,6 +845,9 @@ function applyFormData(d){
   sv('fSupplier', d.supplier); sv('fItem', d.item);
   sv('fSlump', d.slump); sv('fReqStrength', d.reqStrength);
   sv('fEquipment', d.equipment); sv('fFieldSupervisor', d.fieldSupervisor);
+  sv('fTestMethod', d.testMethod || 'AASHTO T22'); sv('fTestMethodOther', d.testMethodOther);
+  sv('fTestCondition', d.testCondition || 'Dry naturally');
+  sv('fConcreteStructure', d.concreteStructure); sv('fSpecimenShape', d.specimenShape || 'cube');
   sv('fQC', d.qc); sv('fRemarks', d.remarks);
   sv('fLabTech', d.labTech); sv('fCheckedBy', d.checkedBy);
   sv('fDirector', d.director); sv('fDirectorDisplay', d.director); sv('fReportDate', d.reportDate); sv('fReportCity', d.reportCity||'Phnom Penh');
@@ -1548,6 +1586,229 @@ function exportMinutePDF(){
 
   const fname='TestingMinute_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
     +'_'+(isAstm?'ASTM':'TCVN')+'_'+(isEN?'EN':'BI')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
+  doc.save(fname);
+}
+
+// ============================================================================
+// BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM — khớp đúng mẫu F-73.1.HAIC-LAB-15MAT anh
+// gửi (biên bản giấy dùng để các bên ký chứng kiến ngay tại hiện trường).
+// KHÁC với "Biên Bản TN" ở trên (mẫu khác, dùng nội bộ) — đây là mẫu riêng
+// theo đúng form chuẩn công ty, giữ nguyên câu chữ/bố cục gốc.
+// ============================================================================
+function exportWitnessMinutePDF(){
+  const d = collectFormData();
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
+  registerFonts(doc);
+
+  const pageW=210, pageH=297, ML=8, MR=8, usW=pageW-ML-MR;
+  const blue=[26,82,118], purple=[108,52,131];
+  const formCode = 'F-73.1.HAIC-LAB-15MAT';
+
+  const B=(sz)=>{ doc.setFont('Roboto','bold');   doc.setFontSize(sz); };
+  const N=(sz)=>{ doc.setFont('Roboto','normal'); doc.setFontSize(sz); };
+  const I=(sz)=>{ doc.setFont('Roboto','italic'); doc.setFontSize(sz); };
+  const BLUE  =()=> doc.setTextColor(...blue);
+  const PURPLE=()=> doc.setTextColor(...purple);
+  const BLACK =()=> doc.setTextColor(0,0,0);
+  const GRAY  =()=> doc.setTextColor(60,60,60);
+  function fmtDate(iso){
+    if(!iso) return '____/____/______';
+    const [y,m,d2]=iso.split('-'); return `${d2}/${m}/${y}`;
+  }
+
+  // ── OUTER BORDER (nhạt, không đậm) ────────────────────────
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.5);
+  doc.roundedRect(4,4,pageW-8,pageH-8,2,2,'S');
+
+  // ── HEADER ───────────────────────────────────────────────
+  const HY=5, HH=27;
+  doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
+  doc.rect(ML,HY,46,HH,'S');
+  doc.addImage(HAIC_LOGO_B64,'PNG',ML+1,HY+1,44,HH-2);
+
+  const RW=32, RX=pageW-MR-RW;
+  doc.rect(RX,HY,RW,HH,'S');
+  doc.addImage(VICAS_LOGO_B64,'PNG',RX+1,HY+1,   RW-2,13);
+  doc.addImage(ISO_LOGO_B64,  'PNG',RX+1,HY+14.5,RW-2,12);
+
+  const TX=ML+48, TW=RX-ML-50;
+  BLUE(); B(11.5);
+  doc.text('BIÊN BẢN THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG', TX+TW/2, HY+9, {align:'center', maxWidth:TW});
+  I(9); BLUE();
+  doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+16, {align:'center'});
+  B(9); PURPLE();
+  doc.text('BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM / WITNESS TESTING MINUTE', TX+TW/2, HY+23, {align:'center', maxWidth:TW});
+  BLACK();
+
+  doc.setDrawColor(0,0,0); doc.setLineWidth(0.6);
+  doc.line(ML,HY+HH+1,pageW-MR,HY+HH+1);
+
+  let y = HY+HH+5;
+  const rDate = d.reportDate ? fmtDate(d.reportDate)
+    : new Date().toLocaleDateString('vi-VN',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const city = d.reportCity||'Phnom Penh';
+  I(9); GRAY(); doc.text(`${city}, ${rDate}`, pageW-MR, y, {align:'right'}); BLACK();
+  y += 6;
+
+  // ── Danh sách gạch đầu dòng — giữ đúng câu chữ gốc trong mẫu ──
+  const bullet = (label, value, cy) => {
+    N(8.5); doc.text('- ', ML+2, cy);
+    B(8.5); doc.text(label, ML+6, cy);
+    N(8.5); doc.text(': '+(value||''), ML+6+doc.getTextWidth(label), cy);
+  };
+
+  bullet('Công trình / Project', d.project, y); y+=5;
+  bullet('Địa điểm XD / Construction Location', d.location, y); y+=5;
+  bullet('Tư Vấn GS (Consultant)', d.supervisor, y); y+=5;
+  bullet('ĐV Thi công (Contractor)', d.contractor, y); y+=5;
+  bullet('ĐV cung cấp BT (Supplier\'s samples)', (d.supplier||'') + ' — CONCRETE FACTORY', y); y+=5;
+  bullet('ĐV Thí nghiệm (Lab)', 'HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', y); y+=5.5;
+
+  // PP thử — hiện đúng lựa chọn đã chọn trong form, đậm để nổi bật (thay
+  // cho việc khoanh tay trên giấy)
+  const methodLabel = d.testMethod === 'other'
+    ? (d.testMethodOther || '(chưa ghi rõ)')
+    : (d.testMethod || 'AASHTO T22');
+  N(8.5); doc.text('- PP thử theo yêu cầu (Requested testing method): ', ML+2, y);
+  B(8.5); PURPLE(); doc.text(methodLabel, ML+2+doc.getTextWidth('- PP thử theo yêu cầu (Requested testing method): '), y);
+  BLACK(); y+=5.5;
+
+  N(7.5); GRAY();
+  doc.text('(Các phương pháp khác: TCVN 3118-22 · ASTM C39-03 · BS 1881 · BS EN 12390-3:2009(E))', ML+6, y);
+  BLACK(); y+=6;
+
+  const condLabel = d.testCondition === 'Water saturated sample'
+    ? 'Bão hòa nước / Water saturated sample' : 'Khô tự nhiên / Dry naturally';
+  N(8.5); doc.text('- Điều kiện thử mẫu (Test conditions): ', ML+2, y);
+  B(8.5); PURPLE(); doc.text(condLabel, ML+2+doc.getTextWidth('- Điều kiện thử mẫu (Test conditions): '), y);
+  BLACK(); y+=5.5;
+
+  bullet('Thiết bị thử nén (Compression machine)', d.equipment, y); y+=7;
+
+  // ── Thông tin mẫu thử ─────────────────────────────────────
+  B(9); doc.text('Thông tin mẫu thử (Sample information)', ML+2, y); y+=5.5;
+
+  bullet('Hạng mục / Item', d.item, y); y+=5;
+  bullet('Cấu kiện bê tông (Concrete Structure)', d.concreteStructure, y); y+=5.5;
+
+  const shapeLabel = d.specimenShape === 'cylinder'
+    ? 'Cylinder: 17671.46mm²' : 'Cube: 22500mm²';
+  N(8.5); doc.text('- Tiết diện (Specimen Cross-sectional area): ', ML+2, y);
+  B(8.5); PURPLE(); doc.text(shapeLabel, ML+2+doc.getTextWidth('- Tiết diện (Specimen Cross-sectional area): '), y);
+  BLACK(); y+=6;
+
+  // Lấy đại diện từ tổ mẫu đầu tiên cho các mục ngày đúc/ngày thử/kích
+  // thước/tuổi mẫu — mẫu giấy gốc chỉ có 1 dòng cho cả biên bản.
+  const g0 = (d.groups && d.groups[0]) || {};
+  const dimText = g0.specimens && g0.specimens[0]
+    ? [g0.specimens[0].d1, g0.specimens[0].d2, g0.specimens[0].d3].filter(Boolean).join(' x ')
+    : '';
+
+  N(8.5);
+  doc.text(`- Ngày đúc mẫu (Casting date): ${fmtDate(g0.dateCast)}`, ML+2, y);
+  doc.text(`- Ngày thử mẫu (Testing date): ${fmtDate(g0.dateTest)}`, ML+2+usW/2, y);
+  y+=5.5;
+  doc.text(`- Kích thước mẫu (Dimension): ${dimText||'______'} (cm)`, ML+2, y);
+  doc.text(`- Tuổi mẫu / Age at test: ${g0.age||'___'} ngày`, ML+2+usW/2, y);
+  y+=5.5;
+  doc.text(`- Cường độ yêu cầu / Request strength: ${d.reqStrength||'___'} Mpa`, ML+2, y);
+  doc.text(`- Độ sụt / Slump: ${d.slump||'___'} cm`, ML+2+usW/2, y);
+  y+=7;
+
+  // ── KẾT QUẢ THỬ MẪU — bảng 2 cột song song (10 cột), đúng mẫu gốc ──
+  B(9.5); doc.text('Kết quả thử mẫu / Test result', ML+2, y); y+=3;
+
+  // Gộp toàn bộ mẫu từ mọi tổ thành 1 danh sách phẳng, đánh số thứ tự
+  // liên tục — khớp đúng cách trình bày của mẫu giấy gốc (không có cột
+  // ngày/kích thước trong bảng này, chỉ Stt/Ký hiệu/Lực/Cường độ/TB).
+  const flatSpecimens = [];
+  (d.groups||[]).forEach(g => {
+    (g.specimens||[]).forEach((s, si) => {
+      flatSpecimens.push({
+        symbol: `S${flatSpecimens.length+1}`,
+        load: s.load||'',
+        strength: s.strength||'',
+        avg: si === 0 ? (g.avg||'') : '', // TB chỉ hiện 1 lần đầu mỗi tổ, để trống các dòng sau — tránh lặp gây rối mắt
+        avgFull: g.avg||'',
+      });
+    });
+  });
+
+  const headStyle = {font:'Roboto', fontStyle:'normal', fontSize:7.5, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25};
+  const head = [[
+    {content:'STT\nNo', ...headStyle},
+    {content:'Ký hiệu mẫu\nSpecimen Symbol', ...headStyle},
+    {content:'Lực phá hủy\nMax load\n(KN)', ...headStyle},
+    {content:'Cường độ chịu nén\nCompressive strength\n(MPa)', ...headStyle},
+    {content:'Trung bình\nAverage\n(MPa)', ...headStyle},
+    {content:'STT\nNo', ...headStyle},
+    {content:'Ký hiệu mẫu\nSpecimen Symbol', ...headStyle},
+    {content:'Lực phá hủy\nMax load\n(KN)', ...headStyle},
+    {content:'Cường độ chịu nén\nCompressive strength\n(MPa)', ...headStyle},
+    {content:'Trung bình\nAverage\n(MPa)', ...headStyle},
+  ]];
+
+  // Chia thành 2 cột song song, mỗi cột tối đa 6 dòng/trang giống mẫu gốc —
+  // nếu nhiều hơn 12 mẫu, tự nối thêm cặp dòng, autoTable tự sang trang.
+  const rows = 6;
+  const body = [];
+  for(let i=0;i<Math.max(rows, Math.ceil(flatSpecimens.length/2)); i++){
+    const left = flatSpecimens[i];
+    const right = flatSpecimens[i+Math.max(rows, Math.ceil(flatSpecimens.length/2))];
+    const cellStyle = {font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle'};
+    body.push([
+      {content: left ? String(i+1) : '', ...cellStyle},
+      {content: left ? left.symbol : '', ...cellStyle},
+      {content: left ? left.load : '', ...cellStyle},
+      {content: left ? left.strength : '', ...cellStyle},
+      {content: left ? left.avg : '', ...cellStyle, fontStyle:'bold'},
+      {content: right ? String(i+1+Math.max(rows, Math.ceil(flatSpecimens.length/2))) : '', ...cellStyle},
+      {content: right ? right.symbol : '', ...cellStyle},
+      {content: right ? right.load : '', ...cellStyle},
+      {content: right ? right.strength : '', ...cellStyle},
+      {content: right ? right.avg : '', ...cellStyle, fontStyle:'bold'},
+    ]);
+  }
+
+  doc.autoTable({
+    head, body, startY:y, margin:{left:ML,right:MR}, tableWidth:usW, theme:'grid',
+    styles:{lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.8},
+  });
+  y = doc.lastAutoTable.finalY + 8;
+
+  // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng (viền nhạt) ──────────
+  N(8.5); BLACK();
+  doc.text('Thành phần các bên tham gia xác nhận / (Họ và tên/ Full Name - Xác nhận/ Confirmation)', pageW/2, y, {align:'center', maxWidth:usW});
+  y += 10;
+
+  const NSIG = 5;
+  const colW = usW/NSIG;
+  const sx = Array.from({length:NSIG}, (_,i) => ML + colW*(i+0.5));
+  const sigLabels = [
+    ['Chủ Đầu Tư', 'Investor', d.witnessClient],
+    ['ĐV Tư Vấn GS', 'Consultant', d.witnessConsultant],
+    ['ĐV thi công', 'Contractor', d.witnessContractor],
+    ['ĐV cung cấp mẫu', 'Supplier', d.witnessSupplier],
+    ['Thí nghiệm viên', 'HAIC LAB', d.labTech],
+  ];
+  B(8.5); PURPLE();
+  sigLabels.forEach(([vi], i) => doc.text(vi, sx[i], y, {align:'center'}));
+  y += 4;
+  I(8); PURPLE();
+  sigLabels.forEach(([,en], i) => doc.text(en, sx[i], y, {align:'center'}));
+  y += 18; // khoảng trống ký tay
+  I(8.5); BLACK();
+  sigLabels.forEach(([,,val], i) => doc.text(val||'', sx[i], y, {align:'center'}));
+
+  // ── FOOTER: mã biểu mẫu ───────────────────────────────────
+  N(7); doc.setTextColor(100,100,100);
+  doc.text(formCode, pageW-MR-2, pageH-8, {align:'right'});
+  BLACK();
+
+  const fname='BienBanChungKien_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
+    +'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
 
