@@ -1638,15 +1638,12 @@ function exportWitnessMinutePDF(){
   doc.addImage(ISO_LOGO_B64,  'PNG',RX+2,HY+15.5,  RW-4,11);
 
   const TX=ML+48, TW=RX-ML-50;
-  // Bỏ chữ "BIÊN BẢN" ở dòng 1 (đã có ở dòng 3, tránh lặp)
+  // Bỏ chữ "BIÊN BẢN" ở dòng 1 (đã có ở dòng dưới, tránh lặp). Bỏ luôn dòng
+  // nghiêng lặp lại tiếng Anh (dòng 1 đã có sẵn tiếng Anh nhờ bi()).
   BLUE(); B(11.5);
-  doc.text(bi('THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG','COMPRESSIVE STRENGTH OF CONCRETE'), TX+TW/2, HY+9, {align:'center', maxWidth:TW});
-  if(!isEN){
-    I(9); BLUE();
-    doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+16, {align:'center'});
-  }
+  doc.text(bi('THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG','COMPRESSIVE STRENGTH OF CONCRETE'), TX+TW/2, HY+11, {align:'center', maxWidth:TW});
   B(9); PURPLE();
-  doc.text(bi('BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM','WITNESS TESTING MINUTE'), TX+TW/2, HY+(isEN?15:23), {align:'center', maxWidth:TW});
+  doc.text(bi('BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM','WITNESS TESTING MINUTE'), TX+TW/2, HY+19, {align:'center', maxWidth:TW});
   BLACK();
 
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.6);
@@ -1728,59 +1725,77 @@ function exportWitnessMinutePDF(){
   doc.text(`- ${bi('Độ sụt','Slump')}: ${d.slump||'___'} cm`, ML+2+usW/2, y);
   y+=7;
 
-  // ── KẾT QUẢ THỬ MẪU — bảng 2 cột song song (10 cột), đúng mẫu gốc ──
+  // ── KẾT QUẢ THỬ MẪU — 2 bảng độc lập đặt song song, đúng mẫu gốc ──
   B(9.5); doc.text(bi('Kết quả thử mẫu','Test result'), ML+2, y); y+=3;
 
-  const flatSpecimens = [];
-  (d.groups||[]).forEach(g => {
-    (g.specimens||[]).forEach((s, si) => {
-      flatSpecimens.push({
-        symbol: `S${flatSpecimens.length+1}`,
-        load: s.load||'',
-        strength: s.strength||'',
-        avg: si === 0 ? (g.avg||'') : '',
+  // Chia theo TỪNG TỔ MẪU trọn vẹn (không cắt ngang 1 tổ giữa 2 cột) — nửa
+  // đầu số tổ sang bảng trái, nửa sau sang bảng phải.
+  const allGroups = d.groups||[];
+  const midIdx = Math.ceil(allGroups.length/2);
+  const leftGroups = allGroups.slice(0, midIdx);
+  const rightGroups = allGroups.slice(midIdx);
+
+  // QUAN TRỌNG: chia sẵn chữ tiếng Việt thành nhiều dòng ngắn tại ranh giới
+  // TỪ AN TOÀN — không để autoTable tự ngắt dòng trong cột hẹp (cách ngắt
+  // tự động làm vỡ dấu tiếng Việt, VD "mẫu" bị tách thành "m" + "ẫu").
+  const hSTT = bi('STT','No');
+  const hSym = isEN ? 'Specimen\nSymbol' : 'Ký hiệu\nmẫu\nSpecimen\nSymbol';
+  const hLoad = isEN ? 'Max load\n(KN)' : 'Lực phá\nhủy\nMax load\n(KN)';
+  const hStr = isEN ? 'Compressive\nstrength\n(MPa)' : 'Cường độ\nchịu nén\nCompressive\nstrength\n(MPa)';
+  const hAvg = isEN ? 'Average\n(MPa)' : 'Trung\nbình\nAverage\n(MPa)';
+  const tableHead = [[hSTT, hSym, hLoad, hStr, hAvg]];
+
+  // Dùng đúng cách đã chạy ổn định ở hàm "Biên Bản TN": style áp qua
+  // headStyles/styles CẤP BẢNG (top-level) — không nhúng style vào từng ô,
+  // vì cách đó không ăn đúng font/căn lề trong bản autoTable đang dùng.
+  let sttCounter = 0;
+  function buildRows(groupsSubset){
+    const rows = [];
+    groupsSubset.forEach(g => {
+      const specs = g.specimens || [];
+      const n = specs.length || 1;
+      specs.forEach((s, si) => {
+        sttCounter++;
+        const row = [String(sttCounter), `S${si+1}`, s.load||'', s.strength||''];
+        // Gộp ô Trung bình theo đúng số mẫu của tổ (không cố định 3) — chỉ
+        // đưa ô này vào dòng ĐẦU TIÊN của tổ kèm rowSpan, các dòng sau của
+        // cùng tổ không thêm ô này (autoTable tự đẩy vị trí cho đúng).
+        if(si === 0){
+          row.push({content: g.avg||'', rowSpan: n, styles:{fontStyle:'bold'}});
+        }
+        rows.push(row);
       });
     });
-  });
-
-  // QUAN TRỌNG: chia sẵn mỗi cụm chữ tiếng Việt thành nhiều dòng ngắn tại
-  // ranh giới TỪ AN TOÀN (không cắt giữa chữ có dấu) — không để autoTable
-  // tự động ngắt dòng trong cột hẹp, vì cách ngắt tự động đó làm vỡ dấu
-  // tiếng Việt (VD "mẫu" bị tách thành "m" + "ẫu").
-  const headStyle = {font:'Roboto', fontStyle:'normal', fontSize:6.8, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25};
-  const hSTT = {content: bi('STT','No'), ...headStyle};
-  const hSym = {content: isEN ? 'Specimen\nSymbol' : 'Ký hiệu\nmẫu\nSpecimen\nSymbol', ...headStyle};
-  const hLoad = {content: isEN ? 'Max load\n(KN)' : 'Lực phá\nhủy\nMax load\n(KN)', ...headStyle};
-  const hStr = {content: isEN ? 'Compressive\nstrength\n(MPa)' : 'Cường độ\nchịu nén\nCompressive\nstrength\n(MPa)', ...headStyle};
-  const hAvg = {content: isEN ? 'Average\n(MPa)' : 'Trung\nbình\nAverage\n(MPa)', ...headStyle};
-  const head = [[hSTT, hSym, hLoad, hStr, hAvg, hSTT, hSym, hLoad, hStr, hAvg]];
-
-  const rows = 6;
-  const half = Math.max(rows, Math.ceil(flatSpecimens.length/2));
-  const body = [];
-  for(let i=0;i<half; i++){
-    const left = flatSpecimens[i];
-    const right = flatSpecimens[i+half];
-    const cellStyle = {font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle'};
-    body.push([
-      {content: left ? String(i+1) : '', ...cellStyle},
-      {content: left ? left.symbol : '', ...cellStyle},
-      {content: left ? left.load : '', ...cellStyle},
-      {content: left ? left.strength : '', ...cellStyle},
-      {content: left ? left.avg : '', ...cellStyle, fontStyle:'bold'},
-      {content: right ? String(i+1+half) : '', ...cellStyle},
-      {content: right ? right.symbol : '', ...cellStyle},
-      {content: right ? right.load : '', ...cellStyle},
-      {content: right ? right.strength : '', ...cellStyle},
-      {content: right ? right.avg : '', ...cellStyle, fontStyle:'bold'},
-    ]);
+    return rows;
   }
+  const leftBody = buildRows(leftGroups);
+  const rightBody = buildRows(rightGroups);
+  // Đệm thêm dòng trống cho đủ tối thiểu 6 dòng mỗi bên, giữ đúng hình thức
+  // khung như mẫu giấy gốc kể cả khi ít mẫu.
+  while(leftBody.length < 6) leftBody.push(['','','','','']);
+  while(rightBody.length < 6) rightBody.push(['','','','','']);
 
+  const tableStyles = {
+    font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle',
+    lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.4,
+  };
+  const tableHeadStyles = {
+    font:'Roboto', fontStyle:'normal', fontSize:6.8, halign:'center', valign:'middle',
+    lineColor:[0,0,0], lineWidth:0.25,
+  };
+
+  const gap = 3, halfW = (usW-gap)/2;
   doc.autoTable({
-    head, body, startY:y, margin:{left:ML,right:MR}, tableWidth:usW, theme:'grid',
-    styles:{lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.4},
+    head: tableHead, body: leftBody, startY:y, margin:{left:ML}, tableWidth:halfW, theme:'grid',
+    styles: tableStyles, headStyles: tableHeadStyles,
   });
-  y = doc.lastAutoTable.finalY + 8;
+  const leftFinalY = doc.lastAutoTable.finalY;
+  doc.autoTable({
+    head: tableHead, body: rightBody, startY:y, margin:{left:ML+halfW+gap}, tableWidth:halfW, theme:'grid',
+    styles: tableStyles, headStyles: tableHeadStyles,
+  });
+  const rightFinalY = doc.lastAutoTable.finalY;
+  y = Math.max(leftFinalY, rightFinalY) + 8;
 
   // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng ──────────────────────
   N(8.5); BLACK();
