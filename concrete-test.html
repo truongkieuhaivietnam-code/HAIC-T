@@ -1597,6 +1597,10 @@ function exportMinutePDF(){
 // ============================================================================
 function exportWitnessMinutePDF(){
   const d = collectFormData();
+  const langMode = document.getElementById('minuteLangMode')?.value || 'bilingual';
+  const isEN = langMode === 'en';
+  // bi(vi, en): "vi / en" ở chế độ song ngữ, hoặc CHỈ "en" ở chế độ English only
+  const bi = (vi, en) => isEN ? en : `${vi} / ${en}`;
 
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
@@ -1618,28 +1622,31 @@ function exportWitnessMinutePDF(){
     const [y,m,d2]=iso.split('-'); return `${d2}/${m}/${y}`;
   }
 
-  // ── OUTER BORDER (nhạt, không đậm) ────────────────────────
+  // ── OUTER BORDER — góc vuông, không bo tròn ───────────────
   doc.setDrawColor(150,150,150); doc.setLineWidth(0.5);
-  doc.roundedRect(4,4,pageW-8,pageH-8,2,2,'S');
+  doc.rect(4,4,pageW-8,pageH-8,'S');
 
-  // ── HEADER ───────────────────────────────────────────────
-  const HY=5, HH=27;
+  // ── HEADER — bố cục cân đối, dàn đều 3 dòng tiêu đề ───────
+  const HY=5, HH=28;
   doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
   doc.rect(ML,HY,46,HH,'S');
-  doc.addImage(HAIC_LOGO_B64,'PNG',ML+1,HY+1,44,HH-2);
+  doc.addImage(HAIC_LOGO_B64,'PNG',ML+1.5,HY+2,43,HH-4);
 
   const RW=32, RX=pageW-MR-RW;
   doc.rect(RX,HY,RW,HH,'S');
-  doc.addImage(VICAS_LOGO_B64,'PNG',RX+1,HY+1,   RW-2,13);
-  doc.addImage(ISO_LOGO_B64,  'PNG',RX+1,HY+14.5,RW-2,12);
+  doc.addImage(VICAS_LOGO_B64,'PNG',RX+2,HY+2.5,   RW-4,12);
+  doc.addImage(ISO_LOGO_B64,  'PNG',RX+2,HY+15.5,  RW-4,11);
 
   const TX=ML+48, TW=RX-ML-50;
+  // Bỏ chữ "BIÊN BẢN" ở dòng 1 (đã có ở dòng 3, tránh lặp)
   BLUE(); B(11.5);
-  doc.text('BIÊN BẢN THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG', TX+TW/2, HY+9, {align:'center', maxWidth:TW});
-  I(9); BLUE();
-  doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+16, {align:'center'});
+  doc.text(bi('THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA BÊ TÔNG','COMPRESSIVE STRENGTH OF CONCRETE'), TX+TW/2, HY+9, {align:'center', maxWidth:TW});
+  if(!isEN){
+    I(9); BLUE();
+    doc.text('COMPRESSIVE STRENGTH OF CONCRETE', TX+TW/2, HY+16, {align:'center'});
+  }
   B(9); PURPLE();
-  doc.text('BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM / WITNESS TESTING MINUTE', TX+TW/2, HY+23, {align:'center', maxWidth:TW});
+  doc.text(bi('BIÊN BẢN CHỨNG KIẾN THÍ NGHIỆM','WITNESS TESTING MINUTE'), TX+TW/2, HY+(isEN?15:23), {align:'center', maxWidth:TW});
   BLACK();
 
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.6);
@@ -1652,51 +1659,54 @@ function exportWitnessMinutePDF(){
   I(9); GRAY(); doc.text(`${city}, ${rDate}`, pageW-MR, y, {align:'right'}); BLACK();
   y += 6;
 
-  // ── Danh sách gạch đầu dòng — giữ đúng câu chữ gốc trong mẫu ──
+  // ── Danh sách gạch đầu dòng ────────────────────────────────
   const bullet = (label, value, cy) => {
     N(8.5); doc.text('- ', ML+2, cy);
     B(8.5); doc.text(label, ML+6, cy);
     N(8.5); doc.text(': '+(value||''), ML+6+doc.getTextWidth(label), cy);
   };
 
-  bullet('Công trình / Project', d.project, y); y+=5;
-  bullet('Địa điểm XD / Construction Location', d.location, y); y+=5;
-  bullet('Tư Vấn GS (Consultant)', d.supervisor, y); y+=5;
-  bullet('ĐV Thi công (Contractor)', d.contractor, y); y+=5;
-  bullet('ĐV cung cấp BT (Supplier\'s samples)', (d.supplier||'') + ' — CONCRETE FACTORY', y); y+=5;
-  bullet('ĐV Thí nghiệm (Lab)', 'HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', y); y+=5.5;
+  bullet(bi('Công trình','Project'), d.project, y); y+=5;
+  bullet(bi('Địa điểm XD','Construction Location'), d.location, y); y+=5;
+  bullet(bi('Tư Vấn GS','Consultant'), d.supervisor, y); y+=5;
+  bullet(bi('ĐV Thi công','Contractor'), d.contractor, y); y+=5;
+  bullet(bi('ĐV cung cấp BT',"Supplier's samples"), isEN ? `${d.supplier||''} CONCRETE FACTORY` : `Nhà Máy Bê tông ${d.supplier||''} — CONCRETE FACTORY`, y); y+=5;
+  bullet(bi('ĐV Thí nghiệm','Lab'), 'HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', y); y+=5.5;
 
   // PP thử — hiện đúng lựa chọn đã chọn trong form, đậm để nổi bật (thay
   // cho việc khoanh tay trên giấy)
   const methodLabel = d.testMethod === 'other'
-    ? (d.testMethodOther || '(chưa ghi rõ)')
+    ? (d.testMethodOther || (isEN ? '(not specified)' : '(chưa ghi rõ)'))
     : (d.testMethod || 'AASHTO T22');
-  N(8.5); doc.text('- PP thử theo yêu cầu (Requested testing method): ', ML+2, y);
-  B(8.5); PURPLE(); doc.text(methodLabel, ML+2+doc.getTextWidth('- PP thử theo yêu cầu (Requested testing method): '), y);
+  const methodPrefixLbl = bi('PP thử theo yêu cầu','Requested testing method') + ': ';
+  N(8.5); doc.text('- '+methodPrefixLbl, ML+2, y);
+  B(8.5); PURPLE(); doc.text(methodLabel, ML+2+doc.getTextWidth('- '+methodPrefixLbl), y);
   BLACK(); y+=5.5;
 
   N(7.5); GRAY();
-  doc.text('(Các phương pháp khác: TCVN 3118-22 · ASTM C39-03 · BS 1881 · BS EN 12390-3:2009(E))', ML+6, y);
+  doc.text(bi('(Các phương pháp khác','(Other methods') + ': TCVN 3118-22 · ASTM C39-03 · BS 1881 · BS EN 12390-3:2009(E))', ML+6, y);
   BLACK(); y+=6;
 
   const condLabel = d.testCondition === 'Water saturated sample'
-    ? 'Bão hòa nước / Water saturated sample' : 'Khô tự nhiên / Dry naturally';
-  N(8.5); doc.text('- Điều kiện thử mẫu (Test conditions): ', ML+2, y);
-  B(8.5); PURPLE(); doc.text(condLabel, ML+2+doc.getTextWidth('- Điều kiện thử mẫu (Test conditions): '), y);
+    ? bi('Bão hòa nước','Water saturated sample') : bi('Khô tự nhiên','Dry naturally');
+  const condPrefixLbl = bi('Điều kiện thử mẫu','Test conditions') + ': ';
+  N(8.5); doc.text('- '+condPrefixLbl, ML+2, y);
+  B(8.5); PURPLE(); doc.text(condLabel, ML+2+doc.getTextWidth('- '+condPrefixLbl), y);
   BLACK(); y+=5.5;
 
-  bullet('Thiết bị thử nén (Compression machine)', d.equipment, y); y+=7;
+  bullet(bi('Thiết bị thử nén','Compression machine'), d.equipment, y); y+=7;
 
   // ── Thông tin mẫu thử ─────────────────────────────────────
-  B(9); doc.text('Thông tin mẫu thử (Sample information)', ML+2, y); y+=5.5;
+  B(9); doc.text(bi('Thông tin mẫu thử','Sample information'), ML+2, y); y+=5.5;
 
-  bullet('Hạng mục / Item', d.item, y); y+=5;
-  bullet('Cấu kiện bê tông (Concrete Structure)', d.concreteStructure, y); y+=5.5;
+  bullet(bi('Hạng mục','Item'), d.item, y); y+=5;
+  bullet(bi('Cấu kiện bê tông','Concrete Structure'), d.concreteStructure, y); y+=5.5;
 
   const shapeLabel = d.specimenShape === 'cylinder'
     ? 'Cylinder: 17671.46mm²' : 'Cube: 22500mm²';
-  N(8.5); doc.text('- Tiết diện (Specimen Cross-sectional area): ', ML+2, y);
-  B(8.5); PURPLE(); doc.text(shapeLabel, ML+2+doc.getTextWidth('- Tiết diện (Specimen Cross-sectional area): '), y);
+  const shapePrefixLbl = bi('Tiết diện','Specimen Cross-sectional area') + ': ';
+  N(8.5); doc.text('- '+shapePrefixLbl, ML+2, y);
+  B(8.5); PURPLE(); doc.text(shapeLabel, ML+2+doc.getTextWidth('- '+shapePrefixLbl), y);
   BLACK(); y+=6;
 
   // Lấy đại diện từ tổ mẫu đầu tiên cho các mục ngày đúc/ngày thử/kích
@@ -1707,22 +1717,20 @@ function exportWitnessMinutePDF(){
     : '';
 
   N(8.5);
-  doc.text(`- Ngày đúc mẫu (Casting date): ${fmtDate(g0.dateCast)}`, ML+2, y);
-  doc.text(`- Ngày thử mẫu (Testing date): ${fmtDate(g0.dateTest)}`, ML+2+usW/2, y);
+  doc.text(`- ${bi('Ngày đúc mẫu','Casting date')}: ${fmtDate(g0.dateCast)}`, ML+2, y);
+  doc.text(`- ${bi('Ngày thử mẫu','Testing date')}: ${fmtDate(g0.dateTest)}`, ML+2+usW/2, y);
   y+=5.5;
-  doc.text(`- Kích thước mẫu (Dimension): ${dimText||'______'} (cm)`, ML+2, y);
-  doc.text(`- Tuổi mẫu / Age at test: ${g0.age||'___'} ngày`, ML+2+usW/2, y);
+  // SỬA: kích thước mẫu lưu bằng mm, không phải cm — hiện đúng đơn vị
+  doc.text(`- ${bi('Kích thước mẫu','Dimension')}: ${dimText||'______'} (mm)`, ML+2, y);
+  doc.text(`- ${bi('Tuổi mẫu','Age at test')}: ${g0.age||'___'} ${isEN?'days':'ngày'}`, ML+2+usW/2, y);
   y+=5.5;
-  doc.text(`- Cường độ yêu cầu / Request strength: ${d.reqStrength||'___'} Mpa`, ML+2, y);
-  doc.text(`- Độ sụt / Slump: ${d.slump||'___'} cm`, ML+2+usW/2, y);
+  doc.text(`- ${bi('Cường độ yêu cầu','Request strength')}: ${d.reqStrength||'___'} Mpa`, ML+2, y);
+  doc.text(`- ${bi('Độ sụt','Slump')}: ${d.slump||'___'} cm`, ML+2+usW/2, y);
   y+=7;
 
   // ── KẾT QUẢ THỬ MẪU — bảng 2 cột song song (10 cột), đúng mẫu gốc ──
-  B(9.5); doc.text('Kết quả thử mẫu / Test result', ML+2, y); y+=3;
+  B(9.5); doc.text(bi('Kết quả thử mẫu','Test result'), ML+2, y); y+=3;
 
-  // Gộp toàn bộ mẫu từ mọi tổ thành 1 danh sách phẳng, đánh số thứ tự
-  // liên tục — khớp đúng cách trình bày của mẫu giấy gốc (không có cột
-  // ngày/kích thước trong bảng này, chỉ Stt/Ký hiệu/Lực/Cường độ/TB).
   const flatSpecimens = [];
   (d.groups||[]).forEach(g => {
     (g.specimens||[]).forEach((s, si) => {
@@ -1730,33 +1738,29 @@ function exportWitnessMinutePDF(){
         symbol: `S${flatSpecimens.length+1}`,
         load: s.load||'',
         strength: s.strength||'',
-        avg: si === 0 ? (g.avg||'') : '', // TB chỉ hiện 1 lần đầu mỗi tổ, để trống các dòng sau — tránh lặp gây rối mắt
-        avgFull: g.avg||'',
+        avg: si === 0 ? (g.avg||'') : '',
       });
     });
   });
 
-  const headStyle = {font:'Roboto', fontStyle:'normal', fontSize:7.5, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25};
-  const head = [[
-    {content:'STT\nNo', ...headStyle},
-    {content:'Ký hiệu mẫu\nSpecimen Symbol', ...headStyle},
-    {content:'Lực phá hủy\nMax load\n(KN)', ...headStyle},
-    {content:'Cường độ chịu nén\nCompressive strength\n(MPa)', ...headStyle},
-    {content:'Trung bình\nAverage\n(MPa)', ...headStyle},
-    {content:'STT\nNo', ...headStyle},
-    {content:'Ký hiệu mẫu\nSpecimen Symbol', ...headStyle},
-    {content:'Lực phá hủy\nMax load\n(KN)', ...headStyle},
-    {content:'Cường độ chịu nén\nCompressive strength\n(MPa)', ...headStyle},
-    {content:'Trung bình\nAverage\n(MPa)', ...headStyle},
-  ]];
+  // QUAN TRỌNG: chia sẵn mỗi cụm chữ tiếng Việt thành nhiều dòng ngắn tại
+  // ranh giới TỪ AN TOÀN (không cắt giữa chữ có dấu) — không để autoTable
+  // tự động ngắt dòng trong cột hẹp, vì cách ngắt tự động đó làm vỡ dấu
+  // tiếng Việt (VD "mẫu" bị tách thành "m" + "ẫu").
+  const headStyle = {font:'Roboto', fontStyle:'normal', fontSize:6.8, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25};
+  const hSTT = {content: bi('STT','No'), ...headStyle};
+  const hSym = {content: isEN ? 'Specimen\nSymbol' : 'Ký hiệu\nmẫu\nSpecimen\nSymbol', ...headStyle};
+  const hLoad = {content: isEN ? 'Max load\n(KN)' : 'Lực phá\nhủy\nMax load\n(KN)', ...headStyle};
+  const hStr = {content: isEN ? 'Compressive\nstrength\n(MPa)' : 'Cường độ\nchịu nén\nCompressive\nstrength\n(MPa)', ...headStyle};
+  const hAvg = {content: isEN ? 'Average\n(MPa)' : 'Trung\nbình\nAverage\n(MPa)', ...headStyle};
+  const head = [[hSTT, hSym, hLoad, hStr, hAvg, hSTT, hSym, hLoad, hStr, hAvg]];
 
-  // Chia thành 2 cột song song, mỗi cột tối đa 6 dòng/trang giống mẫu gốc —
-  // nếu nhiều hơn 12 mẫu, tự nối thêm cặp dòng, autoTable tự sang trang.
   const rows = 6;
+  const half = Math.max(rows, Math.ceil(flatSpecimens.length/2));
   const body = [];
-  for(let i=0;i<Math.max(rows, Math.ceil(flatSpecimens.length/2)); i++){
+  for(let i=0;i<half; i++){
     const left = flatSpecimens[i];
-    const right = flatSpecimens[i+Math.max(rows, Math.ceil(flatSpecimens.length/2))];
+    const right = flatSpecimens[i+half];
     const cellStyle = {font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle'};
     body.push([
       {content: left ? String(i+1) : '', ...cellStyle},
@@ -1764,7 +1768,7 @@ function exportWitnessMinutePDF(){
       {content: left ? left.load : '', ...cellStyle},
       {content: left ? left.strength : '', ...cellStyle},
       {content: left ? left.avg : '', ...cellStyle, fontStyle:'bold'},
-      {content: right ? String(i+1+Math.max(rows, Math.ceil(flatSpecimens.length/2))) : '', ...cellStyle},
+      {content: right ? String(i+1+half) : '', ...cellStyle},
       {content: right ? right.symbol : '', ...cellStyle},
       {content: right ? right.load : '', ...cellStyle},
       {content: right ? right.strength : '', ...cellStyle},
@@ -1774,13 +1778,13 @@ function exportWitnessMinutePDF(){
 
   doc.autoTable({
     head, body, startY:y, margin:{left:ML,right:MR}, tableWidth:usW, theme:'grid',
-    styles:{lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.8},
+    styles:{lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.4},
   });
   y = doc.lastAutoTable.finalY + 8;
 
-  // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng (viền nhạt) ──────────
+  // ── XÁC NHẬN CÁC BÊN — 5 chỗ ký trên 1 hàng ──────────────────────
   N(8.5); BLACK();
-  doc.text('Thành phần các bên tham gia xác nhận / (Họ và tên/ Full Name - Xác nhận/ Confirmation)', pageW/2, y, {align:'center', maxWidth:usW});
+  doc.text(bi('Thành phần các bên tham gia xác nhận','Parties confirmation') + ' (' + bi('Họ và tên','Full Name') + ' - ' + bi('Xác nhận','Confirmation') + ')', pageW/2, y, {align:'center', maxWidth:usW});
   y += 10;
 
   const NSIG = 5;
@@ -1794,10 +1798,12 @@ function exportWitnessMinutePDF(){
     ['Thí nghiệm viên', 'HAIC LAB', d.labTech],
   ];
   B(8.5); PURPLE();
-  sigLabels.forEach(([vi], i) => doc.text(vi, sx[i], y, {align:'center'}));
-  y += 4;
-  I(8); PURPLE();
-  sigLabels.forEach(([,en], i) => doc.text(en, sx[i], y, {align:'center'}));
+  sigLabels.forEach(([vi,en], i) => doc.text(isEN ? en : vi, sx[i], y, {align:'center'}));
+  if(!isEN){
+    y += 4;
+    I(8); PURPLE();
+    sigLabels.forEach(([,en], i) => doc.text(en, sx[i], y, {align:'center'}));
+  }
   y += 18; // khoảng trống ký tay
   I(8.5); BLACK();
   sigLabels.forEach(([,,val], i) => doc.text(val||'', sx[i], y, {align:'center'}));
@@ -1808,7 +1814,7 @@ function exportWitnessMinutePDF(){
   BLACK();
 
   const fname='BienBanChungKien_'+(d.project||'report').replace(/[^a-z0-9]+/gi,'_')
-    +'_'+new Date().toISOString().slice(0,10)+'.pdf';
+    +'_'+(isEN?'EN':'BI')+'_'+new Date().toISOString().slice(0,10)+'.pdf';
   doc.save(fname);
 }
 
