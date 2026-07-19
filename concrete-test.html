@@ -492,8 +492,8 @@ async function login(){
   }catch(e){
     if(e.code === 'auth/user-not-found' && email === SUPER_ADMIN_EMAIL.toLowerCase()){
       try{
-        await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('users').doc(email).set({ email, displayName:'Super Admin', role:'superadmin', active:true, createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdBy:'system-bootstrap' });
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(cred.user.uid).set({ email, displayName:'Super Admin', role:'superadmin', active:true, createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdBy:'system-bootstrap' });
       }catch(e2){ showLoginMsg('Lỗi tạo Super Admin: ' + e2.message, true); }
     } else if(['auth/wrong-password','auth/user-not-found','auth/invalid-credential'].includes(e.code)){
       showLoginMsg('Sai email hoặc mật khẩu', true);
@@ -516,7 +516,11 @@ auth.onAuthStateChanged(async (user) => {
   }
   const email = (user.email || '').toLowerCase();
   try{
-    const docRef = db.collection('users').doc(email);
+    // QUAN TRỌNG: Lab System lưu users theo UID (mã đăng nhập), KHÔNG phải
+    // theo email — khác với point-load-test trước đây. Phải tìm đúng theo
+    // user.uid, nếu không mọi tài khoản trừ Super Admin sẽ luôn báo "chưa
+    // được cấp quyền" dù tài khoản đó có thật và hợp lệ.
+    const docRef = db.collection('users').doc(user.uid);
     let snap = await docRef.get();
     if(!snap.exists){
       if(email === SUPER_ADMIN_EMAIL.toLowerCase()){
@@ -529,7 +533,7 @@ auth.onAuthStateChanged(async (user) => {
     }
     const d = snap.data();
     if(d.active === false){ showLoginMsg('Tài khoản đã bị khóa.', true); await auth.signOut(); return; }
-    currentUserData = { email, displayName: d.displayName || email, role: d.role, uid: user.uid };
+    currentUserData = { email, displayName: d.displayName || d.name || email, role: d.role, uid: user.uid };
     enterApp();
   }catch(e){ showLoginMsg('Lỗi: ' + e.message, true); await auth.signOut(); }
 });
@@ -558,8 +562,8 @@ async function addStaff(){
   if(!name||!email||!pass){ err.textContent = 'Nhập đầy đủ thông tin'; return; }
   if(pass.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
   try{
-    await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
-    await db.collection('users').doc(email).set({ email, displayName:name, role:'user', active:true, createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdBy:currentUserData.email });
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    await db.collection('users').doc(cred.user.uid).set({ email, displayName:name, role:'user', active:true, createdAt:firebase.firestore.FieldValue.serverTimestamp(), createdBy:currentUserData.email });
     await secondaryApp.auth().signOut();
     showToast('Đã tạo tài khoản: ' + email);
     closeAddStaffModal(); loadStaffList();
