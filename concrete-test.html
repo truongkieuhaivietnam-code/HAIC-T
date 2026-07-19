@@ -403,15 +403,18 @@ const VICAS_LOGO_B64 = "iVBORw0KGgoAAAANSUhEUgAAAZkAAAC+CAYAAAGQfEJiAAAAAXNSR0IA
 </script>
 <script>
 /* =============================================================
-   FIREBASE CONFIG — same project as point-load-test.html
+   FIREBASE CONFIG — ĐÃ CHUYỂN sang dùng chung project với Lab System
+   (haic-lab-system) — không còn dùng project point-load-test riêng nữa.
+   Đăng nhập bằng ĐÚNG tài khoản Lab System hiện có (đã xác nhận 12/12
+   nhân viên Concrete Test đã có sẵn tài khoản bên đó).
    ============================================================= */
 const firebaseConfig = {
-  apiKey: "AIzaSyAs2JlBnINH46JUvJYvbSGZczDw_eIG01Q",
-  authDomain: "point-load-test.firebaseapp.com",
-  projectId: "point-load-test",
-  storageBucket: "point-load-test.firebasestorage.app",
-  messagingSenderId: "497051430921",
-  appId: "1:497051430921:web:750a8c76f93610817488d8"
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
 };
 const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
 
@@ -419,6 +422,11 @@ firebase.initializeApp(firebaseConfig);
 const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryC");
 const auth = firebase.auth();
 const db = firebase.firestore();
+// Báo cáo Concrete Test giờ nằm trong "ngăn" riêng bên Lab System — không
+// dùng chung collection gốc với các app khác cùng project.
+function concreteReportsCol(){
+  return db.collection('apps').doc('concrete-test').collection('concrete_reports');
+}
 
 document.getElementById('superAdminEmailDisplay').textContent = SUPER_ADMIN_EMAIL;
 
@@ -645,7 +653,7 @@ async function applyProjectSelection(id){
   // ghi chú, ngày báo cáo — vì các giá trị này thường khác nhau theo từng
   // lần đổ bê tông/thử nghiệm.
   try{
-    const snap = await db.collection('concrete_reports')
+    const snap = await concreteReportsCol()
       .where('projectId','==', id)
       .orderBy('updatedAt','desc')
       .limit(1)
@@ -673,13 +681,24 @@ async function applyProjectSelection(id){
 }
 function openNewProjectModal(){ document.getElementById('newProjectError').textContent = ''; document.getElementById('newProjectModal').style.display = 'flex'; }
 function closeNewProjectModal(){ document.getElementById('newProjectModal').style.display = 'none'; sv('npProject',''); sv('npLocation',''); }
+
+// Giờ Concrete Test dùng CHUNG project Firebase với Lab System — tạo dự
+// án là ghi thẳng vào ĐÚNG collection "projects" gốc, thấy ngay lập tức ở
+// mọi app (Lab System, Sand Cone, Point Load...), không cần cầu nối
+// Cloud Function/project-sync.js nữa (đã bỏ, không cần thiết).
 async function createProject(){
   const name = document.getElementById('npProject').value.trim();
+  const location = document.getElementById('npLocation').value.trim();
   const err = document.getElementById('newProjectError');
   err.textContent = '';
   if(!name){ err.textContent = 'Nhập tên dự án'; return; }
   try{
-    const ref = await db.collection('projects').add({ name, location: document.getElementById('npLocation').value.trim(), createdBy: currentUserData?.email||'', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+    const ref = await db.collection('projects').add({
+      name, location,
+      client: null, investor: null, country: null, status: 'active',
+      createdVia: 'concrete-test', createdByEmail: currentUserData?.email||'',
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    });
     await loadProjectsDropdown();
     document.getElementById('projectSearchInput').value = name;
     await applyProjectSelection(ref.id);
@@ -925,7 +944,7 @@ async function saveAsNew(){
   try{
     const record = buildRecord();
     record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    const ref = await db.collection('concrete_reports').add(record);
+    const ref = await concreteReportsCol().add(record);
     currentReportId = ref.id;
     setEditingUI(true);
     showToast('Đã lưu: ' + record.key);
@@ -935,7 +954,7 @@ async function updateReport(){
   if(!currentReportId){ alert('Chưa có báo cáo nào đang mở.'); return; }
   if(!confirm('Ghi đè báo cáo đang mở?')) return;
   try{
-    await db.collection('concrete_reports').doc(currentReportId).set(buildRecord(), { merge:true });
+    await concreteReportsCol().doc(currentReportId).set(buildRecord(), { merge:true });
     showToast('Đã cập nhật');
   }catch(e){ alert('Lỗi cập nhật: ' + e.message); }
 }
@@ -955,8 +974,8 @@ async function openLoadModal(){
 }
 async function loadRecentReports(){
   const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
-  let q = db.collection('concrete_reports').orderBy('updatedAt','desc').limit(300);
-  if(!isAdmin) q = db.collection('concrete_reports').where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(300);
+  let q = concreteReportsCol().orderBy('updatedAt','desc').limit(300);
+  if(!isAdmin) q = concreteReportsCol().where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(300);
   const snap = await q.get();
   reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 }
@@ -998,8 +1017,8 @@ async function selectFilterProject(id){
     // đọc báo cáo của chính mình (theo Firestore Rules) — nên vẫn cần lọc
     // where('savedByEmail') ngay trong câu truy vấn, không thể lọc sau khi
     // tải về (Rules sẽ chặn ngay từ bước đọc nếu thiếu điều kiện này).
-    let q = db.collection('concrete_reports').where('projectId','==', id).orderBy('updatedAt','desc').limit(500);
-    if(!isAdmin) q = db.collection('concrete_reports').where('projectId','==', id).where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(500);
+    let q = concreteReportsCol().where('projectId','==', id).orderBy('updatedAt','desc').limit(500);
+    if(!isAdmin) q = concreteReportsCol().where('projectId','==', id).where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(500);
     const snap = await q.get();
     reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderFilteredReports();
@@ -1034,7 +1053,7 @@ function renderFilteredReports(){
 function closeLoadModal(){ document.getElementById('loadModal').style.display = 'none'; }
 async function loadReport(docId){
   try{
-    const snap = await db.collection('concrete_reports').doc(docId).get();
+    const snap = await concreteReportsCol().doc(docId).get();
     if(!snap.exists){ showToast('Báo cáo không còn tồn tại.'); return; }
     const r = snap.data();
     currentReportId = docId;
@@ -1049,7 +1068,7 @@ async function loadReport(docId){
 async function deleteReport(docId){
   if(!confirm('Xóa báo cáo này?')) return;
   try{
-    await db.collection('concrete_reports').doc(docId).delete();
+    await concreteReportsCol().doc(docId).delete();
     if(currentReportId === docId){ currentReportId = null; setEditingUI(false); }
     if(filterProjectId){ selectFilterProject(filterProjectId); } else { await loadRecentReports(); renderFilteredReports(); }
   }catch(e){ alert('Lỗi xóa: ' + e.message); }
