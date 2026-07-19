@@ -977,10 +977,9 @@ async function openLoadModal(){
   }catch(e){ list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi: ${e.message}</p>`; }
 }
 async function loadRecentReports(){
-  const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
-  let q = concreteReportsCol().orderBy('updatedAt','desc').limit(300);
-  if(!isAdmin) q = concreteReportsCol().where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(300);
-  const snap = await q.get();
+  // Mọi nhân viên đang hoạt động đều xem được hết báo cáo — khớp đúng
+  // Rules mới (không giới hạn theo người tạo nữa).
+  const snap = await concreteReportsCol().orderBy('updatedAt','desc').limit(300).get();
   reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
 }
 
@@ -1016,14 +1015,9 @@ async function selectFilterProject(id){
   document.getElementById('filterProjectInput').value = p ? p.name : '';
   list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Đang tải báo cáo của dự án...</p>';
   try{
-    const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
-    // Giữ đúng cách phân quyền gốc: người không phải admin CHỈ được phép
-    // đọc báo cáo của chính mình (theo Firestore Rules) — nên vẫn cần lọc
-    // where('savedByEmail') ngay trong câu truy vấn, không thể lọc sau khi
-    // tải về (Rules sẽ chặn ngay từ bước đọc nếu thiếu điều kiện này).
-    let q = concreteReportsCol().where('projectId','==', id).orderBy('updatedAt','desc').limit(500);
-    if(!isAdmin) q = concreteReportsCol().where('projectId','==', id).where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(500);
-    const snap = await q.get();
+    // Mọi nhân viên đang hoạt động đều xem được hết báo cáo của dự án này
+    // — khớp đúng Rules mới (không giới hạn theo người tạo nữa).
+    const snap = await concreteReportsCol().where('projectId','==', id).orderBy('updatedAt','desc').limit(500).get();
     reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
     renderFilteredReports();
   }catch(e){
@@ -1042,15 +1036,17 @@ document.addEventListener('click', (e) => {
 function renderFilteredReports(){
   const list = document.getElementById('savedList');
   const filtered = reportsCache; // đã lọc đúng theo projectId từ Firestore (nếu có chọn dự án) — không cần lọc lại
+  const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
   list.innerHTML = '';
   if(!filtered.length){ list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có báo cáo.</p>'; return; }
   filtered.forEach(r => {
     const when = r.updatedAt?.toDate ? r.updatedAt.toDate().toLocaleString() : '';
     const stdBadge = r.standard === 'tcvn' ? '🟣 TCVN' : '🔵 ASTM';
+    const canDelete = isAdmin || r.savedByEmail === currentUserData.email;
     const div = document.createElement('div');
     div.className = 'saved-item';
     div.innerHTML = `<div class="info" onclick="loadReport('${r.id}')"><strong>${r.key||''}</strong> ${stdBadge}<br><small>${when}${r.savedByName?' · '+r.savedByName:''}</small></div>
-      <button class="danger small" onclick="deleteReport('${r.id}')">✕</button>`;
+      ${canDelete ? `<button class="danger small" onclick="deleteReport('${r.id}')">✕</button>` : ''}`;
     list.appendChild(div);
   });
 }
