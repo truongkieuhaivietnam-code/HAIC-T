@@ -384,15 +384,17 @@
 
 <script>
 /* ====================================================================
-   FIREBASE CONFIG — paste values from Firebase Console > Project Settings
+   FIREBASE CONFIG — ĐÃ CHUYỂN sang dùng chung project với Lab System
+   (haic-lab-system), giống Concrete Test — không còn dùng project
+   point-load-test riêng nữa. Đăng nhập bằng tài khoản Lab System hiện có.
    ==================================================================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyAs2JlBnINH46JUvJYvbSGZczDw_eIG01Q",
-  authDomain: "point-load-test.firebaseapp.com",
-  projectId: "point-load-test",
-  storageBucket: "point-load-test.firebasestorage.app",
-  messagingSenderId: "497051430921",
-  appId: "1:497051430921:web:750a8c76f93610817488d8"
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
 };
 
 const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
@@ -401,6 +403,10 @@ firebase.initializeApp(firebaseConfig);
 const secondaryApp = firebase.initializeApp(firebaseConfig, "Secondary");
 const auth = firebase.auth();
 const db = firebase.firestore();
+// Báo cáo Point Load Test giờ nằm trong "ngăn" riêng bên Lab System.
+function pointLoadReportsCol(){
+  return db.collection('apps').doc('point-load-test').collection('reports');
+}
 // Offline persistence intentionally NOT enabled — see sand-cone-test.html notes
 // (stale cached auth state when switching staff accounts in the same tab).
 
@@ -442,8 +448,8 @@ async function login(){
   }catch(e){
     if(e.code === 'auth/user-not-found' && email === SUPER_ADMIN_EMAIL.toLowerCase()){
       try{
-        await auth.createUserWithEmailAndPassword(email, password);
-        await db.collection('users').doc(email).set({
+        const cred = await auth.createUserWithEmailAndPassword(email, password);
+        await db.collection('users').doc(cred.user.uid).set({
           email, displayName: 'Super Admin', role: 'superadmin', active: true,
           createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: 'system-bootstrap'
         });
@@ -479,7 +485,8 @@ auth.onAuthStateChanged(async (user) => {
   }
   const email = (user.email || '').toLowerCase();
   try{
-    const docRef = db.collection('users').doc(email);
+    // QUAN TRỌNG: Lab System lưu users theo UID, không phải theo email.
+    const docRef = db.collection('users').doc(user.uid);
     let docSnap = await docRef.get();
     if(!docSnap.exists){
       if(email === SUPER_ADMIN_EMAIL.toLowerCase()){
@@ -500,7 +507,7 @@ auth.onAuthStateChanged(async (user) => {
       await auth.signOut();
       return;
     }
-    currentUserData = { email, displayName: d.displayName || email, role: d.role, uid: user.uid };
+    currentUserData = { email, displayName: d.displayName || d.name || email, role: d.role, uid: user.uid };
     enterApp();
   }catch(e){
     showLoginMsg('Lỗi: ' + e.message, true);
@@ -542,8 +549,8 @@ async function addStaff(){
   if(!name || !email || !tempPass){ err.textContent = 'Nhập đầy đủ thông tin'; return; }
   if(tempPass.length < 6){ err.textContent = 'Mật khẩu tối thiểu 6 ký tự'; return; }
   try{
-    await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
-    await db.collection('users').doc(email).set({
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, tempPass);
+    await db.collection('users').doc(cred.user.uid).set({
       email, displayName: name, role: 'user', active: true,
       createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentUserData.email
     });
@@ -850,7 +857,7 @@ async function saveAsNewReport(){
   const { record, liveEmail, key } = buildRecord();
   try{
     record.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-    const ref = await db.collection('reports').add(record);
+    const ref = await pointLoadReportsCol().add(record);
     currentReportId = ref.id;
     setEditingUI(true);
     showToast('Đã lưu báo cáo mới lên hệ thống / Saved as new: ' + key);
@@ -866,7 +873,7 @@ async function updateExistingReport(){
   if(!liveUser){ alert('Bạn đã bị đăng xuất, vui lòng đăng nhập lại.'); return; }
   const { record, liveEmail, key } = buildRecord();
   try{
-    await db.collection('reports').doc(currentReportId).set(record, { merge: true });
+    await pointLoadReportsCol().doc(currentReportId).set(record, { merge: true });
     showToast('Đã cập nhật báo cáo / Updated: ' + key);
   }catch(e){
     alert('Lỗi khi cập nhật: ' + e.message + (e.code ? ' ('+e.code+')' : '') + '\nEmail đang đăng nhập: ' + liveEmail);
@@ -880,11 +887,9 @@ async function openLoadModal(){
   list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Đang tải / Loading...</p>';
   document.getElementById('loadModal').style.display = 'flex';
   try{
-    const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
-    let query = db.collection('reports').orderBy('updatedAt', 'desc').limit(300);
-    if(!isAdminLike){
-      query = db.collection('reports').where('savedByEmail', '==', currentUserData.email).orderBy('updatedAt', 'desc').limit(300);
-    }
+    // Mọi nhân viên đang hoạt động đều xem được hết báo cáo (khớp đúng
+    // Rules mới, không giới hạn theo người tạo nữa).
+    const query = pointLoadReportsCol().orderBy('updatedAt', 'desc').limit(300);
     const snap = await query.get();
     reportsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     const projNames = [...new Set(reportsCache.map(r => r.projectName).filter(Boolean))].sort();
@@ -901,6 +906,7 @@ function renderFilteredReports(){
   const list = document.getElementById('savedList');
   const projFilter = document.getElementById('filterProject').value;
   const filtered = reportsCache.filter(r => !projFilter || r.projectName === projFilter);
+  const isAdminLike = currentUserData.role === 'admin' || currentUserData.role === 'superadmin';
   list.innerHTML = '';
   if(filtered.length === 0){
     list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có báo cáo phù hợp / No matching reports.</p>';
@@ -908,10 +914,11 @@ function renderFilteredReports(){
   }
   filtered.forEach(r => {
     const when = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString() : '';
+    const canDelete = isAdminLike || r.savedByEmail === currentUserData.email;
     const div = document.createElement('div');
     div.className = 'saved-item';
     div.innerHTML = `<div class="info" onclick="loadReport('${r.id}')"><strong>${r.key||''}</strong><br><small>${when} ${r.savedByName? '· '+r.savedByName : ''}${r.projectName? ' · '+r.projectName : ''}</small></div>
-      <button class="danger small" onclick="deleteReport('${r.id}')">✕</button>`;
+      ${canDelete ? `<button class="danger small" onclick="deleteReport('${r.id}')">✕</button>` : ''}`;
     list.appendChild(div);
   });
 }
@@ -919,7 +926,7 @@ function closeLoadModal(){ document.getElementById('loadModal').style.display = 
 
 async function loadReport(docId){
   try{
-    const snap = await db.collection('reports').doc(docId).get();
+    const snap = await pointLoadReportsCol().doc(docId).get();
     if(!snap.exists){ showToast('Báo cáo không còn tồn tại.'); return; }
     const r = snap.data();
     ['project','location','remarks','testDate','testedBy','chiefOfLab'].forEach(id => setVal(id, r[id]));
@@ -941,7 +948,7 @@ async function loadReport(docId){
 async function deleteReport(docId){
   if(!confirm('Xóa báo cáo này khỏi hệ thống?\nDelete this report from the system?')) return;
   try{
-    await db.collection('reports').doc(docId).delete();
+    await pointLoadReportsCol().doc(docId).delete();
     if(currentReportId === docId){ currentReportId = null; setEditingUI(false); }
     openLoadModal();
   }catch(e){
