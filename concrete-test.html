@@ -140,6 +140,13 @@
   .badge.admin{background:#eaf2e8;color:var(--accent);}
   .badge.user{background:#eaf0f6;color:var(--primary);}
   .form-code{font-size:10.5px;color:var(--muted);font-style:italic;margin-left:8px;}
+.autocomplete-list{ position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #ccc; border-top:none; max-height:240px; overflow-y:auto; z-index:80; display:none; box-shadow:0 6px 14px rgba(0,0,0,.12); border-radius:0 0 6px 6px; }
+.autocomplete-item{ padding:8px 10px; cursor:pointer; font-size:13px; border-bottom:1px solid #f0f0f0; }
+.autocomplete-item:last-child{ border-bottom:none; }
+.autocomplete-item:hover{ background:#eef3ff; }
+.autocomplete-item .ac-sub{ color:#888; font-size:11px; margin-top:1px; }
+.autocomplete-item.ac-empty{ color:#999; cursor:default; }
+.autocomplete-item.ac-empty:hover{ background:none; }
 </style>
 </head>
 <body>
@@ -202,9 +209,10 @@
   <!-- PROJECT -->
   <div class="card">
     <h2>I. Thông Tin Dự Án / Project Information</h2>
-    <div class="field">
-      <label>Chọn dự án / Select project</label>
-      <select id="projectSelect" onchange="onProjectSelectChange()"></select>
+    <div class="field" style="position:relative;">
+      <label>Tìm dự án / Search project</label>
+      <input type="text" id="projectSearchInput" placeholder="Gõ tên dự án để tìm... / Type project name to search..." autocomplete="off" oninput="onProjectSearchInput()" onfocus="onProjectSearchInput()">
+      <div id="projectSuggestions" class="autocomplete-list"></div>
     </div>
     <div class="row-actions" style="margin-bottom:10px;">
       <button class="accent" onclick="openNewProjectModal()">+ Dự án mới / New Project</button>
@@ -323,15 +331,14 @@
   <div id="editingIndicator">✏️ Đang mở báo cáo đã lưu — "Lưu mới" để tạo bản khác, "Cập nhật" để ghi đè.</div>
   <button class="secondary" onclick="newReport()">+ Mới / New</button>
   <button onclick="saveAsNew()">💾 Lưu mới / Save New</button>
-  <button class="accent" id="updateBtn" onclick="updateReport()" style="display:none;">✏️ Cập nhật</button>
+  <button class="accent" id="updateBtn" onclick="updateReport()" style="display:none;">✏️ Update</button>
   <button class="ghost" onclick="openLoadModal()">📂 Mở / Load</button>
-  <button class="accent" onclick="exportPDF()">📄 PDF</button>
+  <button class="accent" onclick="exportPDF()">📄 Report</button>
   <select id="minuteLangMode" style="width:auto; padding:8px 6px; font-size:12px; display:inline-block;">
     <option value="bilingual">🇻🇳/🇬🇧 Song ngữ</option>
     <option value="en">🇬🇧 English only</option>
   </select>
-  <button onclick="exportMinutePDF()" style="background:#6c3483;">📋 Biên Bản TN</button>
-  <button onclick="exportWitnessMinutePDF()" style="background:#8e44ad;">📋 Biên Bản Chứng Kiến (F-73.1)</button>
+  <button onclick="exportWitnessMinutePDF()" style="background:#8e44ad;">📋 Testing Minute</button>
   <button class="accent" onclick="exportExcel()">📊 Excel</button>
 </div>
 
@@ -343,11 +350,10 @@
 <div class="modal-bg" id="loadModal">
   <div class="modal">
     <h3>Báo cáo đã lưu / Saved Reports</h3>
-    <div class="field">
-      <label>Lọc theo dự án</label>
-      <select id="filterProject" onchange="renderFilteredReports()">
-        <option value="">— Tất cả —</option>
-      </select>
+    <div class="field" style="position:relative;">
+      <label>Tìm theo dự án / Search by project</label>
+      <input type="text" id="filterProjectInput" placeholder="Gõ tên dự án... để trống = xem tất cả / Type project name... blank = show all" autocomplete="off" oninput="onFilterProjectInput()" onfocus="onFilterProjectInput()">
+      <div id="filterProjectSuggestions" class="autocomplete-list"></div>
     </div>
     <div id="savedList"></div>
     <div class="row-actions" style="margin-top:10px;">
@@ -580,16 +586,47 @@ async function deleteStaff(email){
 
 /* ---- PROJECTS ---- */
 async function loadProjectsDropdown(){
-  const sel = document.getElementById('projectSelect');
   try{
     const snap = await db.collection('projects').orderBy('name').get();
     projectsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    sel.innerHTML = '<option value="">— Chọn dự án / Select project —</option>' +
-      projectsCache.map(p => `<option value="${p.id}">${p.name}${p.location?' — '+p.location:''}</option>`).join('');
-  }catch(e){ sel.innerHTML = '<option value="">(Lỗi tải dự án)</option>'; }
+  }catch(e){ console.warn('Không tải được danh sách dự án:', e); }
 }
-async function onProjectSelectChange(){
-  const id = document.getElementById('projectSelect').value;
+
+function escapeHtmlLocal(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// ── Ô tìm kiếm dự án (gõ để gợi ý) ──────────────────────────────────────
+function onProjectSearchInput(){
+  const q = document.getElementById('projectSearchInput').value.trim().toLowerCase();
+  const box = document.getElementById('projectSuggestions');
+  const matches = (q ? projectsCache.filter(p => (p.name||'').toLowerCase().includes(q)) : projectsCache).slice(0, 25);
+  if(matches.length === 0){
+    box.innerHTML = '<div class="autocomplete-item ac-empty">Không tìm thấy dự án / No matching project</div>';
+  } else {
+    box.innerHTML = matches.map(p => `
+      <div class="autocomplete-item" onclick="selectProjectFromSearch('${p.id}')">
+        <div>${escapeHtmlLocal(p.name)}</div>
+        ${p.location ? `<div class="ac-sub">${escapeHtmlLocal(p.location)}</div>` : ''}
+      </div>`).join('');
+  }
+  box.style.display = 'block';
+}
+function selectProjectFromSearch(id){
+  document.getElementById('projectSuggestions').style.display = 'none';
+  const p = projectsCache.find(x => x.id === id);
+  if(!p) return;
+  document.getElementById('projectSearchInput').value = p.name;
+  applyProjectSelection(id);
+}
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#projectSearchInput') && !e.target.closest('#projectSuggestions')){
+    const box = document.getElementById('projectSuggestions');
+    if(box) box.style.display = 'none';
+  }
+});
+
+async function applyProjectSelection(id){
   if(!id){ currentProjectId = null; return; }
   const p = projectsCache.find(x => x.id === id);
   if(!p) return;
@@ -644,8 +681,8 @@ async function createProject(){
   try{
     const ref = await db.collection('projects').add({ name, location: document.getElementById('npLocation').value.trim(), createdBy: currentUserData?.email||'', createdAt: firebase.firestore.FieldValue.serverTimestamp() });
     await loadProjectsDropdown();
-    document.getElementById('projectSelect').value = ref.id;
-    onProjectSelectChange();
+    document.getElementById('projectSearchInput').value = name;
+    await applyProjectSelection(ref.id);
     closeNewProjectModal();
     showToast('Đã tạo dự án: ' + name);
   }catch(e){ err.textContent = 'Lỗi: ' + e.message; }
@@ -862,7 +899,7 @@ function applyFormData(d){
 function newReport(){
   if(!confirm('Tạo báo cáo mới? Dữ liệu chưa lưu sẽ mất.')) return;
   currentReportId = null; currentProjectId = null;
-  document.getElementById('projectSelect').value = '';
+  document.getElementById('projectSearchInput').value = '';
   setEditingUI(false);
   applyFormData({});
   showToast('Báo cáo mới / New report');
@@ -903,26 +940,85 @@ async function updateReport(){
   }catch(e){ alert('Lỗi cập nhật: ' + e.message); }
 }
 
+let filterProjectId = null; // dự án đang lọc trong khung "Mở báo cáo" (null = xem tất cả)
+
 async function openLoadModal(){
   const list = document.getElementById('savedList');
   list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Đang tải...</p>';
   document.getElementById('loadModal').style.display = 'flex';
+  document.getElementById('filterProjectInput').value = '';
+  filterProjectId = null;
   try{
-    const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
-    let q = db.collection('concrete_reports').orderBy('updatedAt','desc').limit(300);
-    if(!isAdmin) q = db.collection('concrete_reports').where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(300);
-    const snap = await q.get();
-    reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-    const projNames = [...new Set(reportsCache.map(r=>r.projectName).filter(Boolean))].sort();
-    const fs = document.getElementById('filterProject');
-    fs.innerHTML = '<option value="">— Tất cả —</option>' + projNames.map(n=>`<option value="${n}">${n}</option>`).join('');
+    await loadRecentReports();
     renderFilteredReports();
   }catch(e){ list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi: ${e.message}</p>`; }
 }
+async function loadRecentReports(){
+  const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
+  let q = db.collection('concrete_reports').orderBy('updatedAt','desc').limit(300);
+  if(!isAdmin) q = db.collection('concrete_reports').where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(300);
+  const snap = await q.get();
+  reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+}
+
+// ── Ô tìm dự án trong khung "Mở báo cáo" — gõ để gợi ý, chọn xong tìm
+// ĐÚNG theo projectId ngay trên Firestore (không giới hạn 300 báo cáo gần
+// nhất) — đảm bảo thấy ĐỦ báo cáo của dự án đó, không sót/trộn lẫn. ──────
+function onFilterProjectInput(){
+  const q = document.getElementById('filterProjectInput').value.trim().toLowerCase();
+  const box = document.getElementById('filterProjectSuggestions');
+  const matches = (q ? projectsCache.filter(p => (p.name||'').toLowerCase().includes(q)) : projectsCache).slice(0, 25);
+  const allOption = `<div class="autocomplete-item" onclick="selectFilterProject(null)"><strong>— Tất cả dự án / All projects —</strong></div>`;
+  if(matches.length === 0){
+    box.innerHTML = allOption + '<div class="autocomplete-item ac-empty">Không tìm thấy dự án / No matching project</div>';
+  } else {
+    box.innerHTML = allOption + matches.map(p => `
+      <div class="autocomplete-item" onclick="selectFilterProject('${p.id}')">
+        <div>${escapeHtmlLocal(p.name)}</div>
+        ${p.location ? `<div class="ac-sub">${escapeHtmlLocal(p.location)}</div>` : ''}
+      </div>`).join('');
+  }
+  box.style.display = 'block';
+}
+async function selectFilterProject(id){
+  document.getElementById('filterProjectSuggestions').style.display = 'none';
+  filterProjectId = id;
+  const list = document.getElementById('savedList');
+  if(!id){
+    document.getElementById('filterProjectInput').value = '';
+    renderFilteredReports();
+    return;
+  }
+  const p = projectsCache.find(x => x.id === id);
+  document.getElementById('filterProjectInput').value = p ? p.name : '';
+  list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Đang tải báo cáo của dự án...</p>';
+  try{
+    const isAdmin = ['admin','superadmin'].includes(currentUserData?.role);
+    // Giữ đúng cách phân quyền gốc: người không phải admin CHỈ được phép
+    // đọc báo cáo của chính mình (theo Firestore Rules) — nên vẫn cần lọc
+    // where('savedByEmail') ngay trong câu truy vấn, không thể lọc sau khi
+    // tải về (Rules sẽ chặn ngay từ bước đọc nếu thiếu điều kiện này).
+    let q = db.collection('concrete_reports').where('projectId','==', id).orderBy('updatedAt','desc').limit(500);
+    if(!isAdmin) q = db.collection('concrete_reports').where('projectId','==', id).where('savedByEmail','==',currentUserData.email).orderBy('updatedAt','desc').limit(500);
+    const snap = await q.get();
+    reportsCache = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+    renderFilteredReports();
+  }catch(e){
+    // Nếu Firestore báo thiếu chỉ mục (index), lỗi sẽ kèm 1 đường link để
+    // tạo — anh chỉ cần bấm vào link đó 1 lần, sau đó dùng bình thường.
+    list.innerHTML = `<p style="color:var(--danger);font-size:13px;">Lỗi: ${e.message}</p>`;
+  }
+}
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#filterProjectInput') && !e.target.closest('#filterProjectSuggestions')){
+    const box = document.getElementById('filterProjectSuggestions');
+    if(box) box.style.display = 'none';
+  }
+});
+
 function renderFilteredReports(){
   const list = document.getElementById('savedList');
-  const pf = document.getElementById('filterProject').value;
-  const filtered = reportsCache.filter(r => !pf || r.projectName === pf);
+  const filtered = reportsCache; // đã lọc đúng theo projectId từ Firestore (nếu có chọn dự án) — không cần lọc lại
   list.innerHTML = '';
   if(!filtered.length){ list.innerHTML = '<p style="color:var(--muted);font-size:13px;">Không có báo cáo.</p>'; return; }
   filtered.forEach(r => {
@@ -943,7 +1039,7 @@ async function loadReport(docId){
     const r = snap.data();
     currentReportId = docId;
     currentProjectId = r.projectId || null;
-    document.getElementById('projectSelect').value = currentProjectId||'';
+    document.getElementById('projectSearchInput').value = (projectsCache.find(p=>p.id===currentProjectId)?.name) || r.project || '';
     applyFormData(r);
     setEditingUI(true);
     closeLoadModal();
@@ -955,9 +1051,10 @@ async function deleteReport(docId){
   try{
     await db.collection('concrete_reports').doc(docId).delete();
     if(currentReportId === docId){ currentReportId = null; setEditingUI(false); }
-    openLoadModal();
+    if(filterProjectId){ selectFilterProject(filterProjectId); } else { await loadRecentReports(); renderFilteredReports(); }
   }catch(e){ alert('Lỗi xóa: ' + e.message); }
 }
+
 
 /* ---- EXPORT HELPERS ---- */
 function buildExportData(){
@@ -1057,10 +1154,10 @@ function exportPDF(){
   }
 
   // ══════════════════════════════════════════════════════
-  // 0. OUTER PAGE BORDER
+  // 0. OUTER PAGE BORDER — khớp đúng kiểu khung của Testing Minute
   // ══════════════════════════════════════════════════════
-  doc.setDrawColor(0,0,0); doc.setLineWidth(1.2);
-  doc.roundedRect(4, 4, pageW-8, pageH-8, 2, 2, 'S');
+  doc.setDrawColor(150,150,150); doc.setLineWidth(0.5);
+  doc.rect(4, 4, pageW-8, pageH-8, 'S');
 
   // ══════════════════════════════════════════════════════
   // 1. HEADER  (y: 5 → 32)
