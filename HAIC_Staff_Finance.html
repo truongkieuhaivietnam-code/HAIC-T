@@ -1813,6 +1813,37 @@ function getDefaultData() {
   };
 }
 
+// ── Telegram notifications ──────────────────────────────────
+// Nhạy cảm (tiền bạc) -> KHÔNG dùng 1 nhóm chung nữa. Mỗi người tự lấy
+// Chat ID riêng của mình (lưu trong Settings), bot gửi RIÊNG cho từng
+// người liên quan — người khác không thấy được.
+const TELEGRAM_BOT_TOKEN = 'DAN_TOKEN_BOT_VAO_DAY';
+
+async function sendTelegramNotification(chatId, text) {
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.startsWith('DAN_')) {
+    console.warn('Telegram chưa được cấu hình — bỏ qua gửi thông báo.');
+    return;
+  }
+  if (!chatId) return; // người này chưa kết nối Telegram -> bỏ qua, không lỗi
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+  } catch (e) {
+    console.warn('Gửi thông báo Telegram thất bại:', e.message);
+  }
+}
+
+// Gửi riêng cho 1 người cụ thể — thực chất là gửi vào ĐÚNG NHÓM Telegram
+// riêng của người đó (nhóm gồm Admin + người này + 1-2 người khác do
+// Admin thêm vào) — không phải gửi tin nhắn riêng 1-1 với người đó.
+function notifyUser(userId, text) {
+  const u = getUserById(userId);
+  if (u && u.telegramChatId) sendTelegramNotification(u.telegramChatId, text);
+}
+
 let STORE = lsGetAll();
 let unsubscribers = [];
 
@@ -3507,6 +3538,12 @@ function saveAdvance() {
 
     if (status === "pending") {
       addNotification({ type: "new_request", message: t("notifNewRequest"), forApprover: true });
+      const projName = projectId ? (STORE.projects || []).find(p => p.id === projectId)?.name : null;
+      notifyUser(currentUser.id,
+        currentLang === "vi"
+          ? `💵 <b>Đề xuất tạm ứng mới (chờ duyệt)</b>\n👤 ${currentUser.name}\n💰 ${displayAmt}\n📋 Loại: ${typeLabel}${projName ? `\n🏗️ Dự án: ${projName}` : ''}${reason ? `\n📝 Lý do: ${reason}` : ''}`
+          : `💵 <b>New Advance Request (Pending)</b>\n👤 ${currentUser.name}\n💰 ${displayAmt}\n📋 Type: ${typeLabel}${projName ? `\n🏗️ Project: ${projName}` : ''}${reason ? `\n📝 Reason: ${reason}` : ''}`
+      );
     }
   }
 
@@ -4004,6 +4041,12 @@ function approveAdvance(advanceId) {
     detail: `${formatCurrency(a.amount)} - ${getUserById(a.userId).name}`
   });
 
+  notifyUser(a.userId,
+    currentLang === "vi"
+      ? `✅ <b>Đề xuất tạm ứng đã được duyệt</b>\n👤 ${getUserById(a.userId).name}\n💰 ${formatAmountWithCurrency(a.amount, a.currency)}`
+      : `✅ <b>Advance Request Approved</b>\n👤 ${getUserById(a.userId).name}\n💰 ${formatAmountWithCurrency(a.amount, a.currency)}`
+  );
+
   persistNow().then(() => {
     showToast(t("toastApproved"), "success");
     renderAll();
@@ -4042,6 +4085,12 @@ function rejectAdvance(advanceId, note) {
     targetType: a.advanceType === "purchase" ? t("auditPurchase") : t("auditAdvance"),
     detail: `${formatCurrency(a.amount)} - ${getUserById(a.userId).name}`
   });
+
+  notifyUser(a.userId,
+    currentLang === "vi"
+      ? `❌ <b>Đề xuất tạm ứng bị từ chối</b>\n👤 ${getUserById(a.userId).name}\n💰 ${formatAmountWithCurrency(a.amount, a.currency)}${note ? `\n📝 Lý do: ${note}` : ''}`
+      : `❌ <b>Advance Request Rejected</b>\n👤 ${getUserById(a.userId).name}\n💰 ${formatAmountWithCurrency(a.amount, a.currency)}${note ? `\n📝 Reason: ${note}` : ''}`
+  );
 
   persistNow().then(() => {
     showToast(t("toastRejected"), "success");
@@ -4929,6 +4978,16 @@ function saveCashPlan() {
       createdBy: currentUser.id, createdAt: nowISO(),
     });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "kế hoạch thu chi" : "cash plan", detail: description });
+
+    if (needsApproval) {
+      const empName = getUserById(employeeId)?.name || '';
+      const dirLabel = direction === "income" ? (currentLang==='vi'?'Thu':'Income') : (currentLang==='vi'?'Chi':'Expense');
+      notifyUser(employeeId,
+        currentLang === "vi"
+          ? `📊 <b>Khoản thu chi dự kiến mới (chờ duyệt)</b>\n👤 ${empName}\n${dirLabel === 'Thu' ? '📥' : '📤'} ${dirLabel}: ${formatAmountWithCurrency(amount, currency)}\n📝 ${description}`
+          : `📊 <b>New Planned Cash Item (Pending)</b>\n👤 ${empName}\n${dirLabel === 'Income' ? '📥' : '📤'} ${dirLabel}: ${formatAmountWithCurrency(amount, currency)}\n📝 ${description}`
+      );
+    }
   }
 
   persistDebounced();
@@ -4951,6 +5010,11 @@ function approveCashPlanItem(planId) {
   p.approvedBy = currentUser.id;
   p.approvedAt = nowISO();
   addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "approved", targetType: currentLang === "vi" ? "kế hoạch thu chi" : "cash plan", detail: p.description });
+  notifyUser(p.employeeId,
+    currentLang === "vi"
+      ? `✅ <b>Khoản thu chi dự kiến đã được duyệt</b>\n👤 ${getUserById(p.employeeId)?.name || ''}\n💰 ${formatAmountWithCurrency(p.amount, p.currency)}\n📝 ${p.description}`
+      : `✅ <b>Planned Cash Item Approved</b>\n👤 ${getUserById(p.employeeId)?.name || ''}\n💰 ${formatAmountWithCurrency(p.amount, p.currency)}\n📝 ${p.description}`
+  );
   persistDebounced();
   showToast(t("toastApproved") || (currentLang === "vi" ? "Đã duyệt" : "Approved"), "success");
   renderCashPlanPage();
@@ -4966,6 +5030,11 @@ function rejectCashPlanItem(planId) {
   p.approvedBy = currentUser.id;
   p.approvedAt = nowISO();
   addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "rejected", targetType: currentLang === "vi" ? "kế hoạch thu chi" : "cash plan", detail: p.description });
+  notifyUser(p.employeeId,
+    currentLang === "vi"
+      ? `❌ <b>Khoản thu chi dự kiến bị từ chối</b>\n👤 ${getUserById(p.employeeId)?.name || ''}\n💰 ${formatAmountWithCurrency(p.amount, p.currency)}${reason ? `\n📝 Lý do: ${reason}` : ''}`
+      : `❌ <b>Planned Cash Item Rejected</b>\n👤 ${getUserById(p.employeeId)?.name || ''}\n💰 ${formatAmountWithCurrency(p.amount, p.currency)}${reason ? `\n📝 Reason: ${reason}` : ''}`
+  );
   persistDebounced();
   showToast(t("toastRejected") || (currentLang === "vi" ? "Đã từ chối" : "Rejected"), "success");
   renderCashPlanPage();
@@ -5062,7 +5131,7 @@ function setupCategoryHandlers() {
 function renderUserMgmt() {
   const container = document.getElementById("userMgmtList");
   container.innerHTML = STORE.users.map(u => `
-    <div class="settings-row">
+    <div class="settings-row" style="flex-wrap:wrap;">
       <div>
         <div class="lbl">${u.name} ${u.id === currentUser.id ? "<span class='role-badge'>" + t("you") + "</span>" : ""}</div>
         <div class="sub">${u.email} • ${roleLabel(u.role)}${u.branch ? " • " + branchLabel(u.branch) : ""}</div>
@@ -5074,8 +5143,28 @@ function renderUserMgmt() {
           <button class="btn btn-sm btn-outline" onclick="toggleUserActive('${u.id}')">${u.active === false ? t("activate") : t("deactivate")}</button>
         ` : ""}
       </div>
+      <div style="flex-basis:100%; display:flex; align-items:center; gap:6px; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border);">
+        <span style="font-size:.78rem; color:var(--text-muted); white-space:nowrap;">🔔 ${currentLang === "vi" ? "Nhóm Telegram" : "Telegram group"}:</span>
+        <input type="text" id="tgChat_${u.id}" value="${u.telegramChatId || ""}"
+          placeholder="${currentLang === "vi" ? "Chat ID nhóm riêng của người này" : "This person's dedicated group Chat ID"}"
+          style="flex:1; min-width:120px; font-size:.78rem; padding:4px 8px;">
+        <button class="btn btn-sm btn-forest" onclick="saveUserTelegramChatId('${u.id}')">${currentLang === "vi" ? "Lưu" : "Save"}</button>
+      </div>
     </div>
   `).join("");
+}
+
+// Admin tạo 1 nhóm Telegram riêng cho mỗi nhân viên (gồm Admin + nhân viên
+// đó + 1-2 người khác nếu cần), thêm bot vào nhóm, lấy Chat ID của nhóm
+// (dùng cách getUpdates như đã làm) rồi lưu ở đây — không phải nhân viên
+// tự lấy Chat ID cá nhân của mình.
+function saveUserTelegramChatId(userId) {
+  const val = document.getElementById(`tgChat_${userId}`).value.trim();
+  const u = STORE.users.find(u2 => u2.id === userId);
+  if (!u) return;
+  u.telegramChatId = val || null;
+  persistDebounced();
+  showToast(currentLang === "vi" ? "Đã lưu nhóm Telegram." : "Telegram group saved.", "success");
 }
 
 // Không còn admin tự đặt mật khẩu mới cho người khác được nữa (Firebase
@@ -5251,6 +5340,7 @@ function setupSettingsHandlers() {
   document.getElementById("btnChangePassword").addEventListener("click", changeOwnPassword);
 
   document.getElementById("btnLogout").addEventListener("click", logout);
+
   setupCategoryHandlers();
 }
 
