@@ -486,6 +486,11 @@
         <label>Notes<span class="vi">Ghi chú</span></label>
         <textarea id="pNotes"></textarea>
       </div>
+      <div class="full">
+        <label>🔔 Telegram Group Chat ID<span class="vi">Nhóm Telegram của dự án này</span></label>
+        <input type="text" id="pTelegramChatId" placeholder="VD: -1001234567890 — để trống nếu chưa có nhóm">
+        <small style="color:var(--muted,#888);">Tạo 1 nhóm Telegram cho dự án này (gồm các thành viên liên quan), thêm bot vào nhóm, lấy Chat ID rồi dán vào đây. Khi giao việc/lập kế hoạch cho dự án này, nội dung sẽ tự động gửi vào đúng nhóm.</small>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal('projectModalBg')">Cancel <span class="vi">/ Hủy</span></button>
@@ -561,6 +566,11 @@
           <option value="LA">🇱🇦 Laos / Lào (LA)</option>
           <option value="VN">🇻🇳 Vietnam / Việt Nam (VN)</option>
         </select>
+      </div>
+      <div class="full">
+        <label>🔔 Telegram Group Chat ID<span class="vi">Nhóm Telegram riêng của người này</span></label>
+        <input type="text" id="sTelegramChatId" placeholder="VD: -1001234567890 — để trống nếu chưa có nhóm">
+        <small style="color:var(--muted,#888);">Nhóm gồm Admin + người này + người khác nếu cần. Khi lập Kế hoạch giao cho người này, thông báo sẽ tự gửi vào đúng nhóm.</small>
       </div>
     </div>
     <div class="modal-actions">
@@ -671,6 +681,41 @@ const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// ── Telegram notifications — gửi vào nhóm RIÊNG của TỪNG DỰ ÁN ─────────
+// Khác với Administration/Finance (nhóm riêng theo TỪNG NGƯỜI), Lab System
+// gửi theo TỪNG DỰ ÁN — ai trong nhóm dự án đó cũng thấy được việc mới
+// giao/kế hoạch mới lập cho đúng dự án đó.
+const TELEGRAM_BOT_TOKEN = '8824623286:AAG6yzv-19SGYFMZde3aIwrX1jy6bBK1mas';
+
+async function sendTelegramNotification(chatId, text) {
+  if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.startsWith('DAN_')) {
+    console.warn('Telegram chưa được cấu hình — bỏ qua gửi thông báo.');
+    return;
+  }
+  if (!chatId) return; // dự án này chưa gắn nhóm Telegram -> bỏ qua, không lỗi
+  try {
+    await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
+    });
+  } catch (e) {
+    console.warn('Gửi thông báo Telegram thất bại:', e.message);
+  }
+}
+
+function notifyProjectGroup(projectId, text) {
+  const proj = PROJECTS.find(p => p.id === projectId);
+  if (proj && proj.telegramChatId) sendTelegramNotification(proj.telegramChatId, text);
+}
+
+// "Kế hoạch" (Plans) không gắn với dự án nào — gửi vào nhóm Telegram riêng
+// của NGƯỜI ĐƯỢC GIAO (giống mô hình Finance/Administration).
+function notifyUserGroup(userId, text) {
+  const u = findUser(userId);
+  if (u && u.telegramChatId) sendTelegramNotification(u.telegramChatId, text);
+}
 
 // Full 7-step pipeline — roles control which steps are visible/editable
 // Admin/SuperAdmin: all 7 steps
@@ -1582,6 +1627,12 @@ async function saveTask(){
     }))
   };
   await db.collection('tasks').add(task);
+
+  const assigneeNames = assigneeIds.map(id => findUser(id)?.name).filter(Boolean).join(', ');
+  notifyProjectGroup(projectId,
+    `📋 <b>Giao việc mới / New Task Assigned</b>\n🏗️ ${project}\n🧪 Sample: ${sampleId}${standard ? ` (${standard})` : ''}\n👤 Phụ trách/Assignee: ${assigneeNames || '—'}\n📅 Deadline: ${deadline}\n🔬 Tests: ${allTestNames.join(', ')}`
+  );
+
   closeModal('taskModalBg');
 }
 
@@ -1764,6 +1815,7 @@ function openProjectModal(projectId){
   document.getElementById('pDeadline').value = p ? p.deadline : '';
   document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
   document.getElementById('pNotes').value = p ? (p.notes||'') : '';
+  document.getElementById('pTelegramChatId').value = p ? (p.telegramChatId||'') : '';
 
   document.getElementById('projectModalHeading').innerHTML = EDIT_PROJECT_ID
     ? `Edit Project <span class="vi">/ Sửa dự án</span>`
@@ -1784,6 +1836,7 @@ async function saveProject(){
   const deadline=document.getElementById('pDeadline').value;
   const status=document.getElementById('pStatus').value;
   const notes=document.getElementById('pNotes').value.trim();
+  const telegramChatId=document.getElementById('pTelegramChatId').value.trim();
 
   if(!name||!deadline){
     alert('Please fill in Project Name and Deadline.\nVui lòng điền Tên dự án và Deadline.');
@@ -1792,7 +1845,7 @@ async function saveProject(){
 
   if(EDIT_PROJECT_ID){
     await db.collection('projects').doc(EDIT_PROJECT_ID).update({
-      code, name, client, investor, country, type, deadline, status, notes
+      code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null
     });
     EDIT_PROJECT_ID = null;
     closeModal('projectModalBg');
@@ -1800,7 +1853,7 @@ async function saveProject(){
   }
 
   await db.collection('projects').add({
-    code, name, client, investor, country, type, deadline, status, notes, createdAt: nowISO()
+    code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null, createdAt: nowISO()
   });
   closeModal('projectModalBg');
 }
@@ -2216,6 +2269,12 @@ async function savePlan(){
       title, goal, assigneeId, deadline, priority, alertDays, notes, steps,
       createdBy: SESSION.uid, createdAt: nowISO(), completedAt: null
     });
+
+    const assigneeName = findUser(assigneeId)?.name || '';
+    const priorityIcon = priority === 'high' ? '🔴' : priority === 'low' ? '🟢' : '🟡';
+    notifyUserGroup(assigneeId,
+      `📝 <b>Kế hoạch mới / New Plan Assigned</b>\n👤 ${assigneeName}\n📌 ${title}${goal ? `\n🎯 ${goal}` : ''}\n${priorityIcon} Priority: ${priority}\n📅 Deadline: ${deadline}${stepLines.length ? `\n☑️ ${stepLines.length} bước/steps` : ''}`
+    );
   }
   closeModal('planModalBg');
 }
@@ -2361,6 +2420,7 @@ function openStaffModal(userId){
   document.getElementById('sPass').value = '';
   document.getElementById('sRole').value = u ? u.role : 'technician';
   document.getElementById('sCountry').value = u ? (u.country||'') : '';
+  document.getElementById('sTelegramChatId').value = u ? (u.telegramChatId||'') : '';
 
   // Hide password field when editing (password change via Firebase Console)
   document.getElementById('sPassSection').style.display = EDIT_STAFF_ID ? 'none' : '';
@@ -2386,6 +2446,7 @@ async function saveStaff(){
   const password=document.getElementById('sPass').value;
   const role=document.getElementById('sRole').value;
   const country=document.getElementById('sCountry').value;
+  const telegramChatId=document.getElementById('sTelegramChatId').value.trim();
 
   if(!name||!email){ alert('Please fill in name and email.\nĐiền đủ tên và email.'); return; }
 
@@ -2395,7 +2456,7 @@ async function saveStaff(){
     if(u.role==='superadmin' && role!=='superadmin' && SESSION.role!=='superadmin'){
       alert('Cannot change Super Admin role.\nKhông thể đổi role Super Admin.'); return;
     }
-    await db.collection('users').doc(EDIT_STAFF_ID).update({name, role, country});
+    await db.collection('users').doc(EDIT_STAFF_ID).update({name, role, country, telegramChatId: telegramChatId || null});
     EDIT_STAFF_ID = null;
     closeModal('staffModalBg');
     alert('Profile updated / Đã cập nhật thông tin.');
@@ -2413,7 +2474,7 @@ async function saveStaff(){
     const secondaryAuth = secondaryApp.auth();
     const cred = await secondaryAuth.createUserWithEmailAndPassword(email, password);
     await db.collection('users').doc(cred.user.uid).set({
-      name, email, role, country, createdAt: nowISO()
+      name, email, role, country, telegramChatId: telegramChatId || null, createdAt: nowISO()
     });
     await secondaryAuth.signOut();
     closeModal('staffModalBg');
