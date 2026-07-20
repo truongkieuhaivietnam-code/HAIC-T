@@ -1817,7 +1817,7 @@ function getDefaultData() {
 // Nhạy cảm (tiền bạc) -> KHÔNG dùng 1 nhóm chung nữa. Mỗi người tự lấy
 // Chat ID riêng của mình (lưu trong Settings), bot gửi RIÊNG cho từng
 // người liên quan — người khác không thấy được.
-const TELEGRAM_BOT_TOKEN = '8824623286:AAG6yzv-19SGYFMZde3aIwrX1jy6bBK1mas';
+const TELEGRAM_BOT_TOKEN = 'DAN_TOKEN_BOT_VAO_DAY';
 
 async function sendTelegramNotification(chatId, text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.startsWith('DAN_')) {
@@ -2291,7 +2291,14 @@ function branchLabel(branch) {
 
 // ---------- Advance approval logic ----------
 function determineAdvanceStatus(amount, role) {
-  if (role === "superadmin" || role === "admin" || role === "branch_manager") return "approved";
+  // SỬA: trước đây Admin/Superadmin/Quản lý chi nhánh tự tạo đề xuất là
+  // TỰ ĐỘNG DUYỆT LUÔN — không ai biết, không có thông báo. Giờ đổi lại:
+  // TẤT CẢ đều phải qua "chờ duyệt" trước, luôn có thông báo Telegram khi
+  // tạo mới. Khác biệt duy nhất: Admin/Superadmin vẫn có quyền tự duyệt
+  // lại đề xuất của chính mình sau đó (không ai khác duyệt hộ cũng được);
+  // Quản lý chi nhánh thì bắt buộc phải có Admin/Superadmin khác duyệt
+  // (không tự duyệt được cho chính mình — xem canApproveCashPlan tương tự).
+  if (role === "superadmin" || role === "admin" || role === "branch_manager") return "pending";
   const limitAuto = STORE.settings.limitAuto || 50;
   if (amount < limitAuto) return "approved";
   return "pending";
@@ -3980,8 +3987,10 @@ function renderApprovalCard(a) {
       </div>
       ${a.reason ? `<div class="note">${escapeHtml(a.reason)}</div>` : ""}
       <div class="btn-row">
-        <button class="btn btn-forest btn-sm" onclick="approveAdvance('${a.id}')">${t("btnApprove")}</button>
-        <button class="btn btn-danger btn-sm" onclick="openRejectModal('${a.id}')">${t("btnReject")}</button>
+        ${(a.userId === currentUser.id && currentUser.role === "branch_manager")
+          ? `<div class="note" style="color:var(--text-muted);">${currentLang === "vi" ? "Chờ Admin/Superadmin duyệt (không tự duyệt được đề xuất của chính mình)." : "Awaiting Admin/Superadmin approval (cannot self-approve)."}</div>`
+          : `<button class="btn btn-forest btn-sm" onclick="approveAdvance('${a.id}')">${t("btnApprove")}</button>
+             <button class="btn btn-danger btn-sm" onclick="openRejectModal('${a.id}')">${t("btnReject")}</button>`}
       </div>
     </div>
   `;
@@ -4030,6 +4039,12 @@ function renderHistoryTimeline(a) {
 function approveAdvance(advanceId) {
   const a = STORE.advances.find(a2 => a2.id === advanceId);
   if (!a) return;
+  // Quản lý chi nhánh không được tự duyệt đề xuất của chính mình — chặn cả
+  // ở đây, không chỉ ẩn nút ngoài giao diện.
+  if (a.userId === currentUser.id && currentUser.role === "branch_manager") {
+    showToast(currentLang === "vi" ? "Không thể tự duyệt đề xuất của chính mình." : "Cannot self-approve your own request.", "error");
+    return;
+  }
   a.status = "approved";
   a.approvedBy = currentUser.id;
   a.approvedAt = nowISO();
@@ -4971,7 +4986,10 @@ function saveCashPlan() {
   } else {
     // Quản lý chi nhánh / nhân viên thường tạo khoản mới -> cần Admin/Superadmin duyệt trước.
     // Chính Admin/Superadmin tạo -> tự động coi như đã duyệt (không cần tự duyệt mình).
-    const needsApproval = currentUser.role === "branch_manager" || currentUser.role === "member";
+    // SỬA: trước đây Admin/Superadmin tạo là tự động duyệt luôn, không ai
+    // biết. Giờ TẤT CẢ vai trò đều phải qua "chờ duyệt" — Admin/Superadmin
+    // vẫn tự duyệt lại được sau, Quản lý chi nhánh/Nhân viên thì không.
+    const needsApproval = true;
     STORE.cashPlans.push({
       id: genId("cashplan"), employeeId, direction, description, amount, currency, expectedDate, note,
       status: needsApproval ? "pending" : "approved",
