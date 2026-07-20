@@ -1024,6 +1024,10 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
       </div>
       <div class="form-group">
+        <label data-i18n="lblContractName">Tên hợp đồng</label>
+        <input type="text" id="invoiceName" placeholder="VD: HĐ cung cấp bê tông tươi - Dự án Angkor Milk">
+      </div>
+      <div class="form-group">
         <label data-i18n="lblContractDate">Ngày ký hợp đồng</label>
         <input type="date" id="invoiceDate">
       </div>
@@ -1058,6 +1062,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <button class="modal-close" onclick="closeModal('modalInvoiceDetail')">✕</button>
     </div>
     <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblContractName">Tên hợp đồng</div><div class="pct" id="invDetailName">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblContractDate">Ngày ký hợp đồng</div><div class="pct" id="invDetailDate">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblProject">Công trình</div><div class="pct" id="invDetailProject">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblInvoiceContractAmount">Giá trị hợp đồng</div><div class="pct" id="invDetailContractAmount">$0</div></div>
@@ -1346,6 +1351,7 @@ const I18N = {
     contractModalEdit: "Sửa hợp đồng",
     contractModalHint: "Tạo ngay khi ký hợp đồng — công nợ được ghi nhận từ đây. Các hóa đơn xuất sau này (tạm ứng, đợt 1, đợt 2...) sẽ được thêm riêng bên trong, không cần sửa lại mục này mỗi lần xuất hóa đơn.",
     lblContractDate: "Ngày ký hợp đồng",
+    lblContractName: "Tên hợp đồng",
     lblInvoiceVatNo: "Số hóa đơn VAT",
     lblInvoiceCommNo: "Số hóa đơn thương mại",
     lblInvoiceContractAmount: "Giá trị hợp đồng",
@@ -1602,6 +1608,7 @@ const I18N = {
     contractModalEdit: "Edit Contract",
     contractModalHint: "Create this as soon as the contract is signed — the debt is recorded from here. Invoices issued later (advance, installment 1, 2...) are added separately inside, no need to edit this each time an invoice is issued.",
     lblContractDate: "Contract Date",
+    lblContractName: "Contract Name",
     lblInvoiceVatNo: "VAT Invoice No.",
     lblInvoiceCommNo: "Commercial Invoice No.",
     lblInvoiceContractAmount: "Contract Value",
@@ -4457,7 +4464,7 @@ function renderCustomerDetail(customerId) {
     return `
       <div class="payment-history-item" style="cursor:pointer;" onclick="openInvoiceDetail('${c.id}','${inv.id}')">
         <div>
-          <div style="font-weight:600;">${escapeHtml(project ? project.name : (currentLang === "vi" ? "Hợp đồng" : "Contract"))}</div>
+          <div style="font-weight:600;">${escapeHtml(inv.name || (project ? project.name : (currentLang === "vi" ? "Hợp đồng" : "Contract")))}</div>
           <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}${project ? ` • <span class="project-pill">${escapeHtml(project.name)}</span>` : ""}</div>
         </div>
         <div style="text-align:right;">
@@ -4480,6 +4487,7 @@ function openInvoiceModal(invoiceId) {
   const inv = invoiceId ? (c.invoices || []).find(i => i.id === invoiceId) : null;
 
   document.getElementById("invoiceModalTitle").textContent = inv ? t("contractModalEdit") : t("contractModalAdd");
+  document.getElementById("invoiceName").value = inv ? (inv.name || "") : "";
   document.getElementById("invoiceDate").value = inv ? inv.date : todayStr();
   document.getElementById("invoiceContractAmount").value = inv ? inv.contractAmount : "";
   document.getElementById("invoiceActualAmount").value = inv ? inv.actualAmount : "";
@@ -4491,6 +4499,7 @@ function openInvoiceModal(invoiceId) {
 }
 
 function saveInvoice() {
+  const name = document.getElementById("invoiceName").value.trim();
   const date = document.getElementById("invoiceDate").value;
   const contractAmount = parseFloat(document.getElementById("invoiceContractAmount").value) || 0;
   const actualAmount = parseFloat(document.getElementById("invoiceActualAmount").value) || 0;
@@ -4508,18 +4517,18 @@ function saveInvoice() {
 
   if (editingInvoiceId) {
     const inv = c.invoices.find(i => i.id === editingInvoiceId);
-    inv.date = date;
+    inv.name = name; inv.date = date;
     inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.projectId = projectId; inv.note = note;
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${formatCurrency(contractAmount)} - ${c.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || formatCurrency(contractAmount)} - ${c.name}` });
   } else {
     c.invoices.push({
       // Công nợ được ghi nhận NGAY khi tạo hợp đồng (dùng actualAmount nếu
       // đã biết khối lượng thực tế, còn không thì tạm dùng contractAmount
       // — không cần đợi có hóa đơn nào mới tính công nợ.
-      id: genId("inv"), date, contractAmount, actualAmount: actualAmount || contractAmount, projectId, note,
+      id: genId("inv"), name, date, contractAmount, actualAmount: actualAmount || contractAmount, projectId, note,
       payments: [], createdBy: currentUser.id, createdAt: nowISO()
     });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${formatCurrency(contractAmount)} - ${c.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || formatCurrency(contractAmount)} - ${c.name}` });
   }
 
   persistDebounced();
@@ -4581,7 +4590,8 @@ function renderInvoiceDetail(customerId, invoiceId) {
   if (!inv) return;
 
   const proj = inv.projectId ? getProjectById(inv.projectId) : null;
-  document.getElementById("invoiceDetailTitle").textContent = proj ? proj.name : (currentLang === "vi" ? "Hợp đồng" : "Contract");
+  document.getElementById("invoiceDetailTitle").textContent = inv.name || (proj ? proj.name : (currentLang === "vi" ? "Hợp đồng" : "Contract"));
+  document.getElementById("invDetailName").textContent = inv.name || "—";
   document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
   document.getElementById("invDetailProject").textContent = proj ? proj.name : "—";
   document.getElementById("invDetailContractAmount").textContent = formatCurrency(inv.contractAmount || 0);
