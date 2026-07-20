@@ -1509,7 +1509,16 @@ function openTaskModal(taskId){
       psel.appendChild(o);
     });
   }
-  if(t && t.projectId) psel.value = t.projectId;
+  if(t && t.projectId){
+    psel.value = t.projectId;
+  } else if(!t && TASKS_PROJECT_FILTER && PROJECTS.some(p=>p.id===TASKS_PROJECT_FILTER)){
+    // SỬA: khi bấm "New Sample" ngay sau khi vào từ 1 dự án cụ thể (qua nút
+    // "xem việc" bên Projects), tự động chọn lại đúng dự án đó — không bắt
+    // gõ/lọc lại từ đầu. Đồng thời tự điền luôn Client theo dự án đó.
+    psel.value = TASKS_PROJECT_FILTER;
+    const proj = PROJECTS.find(p=>p.id===TASKS_PROJECT_FILTER);
+    if(proj && proj.client) document.getElementById('tClient').value = proj.client;
+  }
 
   const sel = document.getElementById('tAssignee');
   sel.innerHTML='';
