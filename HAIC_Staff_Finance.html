@@ -1014,31 +1014,26 @@ main{padding:16px; max-width:880px; margin:0 auto;}
 <div class="modal-overlay" id="modalInvoice">
   <div class="modal-sheet">
     <div class="modal-head">
-      <h3 id="invoiceModalTitle" data-i18n="invoiceModalAdd">Thêm hóa đơn</h3>
+      <h3 id="invoiceModalTitle" data-i18n="contractModalAdd">Thêm hợp đồng / công nợ</h3>
       <button class="modal-close" onclick="closeModal('modalInvoice')">✕</button>
     </div>
     <div class="form-grid">
+      <div class="card" style="margin-bottom:6px; background:var(--bg,#f7f7f2);">
+        <div class="card-body" style="font-size:.8rem; color:var(--text-muted); padding:8px 12px;" data-i18n="contractModalHint">
+          Tạo ngay khi ký hợp đồng — công nợ được ghi nhận từ đây. Các hóa đơn xuất sau này (tạm ứng, đợt 1, đợt 2...) sẽ được thêm riêng bên trong, không cần sửa lại mục này mỗi lần xuất hóa đơn.
+        </div>
+      </div>
       <div class="form-group">
-        <label data-i18n="lblInvoiceDate">Ngày xuất hóa đơn</label>
+        <label data-i18n="lblContractDate">Ngày ký hợp đồng</label>
         <input type="date" id="invoiceDate">
       </div>
       <div class="form-row2">
         <div class="form-group">
-          <label data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</label>
-          <input type="text" id="invoiceVatNo" placeholder="">
-        </div>
-        <div class="form-group">
-          <label data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</label>
-          <input type="text" id="invoiceCommNo" placeholder="">
-        </div>
-      </div>
-      <div class="form-row2">
-        <div class="form-group">
-          <label data-i18n="lblInvoiceContractAmount">Số tiền theo hợp đồng ($)</label>
+          <label data-i18n="lblInvoiceContractAmount">Giá trị hợp đồng ($)</label>
           <input type="number" id="invoiceContractAmount" placeholder="0.00" min="0" step="0.01">
         </div>
         <div class="form-group">
-          <label data-i18n="lblInvoiceActualAmount">Số tiền theo khối lượng thực tế ($)</label>
+          <label data-i18n="lblInvoiceActualAmount">Theo khối lượng thực tế ($) <span style="font-weight:400;">— để trống nếu chưa biết</span></label>
           <input type="number" id="invoiceActualAmount" placeholder="0.00" min="0" step="0.01">
         </div>
       </div>
@@ -1063,18 +1058,37 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <button class="modal-close" onclick="closeModal('modalInvoiceDetail')">✕</button>
     </div>
     <div class="card" style="margin-bottom:14px;">
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceDate">Ngày xuất hóa đơn</div><div class="pct" id="invDetailDate">—</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</div><div class="pct" id="invDetailVatNo">—</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</div><div class="pct" id="invDetailCommNo">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblContractDate">Ngày ký hợp đồng</div><div class="pct" id="invDetailDate">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblProject">Công trình</div><div class="pct" id="invDetailProject">—</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceContractAmount">Số tiền theo hợp đồng</div><div class="pct" id="invDetailContractAmount">$0</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceActualAmount">Số tiền theo khối lượng thực tế</div><div class="pct" id="invDetailActualAmount">$0</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoicePaid">Đã thanh toán</div><div class="pct" id="invDetailPaid">$0</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblInvoiceRemaining">Còn lại chưa thanh toán</div><div class="pct" id="invDetailRemaining">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceContractAmount">Giá trị hợp đồng</div><div class="pct" id="invDetailContractAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceActualAmount">Theo khối lượng thực tế</div><div class="pct" id="invDetailActualAmount">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoicePaid">Đã xuất hóa đơn / thu</div><div class="pct" id="invDetailPaid">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblInvoiceRemaining">Công nợ còn lại</div><div class="pct" id="invDetailRemaining">$0</div></div>
     </div>
     <div class="card" id="addInvoicePaymentCard">
-      <h3 data-i18n="addPaymentTitle">Ghi nhận thanh toán</h3>
+      <h3 data-i18n="addPaymentTitle">Xuất hóa đơn mới</h3>
       <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="lblInvoiceDocType">Đợt / Loại hóa đơn</label>
+          <select id="invPaymentType">
+            <option value="advance" data-i18n="invoiceDocTypeAdvance">Tạm ứng</option>
+            <option value="installment1" data-i18n="invoiceDocTypeInst1">Thanh toán đợt 1</option>
+            <option value="installment2" data-i18n="invoiceDocTypeInst2">Thanh toán đợt 2</option>
+            <option value="installment3" data-i18n="invoiceDocTypeInst3">Thanh toán đợt 3</option>
+            <option value="final" data-i18n="invoiceDocTypeFinal">Thanh toán cuối cùng</option>
+            <option value="other" data-i18n="invoiceDocTypeOther">Khác</option>
+          </select>
+        </div>
+        <div class="form-row2">
+          <div class="form-group">
+            <label data-i18n="lblInvoiceVatNo">Số hóa đơn VAT</label>
+            <input type="text" id="invPaymentVatNo" placeholder="">
+          </div>
+          <div class="form-group">
+            <label data-i18n="lblInvoiceCommNo">Số hóa đơn thương mại</label>
+            <input type="text" id="invPaymentCommNo" placeholder="">
+          </div>
+        </div>
         <div class="form-row2">
           <div class="form-group">
             <label data-i18n="lblAmount">Số tiền ($)</label>
@@ -1089,17 +1103,17 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <label data-i18n="lblNote">Ghi chú</label>
           <input type="text" id="invPaymentNote">
         </div>
-        <button class="btn btn-forest btn-block" id="btnAddInvoicePayment" data-i18n="btnAddPayment">Ghi nhận</button>
+        <button class="btn btn-forest btn-block" id="btnAddInvoicePayment" data-i18n="btnAddPayment">Lưu hóa đơn</button>
       </div>
     </div>
     <div class="card">
-      <h3 data-i18n="paymentHistoryTitle">Lịch sử thanh toán</h3>
+      <h3 data-i18n="paymentHistoryTitle">Các hóa đơn đã xuất</h3>
       <div id="invPaymentHistoryList"></div>
     </div>
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-outline" id="btnEditInvoice" data-i18n="btnEditInvoice">Sửa hóa đơn</button>
-        <button class="btn btn-danger" id="btnDeleteInvoice" data-i18n="btnDeleteInvoice">Xóa hóa đơn</button>
+        <button class="btn btn-outline" id="btnEditInvoice" data-i18n="btnEditInvoice">Sửa hợp đồng</button>
+        <button class="btn btn-danger" id="btnDeleteInvoice" data-i18n="btnDeleteInvoice">Xóa hợp đồng</button>
       </div>
     </div>
   </div>
@@ -1319,20 +1333,31 @@ const I18N = {
     emptyCustomers: "Chưa có khách hàng nào",
     noPaymentHistory: "Chưa có lịch sử thanh toán",
     invoicesTitle: "Hóa đơn",
-    btnAddInvoice: "+ Thêm hóa đơn",
-    emptyInvoices: "Chưa có hóa đơn nào",
-    invoiceModalAdd: "Thêm hóa đơn",
-    invoiceModalEdit: "Sửa hóa đơn",
-    lblInvoiceDate: "Ngày xuất hóa đơn",
+    btnAddInvoice: "+ Thêm hợp đồng",
+    emptyInvoices: "Chưa có hợp đồng nào",
+    contractModalAdd: "Thêm hợp đồng / công nợ",
+    contractModalEdit: "Sửa hợp đồng",
+    contractModalHint: "Tạo ngay khi ký hợp đồng — công nợ được ghi nhận từ đây. Các hóa đơn xuất sau này (tạm ứng, đợt 1, đợt 2...) sẽ được thêm riêng bên trong, không cần sửa lại mục này mỗi lần xuất hóa đơn.",
+    lblContractDate: "Ngày ký hợp đồng",
     lblInvoiceVatNo: "Số hóa đơn VAT",
     lblInvoiceCommNo: "Số hóa đơn thương mại",
-    lblInvoiceContractAmount: "Số tiền theo hợp đồng",
-    lblInvoiceActualAmount: "Số tiền theo khối lượng thực tế",
-    lblInvoicePaid: "Đã thanh toán",
-    lblInvoiceRemaining: "Còn lại chưa thanh toán",
-    btnEditInvoice: "Sửa hóa đơn",
-    btnDeleteInvoice: "Xóa hóa đơn",
-    confirmDeleteInvoice: "Bạn có chắc muốn xóa hóa đơn này?",
+    lblInvoiceContractAmount: "Giá trị hợp đồng",
+    lblInvoiceActualAmount: "Theo khối lượng thực tế",
+    lblInvoicePaid: "Đã xuất hóa đơn / thu",
+    lblInvoiceRemaining: "Công nợ còn lại",
+    lblInvoiceDocType: "Đợt / Loại hóa đơn",
+    invoiceDocTypeAdvance: "Tạm ứng",
+    invoiceDocTypeInst1: "Thanh toán đợt 1",
+    invoiceDocTypeInst2: "Thanh toán đợt 2",
+    invoiceDocTypeInst3: "Thanh toán đợt 3",
+    invoiceDocTypeFinal: "Thanh toán cuối cùng",
+    invoiceDocTypeOther: "Khác",
+    addPaymentTitle: "Xuất hóa đơn mới",
+    paymentHistoryTitle: "Các hóa đơn đã xuất",
+    btnAddPayment: "Lưu hóa đơn",
+    btnEditInvoice: "Sửa hợp đồng",
+    btnDeleteInvoice: "Xóa hợp đồng",
+    confirmDeleteInvoice: "Bạn có chắc muốn xóa hợp đồng này? Toàn bộ hóa đơn đã xuất bên trong cũng sẽ bị xóa.",
     invoiceFully_paid: "Đã thanh toán đủ",
     projectModalAdd: "Thêm công trình",
     projectModalEdit: "Sửa công trình",
@@ -1562,20 +1587,31 @@ const I18N = {
     emptyCustomers: "No customers yet",
     noPaymentHistory: "No payment history yet",
     invoicesTitle: "Invoices",
-    btnAddInvoice: "+ Add Invoice",
-    emptyInvoices: "No invoices yet",
-    invoiceModalAdd: "Add Invoice",
-    invoiceModalEdit: "Edit Invoice",
-    lblInvoiceDate: "Invoice Date",
+    btnAddInvoice: "+ Add Contract",
+    emptyInvoices: "No contracts yet",
+    contractModalAdd: "Add Contract / Debt",
+    contractModalEdit: "Edit Contract",
+    contractModalHint: "Create this as soon as the contract is signed — the debt is recorded from here. Invoices issued later (advance, installment 1, 2...) are added separately inside, no need to edit this each time an invoice is issued.",
+    lblContractDate: "Contract Date",
     lblInvoiceVatNo: "VAT Invoice No.",
     lblInvoiceCommNo: "Commercial Invoice No.",
-    lblInvoiceContractAmount: "Contract Amount",
-    lblInvoiceActualAmount: "Actual Volume Amount",
-    lblInvoicePaid: "Paid",
-    lblInvoiceRemaining: "Remaining",
-    btnEditInvoice: "Edit Invoice",
-    btnDeleteInvoice: "Delete Invoice",
-    confirmDeleteInvoice: "Are you sure you want to delete this invoice?",
+    lblInvoiceContractAmount: "Contract Value",
+    lblInvoiceActualAmount: "Based on Actual Volume",
+    lblInvoicePaid: "Invoiced / Collected",
+    lblInvoiceRemaining: "Remaining Debt",
+    lblInvoiceDocType: "Installment / Invoice Type",
+    invoiceDocTypeAdvance: "Advance",
+    invoiceDocTypeInst1: "Installment 1",
+    invoiceDocTypeInst2: "Installment 2",
+    invoiceDocTypeInst3: "Installment 3",
+    invoiceDocTypeFinal: "Final Payment",
+    invoiceDocTypeOther: "Other",
+    addPaymentTitle: "Issue New Invoice",
+    paymentHistoryTitle: "Issued Invoices",
+    btnAddPayment: "Save Invoice",
+    btnEditInvoice: "Edit Contract",
+    btnDeleteInvoice: "Delete Contract",
+    confirmDeleteInvoice: "Are you sure you want to delete this contract? All invoices issued under it will also be deleted.",
     invoiceFully_paid: "Fully Paid",
     projectModalAdd: "Add Project",
     projectModalEdit: "Edit Project",
@@ -1817,7 +1853,7 @@ function getDefaultData() {
 // Nhạy cảm (tiền bạc) -> KHÔNG dùng 1 nhóm chung nữa. Mỗi người tự lấy
 // Chat ID riêng của mình (lưu trong Settings), bot gửi RIÊNG cho từng
 // người liên quan — người khác không thấy được.
-const TELEGRAM_BOT_TOKEN = '8824623286:AAG6yzv-19SGYFMZde3aIwrX1jy6bBK1mas';
+const TELEGRAM_BOT_TOKEN = 'DAN_TOKEN_BOT_VAO_DAY';
 
 async function sendTelegramNotification(chatId, text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.startsWith('DAN_')) {
@@ -4410,7 +4446,7 @@ function renderCustomerDetail(customerId) {
     return `
       <div class="payment-history-item" style="cursor:pointer;" onclick="openInvoiceDetail('${c.id}','${inv.id}')">
         <div>
-          <div style="font-weight:600;">${escapeHtml(inv.vatNo || inv.commNo || "—")}</div>
+          <div style="font-weight:600;">${escapeHtml(project ? project.name : (currentLang === "vi" ? "Hợp đồng" : "Contract"))}</div>
           <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}${project ? ` • <span class="project-pill">${escapeHtml(project.name)}</span>` : ""}</div>
         </div>
         <div style="text-align:right;">
@@ -4431,10 +4467,8 @@ function openInvoiceModal(invoiceId) {
   const c = STORE.customers.find(c2 => c2.id === currentCustomerDetailId);
   const inv = invoiceId ? (c.invoices || []).find(i => i.id === invoiceId) : null;
 
-  document.getElementById("invoiceModalTitle").textContent = inv ? t("invoiceModalEdit") : t("invoiceModalAdd");
+  document.getElementById("invoiceModalTitle").textContent = inv ? t("contractModalEdit") : t("contractModalAdd");
   document.getElementById("invoiceDate").value = inv ? inv.date : todayStr();
-  document.getElementById("invoiceVatNo").value = inv ? (inv.vatNo || "") : "";
-  document.getElementById("invoiceCommNo").value = inv ? (inv.commNo || "") : "";
   document.getElementById("invoiceContractAmount").value = inv ? inv.contractAmount : "";
   document.getElementById("invoiceActualAmount").value = inv ? inv.actualAmount : "";
   populateProjectOptions(document.getElementById("invoiceProject"));
@@ -4446,14 +4480,12 @@ function openInvoiceModal(invoiceId) {
 
 function saveInvoice() {
   const date = document.getElementById("invoiceDate").value;
-  const vatNo = document.getElementById("invoiceVatNo").value.trim();
-  const commNo = document.getElementById("invoiceCommNo").value.trim();
   const contractAmount = parseFloat(document.getElementById("invoiceContractAmount").value) || 0;
   const actualAmount = parseFloat(document.getElementById("invoiceActualAmount").value) || 0;
   const projectId = document.getElementById("invoiceProject").value || null;
   const note = document.getElementById("invoiceNote").value.trim();
 
-  if (!date || (!vatNo && !commNo)) {
+  if (!date || !contractAmount) {
     showToast(t("toastFillRequired"), "error");
     return;
   }
@@ -4464,15 +4496,18 @@ function saveInvoice() {
 
   if (editingInvoiceId) {
     const inv = c.invoices.find(i => i.id === editingInvoiceId);
-    inv.date = date; inv.vatNo = vatNo; inv.commNo = commNo;
+    inv.date = date;
     inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.projectId = projectId; inv.note = note;
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${formatCurrency(contractAmount)} - ${c.name}` });
   } else {
     c.invoices.push({
-      id: genId("inv"), date, vatNo, commNo, contractAmount, actualAmount, projectId, note,
+      // Công nợ được ghi nhận NGAY khi tạo hợp đồng (dùng actualAmount nếu
+      // đã biết khối lượng thực tế, còn không thì tạm dùng contractAmount
+      // — không cần đợi có hóa đơn nào mới tính công nợ.
+      id: genId("inv"), date, contractAmount, actualAmount: actualAmount || contractAmount, projectId, note,
       payments: [], createdBy: currentUser.id, createdAt: nowISO()
     });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${vatNo || commNo} - ${c.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${formatCurrency(contractAmount)} - ${c.name}` });
   }
 
   persistDebounced();
@@ -4494,7 +4529,7 @@ function deleteInvoice() {
   const inv = (c.invoices || []).find(i => i.id === currentInvoiceDetailId);
   c.invoices = c.invoices.filter(i => i.id !== currentInvoiceDetailId);
 
-  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "hóa đơn" : "invoice", detail: `${inv ? (inv.vatNo || inv.commNo) : ""} - ${c.name}` });
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${inv ? formatCurrency(inv.contractAmount||0) : ""} - ${c.name}` });
 
   persistDebounced();
   closeModal("modalInvoiceDetail");
@@ -4510,6 +4545,9 @@ function openInvoiceDetail(customerId, invoiceId) {
   document.getElementById("invPaymentDate").value = todayStr();
   document.getElementById("invPaymentAmount").value = "";
   document.getElementById("invPaymentNote").value = "";
+  document.getElementById("invPaymentType").value = "advance";
+  document.getElementById("invPaymentVatNo").value = "";
+  document.getElementById("invPaymentCommNo").value = "";
   renderInvoiceDetail(customerId, invoiceId);
   openModal("modalInvoiceDetail");
 }
@@ -4520,11 +4558,9 @@ function renderInvoiceDetail(customerId, invoiceId) {
   const inv = (c.invoices || []).find(i => i.id === invoiceId);
   if (!inv) return;
 
-  document.getElementById("invoiceDetailTitle").textContent = inv.vatNo || inv.commNo || (currentLang === "vi" ? "Hóa đơn" : "Invoice");
-  document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
-  document.getElementById("invDetailVatNo").textContent = inv.vatNo || "—";
-  document.getElementById("invDetailCommNo").textContent = inv.commNo || "—";
   const proj = inv.projectId ? getProjectById(inv.projectId) : null;
+  document.getElementById("invoiceDetailTitle").textContent = proj ? proj.name : (currentLang === "vi" ? "Hợp đồng" : "Contract");
+  document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
   document.getElementById("invDetailProject").textContent = proj ? proj.name : "—";
   document.getElementById("invDetailContractAmount").textContent = formatCurrency(inv.contractAmount || 0);
   document.getElementById("invDetailActualAmount").textContent = formatCurrency(inv.actualAmount || 0);
@@ -4536,6 +4572,15 @@ function renderInvoiceDetail(customerId, invoiceId) {
   remEl.textContent = formatCurrency(remaining);
   remEl.style.color = remaining > 0 ? "var(--bad)" : "var(--good)";
 
+  const typeLabels = {
+    advance: currentLang === "vi" ? "Tạm ứng" : "Advance",
+    installment1: currentLang === "vi" ? "Đợt 1" : "Installment 1",
+    installment2: currentLang === "vi" ? "Đợt 2" : "Installment 2",
+    installment3: currentLang === "vi" ? "Đợt 3" : "Installment 3",
+    final: currentLang === "vi" ? "Cuối cùng" : "Final",
+    other: currentLang === "vi" ? "Khác" : "Other",
+  };
+
   const history = (inv.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
   const historyList = document.getElementById("invPaymentHistoryList");
   if (history.length === 0) {
@@ -4544,7 +4589,8 @@ function renderInvoiceDetail(customerId, invoiceId) {
     historyList.innerHTML = history.map(p => `
       <div class="payment-history-item">
         <div>
-          <div>${escapeHtml(p.note || "")}</div>
+          <div><strong>${typeLabels[p.type] || (currentLang === "vi" ? "Hóa đơn" : "Invoice")}</strong>${p.vatNo ? ` · VAT: ${escapeHtml(p.vatNo)}` : ""}${p.commNo ? ` · TM: ${escapeHtml(p.commNo)}` : ""}</div>
+          ${p.note ? `<div>${escapeHtml(p.note)}</div>` : ""}
           <div class="pdate">${formatDateDisplay(p.date)}</div>
         </div>
         <div class="pamt">+${formatCurrency(p.amount)}</div>
@@ -4557,6 +4603,9 @@ function addInvoicePayment() {
   const amount = parseFloat(document.getElementById("invPaymentAmount").value);
   const date = document.getElementById("invPaymentDate").value;
   const note = document.getElementById("invPaymentNote").value.trim();
+  const type = document.getElementById("invPaymentType").value;
+  const vatNo = document.getElementById("invPaymentVatNo").value.trim();
+  const commNo = document.getElementById("invPaymentCommNo").value.trim();
 
   if (!amount || amount <= 0 || !date) {
     showToast(t("toastFillRequired"), "error");
@@ -4568,12 +4617,12 @@ function addInvoicePayment() {
   const inv = (c.invoices || []).find(i => i.id === currentInvoiceDetailId);
   if (!inv) return;
   if (!inv.payments) inv.payments = [];
-  inv.payments.push({ id: genId("pay"), amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
+  inv.payments.push({ id: genId("pay"), amount, date, note, type, vatNo, commNo, createdBy: currentUser.id, createdAt: nowISO() });
 
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "created",
-    targetType: currentLang === "vi" ? "thanh toán" : "payment",
-    detail: `${formatCurrency(amount)} - ${c.name} (${inv.vatNo || inv.commNo || ""})`
+    targetType: currentLang === "vi" ? "hóa đơn" : "invoice",
+    detail: `${formatCurrency(amount)} - ${c.name} (${vatNo || commNo || type})`
   });
 
   persistDebounced();
