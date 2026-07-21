@@ -1488,7 +1488,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       </div>
       <div class="form-group">
         <label data-i18n="lblUserRole">Vai trò</label>
-        <select id="newUserRole">
+        <select id="newUserRole" onchange="toggleHideFinanceGroupVisibility()">
           <option value="admin" data-i18n="roleAdmin">Admin</option>
           <option value="branch_manager" data-i18n="roleBranchManager">Quản lý chi nhánh</option>
           <option value="member" data-i18n="roleMember">Nhân viên</option>
@@ -1501,6 +1501,12 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <option value="laos" data-i18n="branchLaos">Lào</option>
           <option value="vietnam" data-i18n="branchVietnam">Việt Nam</option>
         </select>
+      </div>
+      <div class="form-group" id="hideFinanceGroup">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="newUserHideFinance" style="width:auto;">
+          <span data-i18n="lblHideFinanceModules">Ẩn "Công nợ khách hàng" và "Đội khoan/Vận chuyển" với người này (dù có vai trò Quản lý chi nhánh)</span>
+        </label>
       </div>
       <button class="btn btn-forest btn-block" id="btnSaveUser" data-i18n="btnSave">Lưu</button>
     </div>
@@ -2636,6 +2642,12 @@ const PERMISSIONS = {
 
 function can(permission, ownerId) {
   if (!currentUser) return false;
+  // Cờ riêng theo từng người: bất kể vai trò gì (kể cả Quản lý chi nhánh),
+  // nếu bị đánh dấu "ẩn" thì luôn KHÔNG được xem 2 mục tài chính nhạy cảm
+  // này — ưu tiên hơn cả quy tắc theo vai trò bên dưới.
+  if ((permission === "manageCustomers" || permission === "manageSubcontractors") && currentUser.hideFinanceModules) {
+    return false;
+  }
   const rule = PERMISSIONS[permission];
   if (!rule) return false;
   const val = rule[currentUser.role];
@@ -2919,7 +2931,7 @@ const NAV_MAIN_PAGES = ["dashboard", "transactions", "advances", "approvals", "c
 function openMoreMenu() {
   const list = document.getElementById("moreMenuList");
   const items = [];
-  if (can("approveAdvance")) items.push({ page: "customers", icon: "👥", labelKey: "navCustomers" });
+  if (can("manageCustomers")) items.push({ page: "customers", icon: "👥", labelKey: "navCustomers" });
   if (can("manageSubcontractors")) items.push({ page: "subcontractors", icon: "⛏️", labelKey: "navSubcontractors" });
   items.push({ page: "projects", icon: "🏗️", labelKey: "navProjects" });
   if (can("viewCashPlan") || can("createCashPlan")) items.push({ page: "cashplan", icon: "📊", labelKey: "navCashPlan" });
@@ -6411,8 +6423,18 @@ function openUserModal(userId) {
         : "After saving, run the account-creation script for this email (see README).");
   document.getElementById("newUserRole").value = u ? u.role : "member";
   document.getElementById("newUserBranch").value = u ? (u.branch || "cambodia") : "cambodia";
+  document.getElementById("newUserHideFinance").checked = u ? !!u.hideFinanceModules : false;
+  toggleHideFinanceGroupVisibility();
 
   openModal("modalUser");
+}
+
+function toggleHideFinanceGroupVisibility() {
+  const role = document.getElementById("newUserRole").value;
+  // Chỉ có ý nghĩa với Quản lý chi nhánh (admin/superadmin vốn không bị
+  // giới hạn quyền theo cách này; nhân viên thường vốn đã không thấy 2
+  // mục này rồi, không cần tùy chọn ẩn thêm).
+  document.getElementById("hideFinanceGroup").classList.toggle("hidden", role !== "branch_manager");
 }
 
 function saveUser() {
@@ -6423,6 +6445,7 @@ function saveUser() {
   // đứng trên phạm vi chi nhánh, không nên gán branch (tránh vô tình lộ
   // dữ liệu qua canAccessUser() nếu sau này có chỗ nào quên kiểm tra role).
   const branch = (role === "admin" || role === "superadmin") ? null : document.getElementById("newUserBranch").value;
+  const hideFinanceModules = role === "branch_manager" ? document.getElementById("newUserHideFinance").checked : false;
 
   if (!name || !email) {
     showToast(t("toastFillRequired"), "error");
@@ -6440,6 +6463,7 @@ function saveUser() {
     u.email = email;
     u.role = role;
     u.branch = branch;
+    u.hideFinanceModules = hideFinanceModules;
     // Mật khẩu không còn chỉnh ở đây — dùng nút "Đặt lại mật khẩu" (gửi email thật qua Firebase).
 
     addAuditLog({
@@ -6456,6 +6480,7 @@ function saveUser() {
     if (editingUserId === currentUser.id) {
       currentUser.role = role;
       currentUser.branch = branch;
+      currentUser.hideFinanceModules = hideFinanceModules;
       renderAll();
     }
   } else {
@@ -6468,7 +6493,7 @@ function saveUser() {
     // khoản cho người khác). Người này sẽ KHÔNG đăng nhập được cho tới
     // khi anh chạy script create-finance-accounts.js (xem README) để
     // tạo tài khoản đăng nhập thật khớp đúng email này.
-    STORE.users.push({ id: genId("user"), name, email, role, branch, active: true });
+    STORE.users.push({ id: genId("user"), name, email, role, branch, hideFinanceModules, active: true });
     showToast(currentLang === "vi"
       ? "Đã thêm hồ sơ. Nhớ chạy script tạo tài khoản đăng nhập cho email này!"
       : "Profile added. Remember to run the account-creation script for this email!", "success");
