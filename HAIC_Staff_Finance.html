@@ -1176,16 +1176,19 @@ main{padding:16px; max-width:880px; margin:0 auto;}
     </div>
     <div class="form-grid">
       <div class="form-group">
+        <label data-i18n="lblSubType">Loại đội</label>
+        <select id="subType">
+          <option value="drilling" data-i18n="subTypeDrilling">Đội khoan</option>
+          <option value="transport" data-i18n="subTypeTransport">Đội vận chuyển</option>
+        </select>
+      </div>
+      <div class="form-group">
         <label data-i18n="lblSubName">Tên đội khoan / thầu phụ</label>
         <input type="text" id="subName" placeholder="VD: Đội khoan Nguyễn Văn A">
       </div>
       <div class="form-group">
         <label data-i18n="lblSubPhone">Số điện thoại</label>
         <input type="text" id="subPhone" placeholder="">
-      </div>
-      <div class="form-group">
-        <label data-i18n="lblProject">Công trình (tùy chọn)</label>
-        <select id="subProject"></select>
       </div>
       <div class="form-group">
         <label data-i18n="lblNote">Ghi chú</label>
@@ -1196,7 +1199,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
   </div>
 </div>
 
-<!-- Subcontractor Detail Modal -->
+<!-- Subcontractor (Team) Detail Modal — chỉ hiện thông tin đội + danh sách công trình -->
 <div class="modal-overlay" id="modalSubcontractorDetail">
   <div class="modal-sheet">
     <div class="modal-head">
@@ -1204,17 +1207,73 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <button class="modal-close" onclick="closeModal('modalSubcontractorDetail')">✕</button>
     </div>
     <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblSubType">Loại đội</div><div class="pct" id="subDetailType">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblSubPhone">Số điện thoại</div><div class="pct" id="subDetailPhone">—</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblProject">Công trình</div><div class="pct" id="subDetailProject">—</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblTotalEarned">Tổng tiền công/khoán</div><div class="pct" id="subDetailEarned">$0</div></div>
       <div class="cat-row"><div class="name" data-i18n="lblTotalAdvancedOut">Đã tạm ứng/hỗ trợ</div><div class="pct" id="subDetailAdvanced">$0</div></div>
-      <div class="cat-row"><div class="name" data-i18n="lblSubBalance">Còn phải trả</div><div class="pct" id="subDetailBalance">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblSubBalance">Còn phải trả (tất cả công trình)</div><div class="pct" id="subDetailBalance">$0</div></div>
+    </div>
+
+    <div class="page-head" style="margin-bottom:8px;">
+      <h3 style="margin:0;" data-i18n="contractsListTitle">Công trình</h3>
+      <button class="btn btn-sm btn-gold" id="btnAddSubContract" data-i18n="btnAddContract">+ Thêm công trình</button>
+    </div>
+    <div class="card">
+      <div id="subContractsList"></div>
+      <div class="empty-state hidden" id="subContractsEmpty">
+        <div class="ico">🏗️</div>
+        <p data-i18n="emptySubContracts">Chưa có công trình nào cho đội này</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-outline" id="btnEditSubcontractor" data-i18n="btnEditSubcontractor">Sửa đội khoan</button>
+        <button class="btn btn-danger" id="btnDeleteSubcontractor" data-i18n="btnDeleteSubcontractor">Xóa đội khoan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add Contract (Project) Modal -->
+<div class="modal-overlay" id="modalSubContract">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="subContractModalTitle" data-i18n="subContractModalAdd">Thêm công trình cho đội</h3>
+      <button class="modal-close" onclick="closeModal('modalSubContract')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label data-i18n="lblProject">Công trình</label>
+        <select id="subContractProject"></select>
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblNote">Ghi chú</label>
+        <textarea id="subContractNote" rows="2"></textarea>
+      </div>
+      <button class="btn btn-forest btn-block" id="btnSaveSubContract" data-i18n="btnSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Contract Detail Modal (per project) — nơi ghi bảng công/khoán + tạm ứng -->
+<div class="modal-overlay" id="modalSubContractDetail">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="subContractDetailTitle">—</h3>
+      <button class="modal-close" onclick="closeModal('modalSubContractDetail')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblTotalEarned">Tổng tiền công/khoán</div><div class="pct" id="contractDetailEarned">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblTotalAdvancedOut">Đã tạm ứng/hỗ trợ</div><div class="pct" id="contractDetailAdvanced">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblSubBalance">Còn phải trả</div><div class="pct" id="contractDetailBalance">$0</div></div>
     </div>
 
     <div class="card" id="addWorkEntryCard">
       <h3 data-i18n="addWorkEntryTitle">Thêm bảng công / khoán</h3>
       <div class="form-grid">
-        <div class="form-group">
+        <!-- Đội khoan: chọn Ngày công / Khoán theo mét -->
+        <div class="form-group hidden" id="workEntryTypeGroup">
           <label data-i18n="lblWorkEntryType">Kiểu tính tiền</label>
           <select id="workEntryType" onchange="toggleWorkEntryType()">
             <option value="daily" data-i18n="workEntryTypeDaily">Ngày công (Thợ/Phụ)</option>
@@ -1282,6 +1341,34 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           </div>
         </div>
 
+        <!-- Đội vận chuyển: 1 đợt vận chuyển -->
+        <div id="workEntryTransportFields" class="hidden">
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblTransportDesc">Mô tả / Tuyến vận chuyển</label>
+              <input type="text" id="weTransportDesc" placeholder="VD: Vận chuyển đất thải đợt 1">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblDate">Ngày</label>
+              <input type="date" id="weDate3">
+            </div>
+          </div>
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblTransportQty">Số lượng (chuyến/m³/tấn...)</label>
+              <input type="number" id="weTransportQty" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblTransportUnit">Đơn vị tính</label>
+              <input type="text" id="weTransportUnit" placeholder="VD: chuyến, m³, tấn">
+            </div>
+          </div>
+          <div class="form-group">
+            <label data-i18n="lblTransportRate">Đơn giá ($/đơn vị)</label>
+            <input type="number" id="weTransportRate" placeholder="0.00" min="0" step="0.01">
+          </div>
+        </div>
+
         <div class="form-group">
           <label data-i18n="lblNote">Ghi chú</label>
           <input type="text" id="weNote">
@@ -1334,13 +1421,12 @@ main{padding:16px; max-width:880px; margin:0 auto;}
 
     <div class="card">
       <div class="btn-row">
-        <button class="btn btn-outline" id="btnEditSubcontractor" data-i18n="btnEditSubcontractor">Sửa đội khoan</button>
-        <button class="btn btn-danger" id="btnDeleteSubcontractor" data-i18n="btnDeleteSubcontractor">Xóa đội khoan</button>
+        <button class="btn btn-outline" id="btnEditSubContract" data-i18n="btnEditSubContract">Sửa công trình</button>
+        <button class="btn btn-danger" id="btnDeleteSubContract" data-i18n="btnDeleteSubContract">Xóa công trình</button>
       </div>
     </div>
   </div>
 </div>
-
 
 <!-- Project Modal -->
 <div class="modal-overlay" id="modalProject">
@@ -1470,6 +1556,20 @@ const I18N = {
     navApprovals: "Phê duyệt",
     navCustomers: "Công nợ",
     navSubcontractors: "Đội khoan / Thầu phụ",
+    lblSubType: "Loại đội",
+    subTypeDrilling: "Đội khoan",
+    subTypeTransport: "Đội vận chuyển",
+    contractsListTitle: "Công trình",
+    btnAddContract: "+ Thêm công trình",
+    emptySubContracts: "Chưa có công trình nào cho đội này",
+    subContractModalAdd: "Thêm công trình cho đội",
+    subContractModalEdit: "Sửa công trình",
+    btnEditSubContract: "Sửa công trình",
+    btnDeleteSubContract: "Xóa công trình",
+    lblTransportDesc: "Mô tả / Tuyến vận chuyển",
+    lblTransportQty: "Số lượng (chuyến/m³/tấn...)",
+    lblTransportUnit: "Đơn vị tính",
+    lblTransportRate: "Đơn giá ($/đơn vị)",
     cardTotalPayable: "Tổng công nợ phải trả",
     lblTotalEarned: "Tổng tiền công/khoán",
     lblTotalAdvancedOut: "Đã tạm ứng/hỗ trợ",
@@ -1761,6 +1861,20 @@ const I18N = {
     navApprovals: "Approvals",
     navCustomers: "Customer Debt",
     navSubcontractors: "Subcontractors / Drilling Teams",
+    lblSubType: "Team Type",
+    subTypeDrilling: "Drilling Team",
+    subTypeTransport: "Transport Team",
+    contractsListTitle: "Projects",
+    btnAddContract: "+ Add Project",
+    emptySubContracts: "No projects for this team yet",
+    subContractModalAdd: "Add Project for Team",
+    subContractModalEdit: "Edit Project",
+    btnEditSubContract: "Edit Project",
+    btnDeleteSubContract: "Delete Project",
+    lblTransportDesc: "Description / Transport Route",
+    lblTransportQty: "Quantity (trips/m³/tons...)",
+    lblTransportUnit: "Unit",
+    lblTransportRate: "Rate ($/unit)",
     cardTotalPayable: "Total Payable",
     lblTotalEarned: "Total Work/Piece-rate Value",
     lblTotalAdvancedOut: "Advanced/Support Given",
@@ -5034,20 +5148,40 @@ function deleteInvoicePayment(paymentId) {
   renderCustomersPage();
 }
 
-// ===================== SUBCONTRACTORS / ĐỘI KHOAN ======================
+// ===================== SUBCONTRACTORS / ĐỘI KHOAN, ĐỘI VẬN CHUYỂN ======================
+// Cấu trúc: 1 Đội (khoan/vận chuyển) -> nhiều Công trình (hợp đồng riêng
+// từng công trình) -> mỗi công trình có Bảng công/khoán + Tạm ứng/hỗ trợ
+// riêng, công nợ tính riêng theo từng công trình.
 let editingSubcontractorId = null;
-let currentSubDetailId = null;
+let currentSubDetailId = null;       // đội đang xem chi tiết
+let editingSubContractId = null;
+let currentContractDetailId = null;  // công trình (hợp đồng) đang xem chi tiết trong đội
 let editingWorkEntryId = null;
 let editingSubAdvanceId = null;
 
+function calcContractEarned(c) {
+  return (c.workEntries || []).reduce((s, w) => s + (w.amount || 0), 0);
+}
+function calcContractAdvancedOut(c) {
+  return (c.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+}
+function calcContractBalance(c) {
+  return calcContractEarned(c) - calcContractAdvancedOut(c);
+}
 function calcSubEarned(sub) {
-  return (sub.workEntries || []).reduce((s, w) => s + (w.amount || 0), 0);
+  return (sub.contracts || []).reduce((s, c) => s + calcContractEarned(c), 0);
 }
 function calcSubAdvancedOut(sub) {
-  return (sub.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+  return (sub.contracts || []).reduce((s, c) => s + calcContractAdvancedOut(c), 0);
 }
 function calcSubBalance(sub) {
   return calcSubEarned(sub) - calcSubAdvancedOut(sub);
+}
+function subTypeLabel(type) {
+  return type === "transport" ? t("subTypeTransport") : t("subTypeDrilling");
+}
+function subTypeIcon(type) {
+  return type === "transport" ? "🚚" : "⛏️";
 }
 
 function renderSubcontractorsPage() {
@@ -5056,7 +5190,7 @@ function renderSubcontractorsPage() {
     return;
   }
   document.getElementById("btnAddSubcontractor").classList.toggle("hidden", !can("manageSubcontractors"));
-  document.getElementById("subSub").textContent = currentLang === "vi" ? "Quản lý công nợ đội khoan / thầu phụ" : "Manage subcontractor payables";
+  document.getElementById("subSub").textContent = currentLang === "vi" ? "Quản lý công nợ đội khoan / đội vận chuyển / thầu phụ" : "Manage subcontractor payables";
 
   const subs = STORE.subcontractors || [];
 
@@ -5085,13 +5219,13 @@ function renderSubcontractorsPage() {
   const sorted = subs.slice().sort((a, b) => calcSubBalance(b) - calcSubBalance(a));
   list.innerHTML = sorted.map(s => {
     const balance = calcSubBalance(s);
-    const proj = s.projectId ? getProjectById(s.projectId) : null;
+    const numContracts = (s.contracts || []).length;
     return `
       <div class="customer-row" onclick="openSubcontractorDetail('${s.id}')">
-        <div class="customer-avatar">${s.name.charAt(0).toUpperCase()}</div>
+        <div class="customer-avatar">${subTypeIcon(s.type)}</div>
         <div class="customer-info">
-          <div class="nm">${escapeHtml(s.name)}${proj ? ` <span class="project-pill">${escapeHtml(proj.name)}</span>` : ""}</div>
-          <div class="sub">${s.phone || "—"}</div>
+          <div class="nm">${escapeHtml(s.name)} <span class="project-pill">${subTypeLabel(s.type)}</span></div>
+          <div class="sub">${s.phone || "—"} · ${numContracts} ${currentLang === "vi" ? "công trình" : "project(s)"}</div>
         </div>
         <div style="text-align:right;">
           <div class="${balance > 0 ? "payroll-negative" : ""}" style="font-weight:700;">${formatCurrency(balance)}</div>
@@ -5102,27 +5236,24 @@ function renderSubcontractorsPage() {
   }).join("");
 }
 
+// ---------- Team (Subcontractor) CRUD ----------
 function openSubcontractorModal(subId) {
   editingSubcontractorId = subId;
   const s = subId ? STORE.subcontractors.find(s2 => s2.id === subId) : null;
 
   document.getElementById("subModalTitle").textContent = s ? t("subModalEdit") : t("subModalAdd");
+  document.getElementById("subType").value = s ? (s.type || "drilling") : "drilling";
   document.getElementById("subName").value = s ? s.name : "";
   document.getElementById("subPhone").value = s ? (s.phone || "") : "";
   document.getElementById("subNote").value = s ? (s.note || "") : "";
-
-  const projSelect = document.getElementById("subProject");
-  projSelect.innerHTML = `<option value="">${currentLang === "vi" ? "— Không —" : "— None —"}</option>` +
-    (STORE.projects || []).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
-  projSelect.value = s ? (s.projectId || "") : "";
 
   openModal("modalSubcontractor");
 }
 
 function saveSubcontractor() {
+  const type = document.getElementById("subType").value;
   const name = document.getElementById("subName").value.trim();
   const phone = document.getElementById("subPhone").value.trim();
-  const projectId = document.getElementById("subProject").value || null;
   const note = document.getElementById("subNote").value.trim();
 
   if (!name) {
@@ -5132,11 +5263,11 @@ function saveSubcontractor() {
 
   if (editingSubcontractorId) {
     const s = STORE.subcontractors.find(s2 => s2.id === editingSubcontractorId);
-    s.name = name; s.phone = phone; s.projectId = projectId; s.note = note;
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: name });
+    s.type = type; s.name = name; s.phone = phone; s.note = note;
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "đội khoan/vận chuyển" : "subcontractor", detail: name });
   } else {
-    STORE.subcontractors.push({ id: genId("sub"), name, phone, projectId, note, workEntries: [], payments: [], createdBy: currentUser.id, createdAt: nowISO() });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: name });
+    STORE.subcontractors.push({ id: genId("sub"), type, name, phone, note, contracts: [], createdBy: currentUser.id, createdAt: nowISO() });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "đội khoan/vận chuyển" : "subcontractor", detail: name });
   }
 
   persistDebounced();
@@ -5148,11 +5279,11 @@ function saveSubcontractor() {
 }
 
 function deleteSubcontractor() {
-  if (!confirm(currentLang === "vi" ? "Xóa đội khoan / thầu phụ này? Toàn bộ bảng công/khoán và lịch sử tạm ứng bên trong cũng sẽ bị xóa." : "Delete this subcontractor? All work entries and advance history under it will also be deleted.")) return;
+  if (!confirm(currentLang === "vi" ? "Xóa đội này? Toàn bộ công trình, bảng công/khoán và lịch sử tạm ứng bên trong cũng sẽ bị xóa." : "Delete this team? All projects, work entries and advance history under it will also be deleted.")) return;
   const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
   STORE.subcontractors = STORE.subcontractors.filter(s2 => s2.id !== currentSubDetailId);
 
-  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: s ? s.name : "" });
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "đội khoan/vận chuyển" : "subcontractor", detail: s ? s.name : "" });
 
   persistDebounced();
   closeModal("modalSubcontractorDetail");
@@ -5165,22 +5296,148 @@ function setupSubcontractorModal() {
   document.getElementById("btnSaveSubcontractor").addEventListener("click", saveSubcontractor);
   document.getElementById("btnEditSubcontractor").addEventListener("click", () => openSubcontractorModal(currentSubDetailId));
   document.getElementById("btnDeleteSubcontractor").addEventListener("click", deleteSubcontractor);
+  document.getElementById("btnAddSubContract").addEventListener("click", () => openSubContractModal(null));
+  document.getElementById("btnSaveSubContract").addEventListener("click", saveSubContract);
+  document.getElementById("btnEditSubContract").addEventListener("click", () => openSubContractModal(currentContractDetailId));
+  document.getElementById("btnDeleteSubContract").addEventListener("click", deleteSubContract);
   document.getElementById("btnSaveWorkEntry").addEventListener("click", saveWorkEntry);
   document.getElementById("btnSaveSubAdvance").addEventListener("click", saveSubAdvance);
 }
 
-function toggleWorkEntryType() {
-  const isPiece = document.getElementById("workEntryType").value === "piece";
-  document.getElementById("workEntryDailyFields").classList.toggle("hidden", isPiece);
-  document.getElementById("workEntryPieceFields").classList.toggle("hidden", !isPiece);
-}
-
+// ---------- Team Detail (list of contracts/projects) ----------
 function openSubcontractorDetail(subId) {
   currentSubDetailId = subId;
+  renderSubcontractorDetail(subId);
+  openModal("modalSubcontractorDetail");
+}
+
+function renderSubcontractorDetail(subId) {
+  const s = STORE.subcontractors.find(s2 => s2.id === subId);
+  if (!s) return;
+
+  document.getElementById("subDetailTitle").textContent = s.name;
+  document.getElementById("subDetailType").textContent = subTypeIcon(s.type) + " " + subTypeLabel(s.type);
+  document.getElementById("subDetailPhone").textContent = s.phone || "—";
+  document.getElementById("subDetailEarned").textContent = formatCurrency(calcSubEarned(s));
+  document.getElementById("subDetailAdvanced").textContent = "-" + formatCurrency(calcSubAdvancedOut(s));
+  const balance = calcSubBalance(s);
+  const balEl = document.getElementById("subDetailBalance");
+  balEl.textContent = formatCurrency(balance);
+  balEl.style.color = balance > 0 ? "var(--bad)" : "var(--good)";
+
+  const list = document.getElementById("subContractsList");
+  const empty = document.getElementById("subContractsEmpty");
+  const contracts = s.contracts || [];
+
+  if (contracts.length === 0) {
+    list.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  const sorted = contracts.slice().sort((a, b) => calcContractBalance(b) - calcContractBalance(a));
+  list.innerHTML = sorted.map(c => {
+    const proj = c.projectId ? getProjectById(c.projectId) : null;
+    const bal = calcContractBalance(c);
+    return `
+      <div class="customer-row" onclick="openSubContractDetail('${s.id}','${c.id}')">
+        <div class="customer-avatar">🏗️</div>
+        <div class="customer-info">
+          <div class="nm">${escapeHtml(proj ? proj.name : (currentLang === "vi" ? "(Chưa gắn công trình)" : "(No project linked)"))}</div>
+          <div class="sub">${(c.workEntries || []).length} ${currentLang === "vi" ? "mục công/khoán" : "work entries"}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="${bal > 0 ? "payroll-negative" : ""}" style="font-weight:700;">${formatCurrency(bal)}</div>
+          <div class="sub">${currentLang === "vi" ? "còn phải trả" : "payable"}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// ---------- Contract (per-project) CRUD ----------
+function openSubContractModal(contractId) {
+  editingSubContractId = contractId;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  const c = (contractId && s) ? (s.contracts || []).find(c2 => c2.id === contractId) : null;
+
+  document.getElementById("subContractModalTitle").textContent = c ? t("subContractModalEdit") : t("subContractModalAdd");
+  const projSelect = document.getElementById("subContractProject");
+  projSelect.innerHTML = `<option value="">${currentLang === "vi" ? "— Chọn công trình —" : "— Select project —"}</option>` +
+    (STORE.projects || []).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  projSelect.value = c ? (c.projectId || "") : "";
+  document.getElementById("subContractNote").value = c ? (c.note || "") : "";
+
+  openModal("modalSubContract");
+}
+
+function saveSubContract() {
+  const projectId = document.getElementById("subContractProject").value || null;
+  const note = document.getElementById("subContractNote").value.trim();
+
+  if (!projectId) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  if (!s.contracts) s.contracts = [];
+
+  if (editingSubContractId) {
+    const c = s.contracts.find(c2 => c2.id === editingSubContractId);
+    c.projectId = projectId; c.note = note;
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "công trình đội khoan" : "subcontractor project", detail: s.name });
+  } else {
+    s.contracts.push({ id: genId("subc"), projectId, note, workEntries: [], payments: [], createdBy: currentUser.id, createdAt: nowISO() });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "công trình đội khoan" : "subcontractor project", detail: s.name });
+  }
+
+  persistDebounced();
+  closeModal("modalSubContract");
+  showToast(t("toastSaved"), "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
+
+function deleteSubContract() {
+  if (!confirm(currentLang === "vi" ? "Xóa công trình này khỏi đội? Toàn bộ bảng công/khoán và tạm ứng bên trong cũng sẽ bị xóa." : "Remove this project from the team? All work entries and advances under it will also be deleted.")) return;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  s.contracts = (s.contracts || []).filter(c2 => c2.id !== currentContractDetailId);
+
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "công trình đội khoan" : "subcontractor project", detail: s.name });
+
+  persistDebounced();
+  closeModal("modalSubContractDetail");
+  showToast(t("toastSaved"), "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
+
+// ---------- Contract Detail (work entries + advances for 1 project) ----------
+function openSubContractDetail(subId, contractId) {
+  currentSubDetailId = subId;
+  currentContractDetailId = contractId;
   editingWorkEntryId = null;
   editingSubAdvanceId = null;
 
-  document.getElementById("workEntryType").value = "daily";
+  const s = STORE.subcontractors.find(s2 => s2.id === subId);
+  const isTransport = s && s.type === "transport";
+
+  // Hiện đúng bộ field theo loại đội: Đội khoan (chọn Ngày công/Khoán),
+  // Đội vận chuyển (chỉ có 1 kiểu: Đợt vận chuyển).
+  document.getElementById("workEntryTypeGroup").classList.toggle("hidden", isTransport);
+  document.getElementById("workEntryTransportFields").classList.toggle("hidden", !isTransport);
+  if (isTransport) {
+    document.getElementById("workEntryDailyFields").classList.add("hidden");
+    document.getElementById("workEntryPieceFields").classList.add("hidden");
+  } else {
+    document.getElementById("workEntryType").value = "daily";
+    toggleWorkEntryType();
+  }
+
   document.getElementById("weDate").value = todayStr();
   document.getElementById("weThoDays").value = "";
   document.getElementById("wePhuDays").value = "";
@@ -5192,10 +5449,14 @@ function openSubcontractorDetail(subId) {
   document.getElementById("weRockMeters").value = "";
   document.getElementById("weSoilRate").value = "";
   document.getElementById("weRockRate").value = "";
+  document.getElementById("weDate3").value = todayStr();
+  document.getElementById("weTransportDesc").value = "";
+  document.getElementById("weTransportQty").value = "";
+  document.getElementById("weTransportUnit").value = "";
+  document.getElementById("weTransportRate").value = "";
   document.getElementById("weNote").value = "";
   document.getElementById("btnSaveWorkEntry").textContent = t("btnSaveWorkEntry");
   document.getElementById("btnCancelEditWorkEntry").classList.add("hidden");
-  toggleWorkEntryType();
 
   document.getElementById("subAdvType").value = "advance";
   document.getElementById("subAdvAmount").value = "";
@@ -5204,35 +5465,45 @@ function openSubcontractorDetail(subId) {
   document.getElementById("btnSaveSubAdvance").textContent = t("btnSaveSubAdvance");
   document.getElementById("btnCancelEditSubAdvance").classList.add("hidden");
 
-  renderSubcontractorDetail(subId);
-  openModal("modalSubcontractorDetail");
+  renderSubContractDetail();
+  openModal("modalSubContractDetail");
 }
 
-function renderSubcontractorDetail(subId) {
-  const s = STORE.subcontractors.find(s2 => s2.id === subId);
-  if (!s) return;
+function getCurrentContract() {
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return null;
+  return (s.contracts || []).find(c2 => c2.id === currentContractDetailId) || null;
+}
 
-  const proj = s.projectId ? getProjectById(s.projectId) : null;
-  document.getElementById("subDetailTitle").textContent = s.name;
-  document.getElementById("subDetailPhone").textContent = s.phone || "—";
-  document.getElementById("subDetailProject").textContent = proj ? proj.name : "—";
-  document.getElementById("subDetailEarned").textContent = formatCurrency(calcSubEarned(s));
-  document.getElementById("subDetailAdvanced").textContent = "-" + formatCurrency(calcSubAdvancedOut(s));
-  const balance = calcSubBalance(s);
-  const balEl = document.getElementById("subDetailBalance");
+function renderSubContractDetail() {
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  const c = getCurrentContract();
+  if (!s || !c) return;
+
+  const proj = c.projectId ? getProjectById(c.projectId) : null;
+  document.getElementById("subContractDetailTitle").textContent = `${s.name}${proj ? " — " + proj.name : ""}`;
+  document.getElementById("contractDetailEarned").textContent = formatCurrency(calcContractEarned(c));
+  document.getElementById("contractDetailAdvanced").textContent = "-" + formatCurrency(calcContractAdvancedOut(c));
+  const balance = calcContractBalance(c);
+  const balEl = document.getElementById("contractDetailBalance");
   balEl.textContent = formatCurrency(balance);
   balEl.style.color = balance > 0 ? "var(--bad)" : "var(--good)";
 
   // Work entries history
-  const entries = (s.workEntries || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const entries = (c.workEntries || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
   const weList = document.getElementById("workEntryHistoryList");
   if (entries.length === 0) {
     weList.innerHTML = `<div class="empty-state"><p>${currentLang === "vi" ? "Chưa có bảng công/khoán nào" : "No work entries yet"}</p></div>`;
   } else {
     weList.innerHTML = entries.map(w => {
-      const label = w.type === "piece"
-        ? `${currentLang === "vi" ? "Khoán" : "Piece-rate"} · ${escapeHtml(w.boreholeId || "")} — ${w.soilMeters || 0}m ${currentLang === "vi" ? "đất" : "soil"} / ${w.rockMeters || 0}m ${currentLang === "vi" ? "đá" : "rock"}`
-        : `${currentLang === "vi" ? "Ngày công" : "Daily wage"} · ${currentLang === "vi" ? "Thợ" : "Skilled"} ${w.thoDays || 0} · ${currentLang === "vi" ? "Phụ" : "Assist"} ${w.phuDays || 0}`;
+      let label;
+      if (w.type === "transport") {
+        label = `${currentLang === "vi" ? "Vận chuyển" : "Transport"} · ${escapeHtml(w.desc || "")} — ${w.qty || 0} ${escapeHtml(w.unit || "")}`;
+      } else if (w.type === "piece") {
+        label = `${currentLang === "vi" ? "Khoán" : "Piece-rate"} · ${escapeHtml(w.boreholeId || "")} — ${w.soilMeters || 0}m ${currentLang === "vi" ? "đất" : "soil"} / ${w.rockMeters || 0}m ${currentLang === "vi" ? "đá" : "rock"}`;
+      } else {
+        label = `${currentLang === "vi" ? "Ngày công" : "Daily wage"} · ${currentLang === "vi" ? "Thợ" : "Skilled"} ${w.thoDays || 0} · ${currentLang === "vi" ? "Phụ" : "Assist"} ${w.phuDays || 0}`;
+      }
       return `
         <div class="payment-history-item">
           <div>
@@ -5253,7 +5524,7 @@ function renderSubcontractorDetail(subId) {
   }
 
   // Advance/support history
-  const advs = (s.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const advs = (c.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
   const advList = document.getElementById("subAdvanceHistoryList");
   if (advs.length === 0) {
     advList.innerHTML = `<div class="empty-state"><p>${currentLang === "vi" ? "Chưa có tạm ứng/hỗ trợ nào" : "No advances/support yet"}</p></div>`;
@@ -5277,77 +5548,104 @@ function renderSubcontractorDetail(subId) {
   }
 }
 
+function toggleWorkEntryType() {
+  const isPiece = document.getElementById("workEntryType").value === "piece";
+  document.getElementById("workEntryDailyFields").classList.toggle("hidden", isPiece);
+  document.getElementById("workEntryPieceFields").classList.toggle("hidden", !isPiece);
+}
+
 function saveWorkEntry() {
-  const type = document.getElementById("workEntryType").value;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  const c = getCurrentContract();
+  if (!s || !c) return;
   const note = document.getElementById("weNote").value.trim();
   let entry;
 
-  if (type === "daily") {
-    const date = document.getElementById("weDate").value;
-    const thoDays = parseFloat(document.getElementById("weThoDays").value) || 0;
-    const phuDays = parseFloat(document.getElementById("wePhuDays").value) || 0;
-    const thoRate = parseFloat(document.getElementById("weThoRate").value) || 0;
-    const phuRate = parseFloat(document.getElementById("wePhuRate").value) || 0;
-    if (!date || (thoDays <= 0 && phuDays <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
-    const amount = thoDays * thoRate + phuDays * phuRate;
-    entry = { type, date, thoDays, phuDays, thoRate, phuRate, amount, note };
+  if (s.type === "transport") {
+    const date = document.getElementById("weDate3").value;
+    const desc = document.getElementById("weTransportDesc").value.trim();
+    const qty = parseFloat(document.getElementById("weTransportQty").value) || 0;
+    const unit = document.getElementById("weTransportUnit").value.trim();
+    const rate = parseFloat(document.getElementById("weTransportRate").value) || 0;
+    if (!date || qty <= 0) { showToast(t("toastFillRequired"), "error"); return; }
+    const amount = qty * rate;
+    entry = { type: "transport", date, desc, qty, unit, rate, amount, note };
   } else {
-    const date = document.getElementById("weDate2").value;
-    const boreholeId = document.getElementById("weBoreholeId").value.trim();
-    const soilMeters = parseFloat(document.getElementById("weSoilMeters").value) || 0;
-    const rockMeters = parseFloat(document.getElementById("weRockMeters").value) || 0;
-    const soilRate = parseFloat(document.getElementById("weSoilRate").value) || 0;
-    const rockRate = parseFloat(document.getElementById("weRockRate").value) || 0;
-    if (!date || !boreholeId || (soilMeters <= 0 && rockMeters <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
-    const amount = soilMeters * soilRate + rockMeters * rockRate;
-    entry = { type, date, boreholeId, soilMeters, rockMeters, soilRate, rockRate, amount, note };
+    const type = document.getElementById("workEntryType").value;
+    if (type === "daily") {
+      const date = document.getElementById("weDate").value;
+      const thoDays = parseFloat(document.getElementById("weThoDays").value) || 0;
+      const phuDays = parseFloat(document.getElementById("wePhuDays").value) || 0;
+      const thoRate = parseFloat(document.getElementById("weThoRate").value) || 0;
+      const phuRate = parseFloat(document.getElementById("wePhuRate").value) || 0;
+      if (!date || (thoDays <= 0 && phuDays <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
+      const amount = thoDays * thoRate + phuDays * phuRate;
+      entry = { type, date, thoDays, phuDays, thoRate, phuRate, amount, note };
+    } else {
+      const date = document.getElementById("weDate2").value;
+      const boreholeId = document.getElementById("weBoreholeId").value.trim();
+      const soilMeters = parseFloat(document.getElementById("weSoilMeters").value) || 0;
+      const rockMeters = parseFloat(document.getElementById("weRockMeters").value) || 0;
+      const soilRate = parseFloat(document.getElementById("weSoilRate").value) || 0;
+      const rockRate = parseFloat(document.getElementById("weRockRate").value) || 0;
+      if (!date || !boreholeId || (soilMeters <= 0 && rockMeters <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
+      const amount = soilMeters * soilRate + rockMeters * rockRate;
+      entry = { type, date, boreholeId, soilMeters, rockMeters, soilRate, rockRate, amount, note };
+    }
   }
 
-  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  if (!s.workEntries) s.workEntries = [];
+  if (!c.workEntries) c.workEntries = [];
 
   if (editingWorkEntryId) {
-    const idx = s.workEntries.findIndex(w => w.id === editingWorkEntryId);
-    if (idx >= 0) s.workEntries[idx] = { ...entry, id: editingWorkEntryId, createdBy: s.workEntries[idx].createdBy, createdAt: s.workEntries[idx].createdAt };
+    const idx = c.workEntries.findIndex(w => w.id === editingWorkEntryId);
+    if (idx >= 0) c.workEntries[idx] = { ...entry, id: editingWorkEntryId, createdBy: c.workEntries[idx].createdBy, createdAt: c.workEntries[idx].createdAt };
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
     cancelEditWorkEntry();
   } else {
-    s.workEntries.push({ id: genId("we"), ...entry, createdBy: currentUser.id, createdAt: nowISO() });
+    c.workEntries.push({ id: genId("we"), ...entry, createdBy: currentUser.id, createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
   }
 
   persistDebounced();
   document.getElementById("weThoDays").value = ""; document.getElementById("wePhuDays").value = "";
   document.getElementById("weSoilMeters").value = ""; document.getElementById("weRockMeters").value = "";
-  document.getElementById("weBoreholeId").value = ""; document.getElementById("weNote").value = "";
+  document.getElementById("weBoreholeId").value = ""; document.getElementById("weTransportQty").value = "";
+  document.getElementById("weTransportDesc").value = ""; document.getElementById("weNote").value = "";
   showToast(t("toastSaved"), "success");
-  renderSubcontractorDetail(currentSubDetailId);
+  renderSubContractDetail();
   renderSubcontractorsPage();
 }
 
 function editWorkEntry(entryId) {
-  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  const w = (s.workEntries || []).find(w2 => w2.id === entryId);
+  const c = getCurrentContract();
+  if (!c) return;
+  const w = (c.workEntries || []).find(w2 => w2.id === entryId);
   if (!w) return;
 
   editingWorkEntryId = entryId;
-  document.getElementById("workEntryType").value = w.type;
-  toggleWorkEntryType();
-  if (w.type === "daily") {
-    document.getElementById("weDate").value = w.date;
-    document.getElementById("weThoDays").value = w.thoDays;
-    document.getElementById("wePhuDays").value = w.phuDays;
-    document.getElementById("weThoRate").value = w.thoRate;
-    document.getElementById("wePhuRate").value = w.phuRate;
+  if (w.type === "transport") {
+    document.getElementById("weDate3").value = w.date;
+    document.getElementById("weTransportDesc").value = w.desc || "";
+    document.getElementById("weTransportQty").value = w.qty;
+    document.getElementById("weTransportUnit").value = w.unit || "";
+    document.getElementById("weTransportRate").value = w.rate;
   } else {
-    document.getElementById("weDate2").value = w.date;
-    document.getElementById("weBoreholeId").value = w.boreholeId;
-    document.getElementById("weSoilMeters").value = w.soilMeters;
-    document.getElementById("weRockMeters").value = w.rockMeters;
-    document.getElementById("weSoilRate").value = w.soilRate;
-    document.getElementById("weRockRate").value = w.rockRate;
+    document.getElementById("workEntryType").value = w.type;
+    toggleWorkEntryType();
+    if (w.type === "daily") {
+      document.getElementById("weDate").value = w.date;
+      document.getElementById("weThoDays").value = w.thoDays;
+      document.getElementById("wePhuDays").value = w.phuDays;
+      document.getElementById("weThoRate").value = w.thoRate;
+      document.getElementById("wePhuRate").value = w.phuRate;
+    } else {
+      document.getElementById("weDate2").value = w.date;
+      document.getElementById("weBoreholeId").value = w.boreholeId;
+      document.getElementById("weSoilMeters").value = w.soilMeters;
+      document.getElementById("weRockMeters").value = w.rockMeters;
+      document.getElementById("weSoilRate").value = w.soilRate;
+      document.getElementById("weRockRate").value = w.rockRate;
+    }
   }
   document.getElementById("weNote").value = w.note || "";
   document.getElementById("btnSaveWorkEntry").textContent = currentLang === "vi" ? "Cập nhật" : "Update";
@@ -5359,7 +5657,8 @@ function cancelEditWorkEntry() {
   editingWorkEntryId = null;
   document.getElementById("weThoDays").value = ""; document.getElementById("wePhuDays").value = "";
   document.getElementById("weSoilMeters").value = ""; document.getElementById("weRockMeters").value = "";
-  document.getElementById("weBoreholeId").value = ""; document.getElementById("weNote").value = "";
+  document.getElementById("weBoreholeId").value = ""; document.getElementById("weTransportQty").value = "";
+  document.getElementById("weTransportDesc").value = ""; document.getElementById("weNote").value = "";
   document.getElementById("btnSaveWorkEntry").textContent = t("btnSaveWorkEntry");
   document.getElementById("btnCancelEditWorkEntry").classList.add("hidden");
 }
@@ -5367,16 +5666,17 @@ function cancelEditWorkEntry() {
 function deleteWorkEntry(entryId) {
   if (!confirm(currentLang === "vi" ? "Xóa bảng công/khoán này?" : "Delete this work entry?")) return;
   const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  const w = (s.workEntries || []).find(w2 => w2.id === entryId);
-  s.workEntries = (s.workEntries || []).filter(w2 => w2.id !== entryId);
+  const c = getCurrentContract();
+  if (!s || !c) return;
+  const w = (c.workEntries || []).find(w2 => w2.id === entryId);
+  c.workEntries = (c.workEntries || []).filter(w2 => w2.id !== entryId);
 
   addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${w ? formatCurrency(w.amount) : ""} - ${s.name}` });
 
   if (editingWorkEntryId === entryId) cancelEditWorkEntry();
   persistDebounced();
   showToast(currentLang === "vi" ? "Đã xóa" : "Deleted", "success");
-  renderSubcontractorDetail(currentSubDetailId);
+  renderSubContractDetail();
   renderSubcontractorsPage();
 }
 
@@ -5392,16 +5692,17 @@ function saveSubAdvance() {
   }
 
   const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  if (!s.payments) s.payments = [];
+  const c = getCurrentContract();
+  if (!s || !c) return;
+  if (!c.payments) c.payments = [];
 
   if (editingSubAdvanceId) {
-    const p = s.payments.find(p2 => p2.id === editingSubAdvanceId);
+    const p = c.payments.find(p2 => p2.id === editingSubAdvanceId);
     if (p) { p.type = type; p.amount = amount; p.date = date; p.note = note; }
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
     cancelEditSubAdvance();
   } else {
-    s.payments.push({ id: genId("subadv"), type, amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
+    c.payments.push({ id: genId("subadv"), type, amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
   }
 
@@ -5409,14 +5710,14 @@ function saveSubAdvance() {
   document.getElementById("subAdvAmount").value = "";
   document.getElementById("subAdvNote").value = "";
   showToast(t("toastSaved"), "success");
-  renderSubcontractorDetail(currentSubDetailId);
+  renderSubContractDetail();
   renderSubcontractorsPage();
 }
 
 function editSubAdvance(paymentId) {
-  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  const p = (s.payments || []).find(p2 => p2.id === paymentId);
+  const c = getCurrentContract();
+  if (!c) return;
+  const p = (c.payments || []).find(p2 => p2.id === paymentId);
   if (!p) return;
 
   editingSubAdvanceId = paymentId;
@@ -5440,16 +5741,17 @@ function cancelEditSubAdvance() {
 function deleteSubAdvance(paymentId) {
   if (!confirm(currentLang === "vi" ? "Xóa khoản tạm ứng/hỗ trợ này?" : "Delete this advance/support entry?")) return;
   const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
-  if (!s) return;
-  const p = (s.payments || []).find(p2 => p2.id === paymentId);
-  s.payments = (s.payments || []).filter(p2 => p2.id !== paymentId);
+  const c = getCurrentContract();
+  if (!s || !c) return;
+  const p = (c.payments || []).find(p2 => p2.id === paymentId);
+  c.payments = (c.payments || []).filter(p2 => p2.id !== paymentId);
 
   addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${p ? formatCurrency(p.amount) : ""} - ${s.name}` });
 
   if (editingSubAdvanceId === paymentId) cancelEditSubAdvance();
   persistDebounced();
   showToast(currentLang === "vi" ? "Đã xóa" : "Deleted", "success");
-  renderSubcontractorDetail(currentSubDetailId);
+  renderSubContractDetail();
   renderSubcontractorsPage();
 }
 
