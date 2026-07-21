@@ -543,6 +543,42 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       </div>
     </section>
 
+    <!-- PAGE: SUBCONTRACTORS / DRILLING TEAMS -->
+    <section id="page-subcontractors" class="page hidden">
+      <div class="page-head">
+        <div>
+          <h2 data-i18n="navSubcontractors">Đội khoan / Thầu phụ</h2>
+          <div class="sub" id="subSub"></div>
+        </div>
+        <button class="btn btn-sm btn-gold" id="btnAddSubcontractor" data-i18n="btnAdd">+ Thêm</button>
+      </div>
+      <div class="hero-card">
+        <div class="month" data-i18n="cardTotalPayable">Tổng công nợ phải trả</div>
+        <div class="balance" id="totalPayableAmount">$0</div>
+        <div class="hero-row">
+          <div class="hero-stat">
+            <div class="lbl" data-i18n="lblTotalEarned">Tổng tiền công/khoán</div>
+            <div class="val" id="totalEarnedAmount">$0</div>
+          </div>
+          <div class="hero-stat expense">
+            <div class="lbl" data-i18n="lblTotalAdvancedOut">Đã tạm ứng/hỗ trợ</div>
+            <div class="val" id="totalAdvancedOutAmount">$0</div>
+          </div>
+          <div class="hero-stat income">
+            <div class="lbl" data-i18n="lblTotalOutstanding">Còn phải trả</div>
+            <div class="val" id="totalPayableOutstanding">$0</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div id="subcontractorsList"></div>
+        <div class="empty-state hidden" id="subcontractorsEmpty">
+          <div class="ico">⛏️</div>
+          <p data-i18n="emptySubcontractors">Chưa có đội khoan/thầu phụ nào</p>
+        </div>
+      </div>
+    </section>
+
     <!-- PAGE: PROJECTS -->
     <section id="page-projects" class="page hidden">
       <div class="page-head">
@@ -1131,6 +1167,180 @@ main{padding:16px; max-width:880px; margin:0 auto;}
   </div>
 </div>
 
+<!-- Subcontractor Add/Edit Modal -->
+<div class="modal-overlay" id="modalSubcontractor">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="subModalTitle" data-i18n="subModalAdd">Thêm đội khoan / thầu phụ</h3>
+      <button class="modal-close" onclick="closeModal('modalSubcontractor')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label data-i18n="lblSubName">Tên đội khoan / thầu phụ</label>
+        <input type="text" id="subName" placeholder="VD: Đội khoan Nguyễn Văn A">
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblSubPhone">Số điện thoại</label>
+        <input type="text" id="subPhone" placeholder="">
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblProject">Công trình (tùy chọn)</label>
+        <select id="subProject"></select>
+      </div>
+      <div class="form-group">
+        <label data-i18n="lblNote">Ghi chú</label>
+        <textarea id="subNote" rows="2"></textarea>
+      </div>
+      <button class="btn btn-forest btn-block" id="btnSaveSubcontractor" data-i18n="btnSave">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- Subcontractor Detail Modal -->
+<div class="modal-overlay" id="modalSubcontractorDetail">
+  <div class="modal-sheet">
+    <div class="modal-head">
+      <h3 id="subDetailTitle">—</h3>
+      <button class="modal-close" onclick="closeModal('modalSubcontractorDetail')">✕</button>
+    </div>
+    <div class="card" style="margin-bottom:14px;">
+      <div class="cat-row"><div class="name" data-i18n="lblSubPhone">Số điện thoại</div><div class="pct" id="subDetailPhone">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblProject">Công trình</div><div class="pct" id="subDetailProject">—</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblTotalEarned">Tổng tiền công/khoán</div><div class="pct" id="subDetailEarned">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblTotalAdvancedOut">Đã tạm ứng/hỗ trợ</div><div class="pct" id="subDetailAdvanced">$0</div></div>
+      <div class="cat-row"><div class="name" data-i18n="lblSubBalance">Còn phải trả</div><div class="pct" id="subDetailBalance">$0</div></div>
+    </div>
+
+    <div class="card" id="addWorkEntryCard">
+      <h3 data-i18n="addWorkEntryTitle">Thêm bảng công / khoán</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="lblWorkEntryType">Kiểu tính tiền</label>
+          <select id="workEntryType" onchange="toggleWorkEntryType()">
+            <option value="daily" data-i18n="workEntryTypeDaily">Ngày công (Thợ/Phụ)</option>
+            <option value="piece" data-i18n="workEntryTypePiece">Khoán theo mét (Hố khoan)</option>
+          </select>
+        </div>
+
+        <div id="workEntryDailyFields">
+          <div class="form-group">
+            <label data-i18n="lblDate">Ngày</label>
+            <input type="date" id="weDate">
+          </div>
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblThoDays">Số ngày công Thợ</label>
+              <input type="number" id="weThoDays" placeholder="0" min="0" step="0.5">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblPhuDays">Số ngày công Phụ</label>
+              <input type="number" id="wePhuDays" placeholder="0" min="0" step="0.5">
+            </div>
+          </div>
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblThoRate">Đơn giá Thợ ($/ngày)</label>
+              <input type="number" id="weThoRate" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblPhuRate">Đơn giá Phụ ($/ngày)</label>
+              <input type="number" id="wePhuRate" placeholder="0.00" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div id="workEntryPieceFields" class="hidden">
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblBoreholeId">Hố khoan</label>
+              <input type="text" id="weBoreholeId" placeholder="VD: BH1">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblDate">Ngày</label>
+              <input type="date" id="weDate2">
+            </div>
+          </div>
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblSoilMeters">Số mét - Đất</label>
+              <input type="number" id="weSoilMeters" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblRockMeters">Số mét - Đá</label>
+              <input type="number" id="weRockMeters" placeholder="0" min="0" step="0.1">
+            </div>
+          </div>
+          <div class="form-row2">
+            <div class="form-group">
+              <label data-i18n="lblSoilRate">Đơn giá Đất ($/m)</label>
+              <input type="number" id="weSoilRate" placeholder="0.00" min="0" step="0.01">
+            </div>
+            <div class="form-group">
+              <label data-i18n="lblRockRate">Đơn giá Đá ($/m)</label>
+              <input type="number" id="weRockRate" placeholder="0.00" min="0" step="0.01">
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label data-i18n="lblNote">Ghi chú</label>
+          <input type="text" id="weNote">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-forest btn-block" id="btnSaveWorkEntry" data-i18n="btnSaveWorkEntry">Lưu</button>
+          <button class="btn btn-outline hidden" id="btnCancelEditWorkEntry" data-i18n="btnCancelEdit" onclick="cancelEditWorkEntry()">Hủy sửa</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="workEntryHistoryTitle">Bảng công / khoán đã ghi</h3>
+      <div id="workEntryHistoryList"></div>
+    </div>
+
+    <div class="card" id="addSubAdvanceCard">
+      <h3 data-i18n="addSubAdvanceTitle">Ghi tạm ứng / hỗ trợ</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="lblSubAdvanceType">Loại</label>
+          <select id="subAdvType">
+            <option value="advance" data-i18n="subAdvTypeAdvance">Tạm ứng</option>
+            <option value="support" data-i18n="subAdvTypeSupport">Hỗ trợ / Phụ cấp</option>
+          </select>
+        </div>
+        <div class="form-row2">
+          <div class="form-group">
+            <label data-i18n="lblAmount">Số tiền ($)</label>
+            <input type="number" id="subAdvAmount" placeholder="0.00" min="0" step="0.01">
+          </div>
+          <div class="form-group">
+            <label data-i18n="lblDate">Ngày</label>
+            <input type="date" id="subAdvDate">
+          </div>
+        </div>
+        <div class="form-group">
+          <label data-i18n="lblNote">Ghi chú</label>
+          <input type="text" id="subAdvNote">
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-forest btn-block" id="btnSaveSubAdvance" data-i18n="btnSaveSubAdvance">Lưu</button>
+          <button class="btn btn-outline hidden" id="btnCancelEditSubAdvance" data-i18n="btnCancelEdit" onclick="cancelEditSubAdvance()">Hủy sửa</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <h3 data-i18n="subAdvanceHistoryTitle">Lịch sử tạm ứng / hỗ trợ</h3>
+      <div id="subAdvanceHistoryList"></div>
+    </div>
+
+    <div class="card">
+      <div class="btn-row">
+        <button class="btn btn-outline" id="btnEditSubcontractor" data-i18n="btnEditSubcontractor">Sửa đội khoan</button>
+        <button class="btn btn-danger" id="btnDeleteSubcontractor" data-i18n="btnDeleteSubcontractor">Xóa đội khoan</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- Project Modal -->
 <div class="modal-overlay" id="modalProject">
@@ -1259,6 +1469,40 @@ const I18N = {
     navAdvances: "Đề xuất",
     navApprovals: "Phê duyệt",
     navCustomers: "Công nợ",
+    navSubcontractors: "Đội khoan / Thầu phụ",
+    cardTotalPayable: "Tổng công nợ phải trả",
+    lblTotalEarned: "Tổng tiền công/khoán",
+    lblTotalAdvancedOut: "Đã tạm ứng/hỗ trợ",
+    emptySubcontractors: "Chưa có đội khoan/thầu phụ nào",
+    subModalAdd: "Thêm đội khoan / thầu phụ",
+    subModalEdit: "Sửa đội khoan / thầu phụ",
+    lblSubName: "Tên đội khoan / thầu phụ",
+    lblSubPhone: "Số điện thoại",
+    lblSubBalance: "Còn phải trả",
+    btnEditSubcontractor: "Sửa đội khoan",
+    btnDeleteSubcontractor: "Xóa đội khoan",
+    addWorkEntryTitle: "Thêm bảng công / khoán",
+    lblWorkEntryType: "Kiểu tính tiền",
+    workEntryTypeDaily: "Ngày công (Thợ/Phụ)",
+    workEntryTypePiece: "Khoán theo mét (Hố khoan)",
+    lblThoDays: "Số ngày công Thợ",
+    lblPhuDays: "Số ngày công Phụ",
+    lblThoRate: "Đơn giá Thợ ($/ngày)",
+    lblPhuRate: "Đơn giá Phụ ($/ngày)",
+    lblBoreholeId: "Hố khoan",
+    lblSoilMeters: "Số mét - Đất",
+    lblRockMeters: "Số mét - Đá",
+    lblSoilRate: "Đơn giá Đất ($/m)",
+    lblRockRate: "Đơn giá Đá ($/m)",
+    btnSaveWorkEntry: "Lưu",
+    btnCancelEdit: "Hủy sửa",
+    workEntryHistoryTitle: "Bảng công / khoán đã ghi",
+    addSubAdvanceTitle: "Ghi tạm ứng / hỗ trợ",
+    lblSubAdvanceType: "Loại",
+    subAdvTypeAdvance: "Tạm ứng",
+    subAdvTypeSupport: "Hỗ trợ / Phụ cấp",
+    btnSaveSubAdvance: "Lưu",
+    subAdvanceHistoryTitle: "Lịch sử tạm ứng / hỗ trợ",
     navProjects: "Công trình",
     navCashPlan: "Kế hoạch thu chi",
     lblCustomerOwner: "Nhân viên phụ trách thu nợ",
@@ -1516,6 +1760,40 @@ const I18N = {
     navAdvances: "Proposals",
     navApprovals: "Approvals",
     navCustomers: "Customer Debt",
+    navSubcontractors: "Subcontractors / Drilling Teams",
+    cardTotalPayable: "Total Payable",
+    lblTotalEarned: "Total Work/Piece-rate Value",
+    lblTotalAdvancedOut: "Advanced/Support Given",
+    emptySubcontractors: "No subcontractors yet",
+    subModalAdd: "Add Subcontractor / Drilling Team",
+    subModalEdit: "Edit Subcontractor",
+    lblSubName: "Subcontractor / Team Name",
+    lblSubPhone: "Phone Number",
+    lblSubBalance: "Remaining Payable",
+    btnEditSubcontractor: "Edit Subcontractor",
+    btnDeleteSubcontractor: "Delete Subcontractor",
+    addWorkEntryTitle: "Add Work Entry",
+    lblWorkEntryType: "Payment Type",
+    workEntryTypeDaily: "Daily Wage (Skilled/Assist)",
+    workEntryTypePiece: "Piece-rate by Meter (Borehole)",
+    lblThoDays: "Skilled Worker Days",
+    lblPhuDays: "Assistant Days",
+    lblThoRate: "Skilled Rate ($/day)",
+    lblPhuRate: "Assistant Rate ($/day)",
+    lblBoreholeId: "Borehole",
+    lblSoilMeters: "Meters - Soil",
+    lblRockMeters: "Meters - Rock",
+    lblSoilRate: "Soil Rate ($/m)",
+    lblRockRate: "Rock Rate ($/m)",
+    btnSaveWorkEntry: "Save",
+    btnCancelEdit: "Cancel Edit",
+    workEntryHistoryTitle: "Recorded Work Entries",
+    addSubAdvanceTitle: "Record Advance / Support",
+    lblSubAdvanceType: "Type",
+    subAdvTypeAdvance: "Advance",
+    subAdvTypeSupport: "Support / Allowance",
+    btnSaveSubAdvance: "Save",
+    subAdvanceHistoryTitle: "Advance / Support History",
     navProjects: "Projects",
     navCashPlan: "Cash Flow Plan",
     lblCustomerOwner: "Responsible employee",
@@ -1871,7 +2149,7 @@ function getDefaultData() {
 // Nhạy cảm (tiền bạc) -> KHÔNG dùng 1 nhóm chung nữa. Mỗi người tự lấy
 // Chat ID riêng của mình (lưu trong Settings), bot gửi RIÊNG cho từng
 // người liên quan — người khác không thấy được.
-const TELEGRAM_BOT_TOKEN = 'DAN_TOKEN_BOT_VAO_DAY';
+const TELEGRAM_BOT_TOKEN = '8824623286:AAG6yzv-19SGYFMZde3aIwrX1jy6bBK1mas';
 
 async function sendTelegramNotification(chatId, text) {
   if (!TELEGRAM_BOT_TOKEN || TELEGRAM_BOT_TOKEN.startsWith('DAN_')) {
@@ -1914,6 +2192,7 @@ function ensureStructure() {
   if (!STORE.transactions) STORE.transactions = [];
   if (!STORE.advances) STORE.advances = [];
   if (!STORE.customers) STORE.customers = [];
+  if (!STORE.subcontractors) STORE.subcontractors = [];
   if (!STORE.projects) STORE.projects = [];
   if (!STORE.cashPlans) STORE.cashPlans = [];
   if (!STORE.notifications) STORE.notifications = [];
@@ -2228,6 +2507,7 @@ const PERMISSIONS = {
   createAdvance:     { superadmin: true, admin: true,  branch_manager: true, member: true },
   approveAdvance:    { superadmin: true, admin: true,  branch_manager: "branch", member: false },
   manageCustomers:   { superadmin: true, admin: true,  branch_manager: "branch", member: false },
+  manageSubcontractors: { superadmin: true, admin: true,  branch_manager: "branch", member: false },
   manageProjects:    { superadmin: true, admin: false, branch_manager: "branch", member: false },
   manageUsers:       { superadmin: true, admin: false, branch_manager: false, member: false },
   manageCategories:  { superadmin: true, admin: false, branch_manager: false, member: false },
@@ -2453,6 +2733,7 @@ function bootApp() {
   setupRejectModal();
   setupCustomerModal();
   setupCustomerDetailModal();
+  setupSubcontractorModal();
   setupProjectModal();
   setupUserModal();
   setupSettingsHandlers();
@@ -2483,7 +2764,7 @@ document.addEventListener("click", e => {
 });
 
 // ---------- Navigation ----------
-const PAGES = ["dashboard", "transactions", "advances", "approvals", "customers", "projects", "cashplan", "reports", "settings"];
+const PAGES = ["dashboard", "transactions", "advances", "approvals", "customers", "subcontractors", "projects", "cashplan", "reports", "settings"];
 
 function setupBottomNav() {
   const nav = document.getElementById("bottomNav");
@@ -2525,6 +2806,7 @@ function openMoreMenu() {
   const list = document.getElementById("moreMenuList");
   const items = [];
   if (can("approveAdvance")) items.push({ page: "customers", icon: "👥", labelKey: "navCustomers" });
+  if (can("manageSubcontractors")) items.push({ page: "subcontractors", icon: "⛏️", labelKey: "navSubcontractors" });
   items.push({ page: "projects", icon: "🏗️", labelKey: "navProjects" });
   if (can("viewCashPlan") || can("createCashPlan")) items.push({ page: "cashplan", icon: "📊", labelKey: "navCashPlan" });
   if (can("exportReports")) items.push({ page: "reports", icon: "📈", labelKey: "navReports" });
@@ -2567,6 +2849,7 @@ function renderPage(page) {
     case "advances": renderAdvancesPage(); break;
     case "approvals": renderApprovalsPage(); break;
     case "customers": renderCustomersPage(); break;
+    case "subcontractors": renderSubcontractorsPage(); break;
     case "projects": renderProjectsPage(); break;
     case "cashplan": renderCashPlanPage(); break;
     case "reports": renderReportsPage(); break;
@@ -4751,6 +5034,424 @@ function deleteInvoicePayment(paymentId) {
   renderCustomersPage();
 }
 
+// ===================== SUBCONTRACTORS / ĐỘI KHOAN ======================
+let editingSubcontractorId = null;
+let currentSubDetailId = null;
+let editingWorkEntryId = null;
+let editingSubAdvanceId = null;
+
+function calcSubEarned(sub) {
+  return (sub.workEntries || []).reduce((s, w) => s + (w.amount || 0), 0);
+}
+function calcSubAdvancedOut(sub) {
+  return (sub.payments || []).reduce((s, p) => s + (p.amount || 0), 0);
+}
+function calcSubBalance(sub) {
+  return calcSubEarned(sub) - calcSubAdvancedOut(sub);
+}
+
+function renderSubcontractorsPage() {
+  if (!can("manageSubcontractors")) {
+    document.getElementById("page-subcontractors").innerHTML = `<div class="empty-state"><div class="ico">🔒</div><p>${t("noAccess")}</p></div>`;
+    return;
+  }
+  document.getElementById("btnAddSubcontractor").classList.toggle("hidden", !can("manageSubcontractors"));
+  document.getElementById("subSub").textContent = currentLang === "vi" ? "Quản lý công nợ đội khoan / thầu phụ" : "Manage subcontractor payables";
+
+  const subs = STORE.subcontractors || [];
+
+  let totalEarned = 0, totalAdvancedOut = 0;
+  subs.forEach(s => {
+    totalEarned += calcSubEarned(s);
+    totalAdvancedOut += calcSubAdvancedOut(s);
+  });
+  const totalPayable = totalEarned - totalAdvancedOut;
+
+  document.getElementById("totalPayableAmount").textContent = formatCurrency(totalPayable);
+  document.getElementById("totalEarnedAmount").textContent = formatCurrency(totalEarned);
+  document.getElementById("totalAdvancedOutAmount").textContent = "-" + formatCurrency(totalAdvancedOut);
+  document.getElementById("totalPayableOutstanding").textContent = formatCurrency(totalPayable);
+
+  const list = document.getElementById("subcontractorsList");
+  const empty = document.getElementById("subcontractorsEmpty");
+
+  if (subs.length === 0) {
+    list.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+
+  const sorted = subs.slice().sort((a, b) => calcSubBalance(b) - calcSubBalance(a));
+  list.innerHTML = sorted.map(s => {
+    const balance = calcSubBalance(s);
+    const proj = s.projectId ? getProjectById(s.projectId) : null;
+    return `
+      <div class="customer-row" onclick="openSubcontractorDetail('${s.id}')">
+        <div class="customer-avatar">${s.name.charAt(0).toUpperCase()}</div>
+        <div class="customer-info">
+          <div class="nm">${escapeHtml(s.name)}${proj ? ` <span class="project-pill">${escapeHtml(proj.name)}</span>` : ""}</div>
+          <div class="sub">${s.phone || "—"}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="${balance > 0 ? "payroll-negative" : ""}" style="font-weight:700;">${formatCurrency(balance)}</div>
+          <div class="sub">${currentLang === "vi" ? "còn phải trả" : "payable"}</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function openSubcontractorModal(subId) {
+  editingSubcontractorId = subId;
+  const s = subId ? STORE.subcontractors.find(s2 => s2.id === subId) : null;
+
+  document.getElementById("subModalTitle").textContent = s ? t("subModalEdit") : t("subModalAdd");
+  document.getElementById("subName").value = s ? s.name : "";
+  document.getElementById("subPhone").value = s ? (s.phone || "") : "";
+  document.getElementById("subNote").value = s ? (s.note || "") : "";
+
+  const projSelect = document.getElementById("subProject");
+  projSelect.innerHTML = `<option value="">${currentLang === "vi" ? "— Không —" : "— None —"}</option>` +
+    (STORE.projects || []).map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+  projSelect.value = s ? (s.projectId || "") : "";
+
+  openModal("modalSubcontractor");
+}
+
+function saveSubcontractor() {
+  const name = document.getElementById("subName").value.trim();
+  const phone = document.getElementById("subPhone").value.trim();
+  const projectId = document.getElementById("subProject").value || null;
+  const note = document.getElementById("subNote").value.trim();
+
+  if (!name) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+
+  if (editingSubcontractorId) {
+    const s = STORE.subcontractors.find(s2 => s2.id === editingSubcontractorId);
+    s.name = name; s.phone = phone; s.projectId = projectId; s.note = note;
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: name });
+  } else {
+    STORE.subcontractors.push({ id: genId("sub"), name, phone, projectId, note, workEntries: [], payments: [], createdBy: currentUser.id, createdAt: nowISO() });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: name });
+  }
+
+  persistDebounced();
+  closeModal("modalSubcontractor");
+  showToast(t("toastSaved"), "success");
+
+  if (currentSubDetailId === editingSubcontractorId) renderSubcontractorDetail(editingSubcontractorId);
+  renderSubcontractorsPage();
+}
+
+function deleteSubcontractor() {
+  if (!confirm(currentLang === "vi" ? "Xóa đội khoan / thầu phụ này? Toàn bộ bảng công/khoán và lịch sử tạm ứng bên trong cũng sẽ bị xóa." : "Delete this subcontractor? All work entries and advance history under it will also be deleted.")) return;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  STORE.subcontractors = STORE.subcontractors.filter(s2 => s2.id !== currentSubDetailId);
+
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "đội khoan" : "subcontractor", detail: s ? s.name : "" });
+
+  persistDebounced();
+  closeModal("modalSubcontractorDetail");
+  showToast(t("toastSaved"), "success");
+  renderSubcontractorsPage();
+}
+
+function setupSubcontractorModal() {
+  document.getElementById("btnAddSubcontractor").addEventListener("click", () => openSubcontractorModal(null));
+  document.getElementById("btnSaveSubcontractor").addEventListener("click", saveSubcontractor);
+  document.getElementById("btnEditSubcontractor").addEventListener("click", () => openSubcontractorModal(currentSubDetailId));
+  document.getElementById("btnDeleteSubcontractor").addEventListener("click", deleteSubcontractor);
+  document.getElementById("btnSaveWorkEntry").addEventListener("click", saveWorkEntry);
+  document.getElementById("btnSaveSubAdvance").addEventListener("click", saveSubAdvance);
+}
+
+function toggleWorkEntryType() {
+  const isPiece = document.getElementById("workEntryType").value === "piece";
+  document.getElementById("workEntryDailyFields").classList.toggle("hidden", isPiece);
+  document.getElementById("workEntryPieceFields").classList.toggle("hidden", !isPiece);
+}
+
+function openSubcontractorDetail(subId) {
+  currentSubDetailId = subId;
+  editingWorkEntryId = null;
+  editingSubAdvanceId = null;
+
+  document.getElementById("workEntryType").value = "daily";
+  document.getElementById("weDate").value = todayStr();
+  document.getElementById("weThoDays").value = "";
+  document.getElementById("wePhuDays").value = "";
+  document.getElementById("weThoRate").value = "";
+  document.getElementById("wePhuRate").value = "";
+  document.getElementById("weDate2").value = todayStr();
+  document.getElementById("weBoreholeId").value = "";
+  document.getElementById("weSoilMeters").value = "";
+  document.getElementById("weRockMeters").value = "";
+  document.getElementById("weSoilRate").value = "";
+  document.getElementById("weRockRate").value = "";
+  document.getElementById("weNote").value = "";
+  document.getElementById("btnSaveWorkEntry").textContent = t("btnSaveWorkEntry");
+  document.getElementById("btnCancelEditWorkEntry").classList.add("hidden");
+  toggleWorkEntryType();
+
+  document.getElementById("subAdvType").value = "advance";
+  document.getElementById("subAdvAmount").value = "";
+  document.getElementById("subAdvDate").value = todayStr();
+  document.getElementById("subAdvNote").value = "";
+  document.getElementById("btnSaveSubAdvance").textContent = t("btnSaveSubAdvance");
+  document.getElementById("btnCancelEditSubAdvance").classList.add("hidden");
+
+  renderSubcontractorDetail(subId);
+  openModal("modalSubcontractorDetail");
+}
+
+function renderSubcontractorDetail(subId) {
+  const s = STORE.subcontractors.find(s2 => s2.id === subId);
+  if (!s) return;
+
+  const proj = s.projectId ? getProjectById(s.projectId) : null;
+  document.getElementById("subDetailTitle").textContent = s.name;
+  document.getElementById("subDetailPhone").textContent = s.phone || "—";
+  document.getElementById("subDetailProject").textContent = proj ? proj.name : "—";
+  document.getElementById("subDetailEarned").textContent = formatCurrency(calcSubEarned(s));
+  document.getElementById("subDetailAdvanced").textContent = "-" + formatCurrency(calcSubAdvancedOut(s));
+  const balance = calcSubBalance(s);
+  const balEl = document.getElementById("subDetailBalance");
+  balEl.textContent = formatCurrency(balance);
+  balEl.style.color = balance > 0 ? "var(--bad)" : "var(--good)";
+
+  // Work entries history
+  const entries = (s.workEntries || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const weList = document.getElementById("workEntryHistoryList");
+  if (entries.length === 0) {
+    weList.innerHTML = `<div class="empty-state"><p>${currentLang === "vi" ? "Chưa có bảng công/khoán nào" : "No work entries yet"}</p></div>`;
+  } else {
+    weList.innerHTML = entries.map(w => {
+      const label = w.type === "piece"
+        ? `${currentLang === "vi" ? "Khoán" : "Piece-rate"} · ${escapeHtml(w.boreholeId || "")} — ${w.soilMeters || 0}m ${currentLang === "vi" ? "đất" : "soil"} / ${w.rockMeters || 0}m ${currentLang === "vi" ? "đá" : "rock"}`
+        : `${currentLang === "vi" ? "Ngày công" : "Daily wage"} · ${currentLang === "vi" ? "Thợ" : "Skilled"} ${w.thoDays || 0} · ${currentLang === "vi" ? "Phụ" : "Assist"} ${w.phuDays || 0}`;
+      return `
+        <div class="payment-history-item">
+          <div>
+            <div><strong>${label}</strong></div>
+            ${w.note ? `<div>${escapeHtml(w.note)}</div>` : ""}
+            <div class="pdate">${formatDateDisplay(w.date)}</div>
+          </div>
+          <div style="text-align:right;">
+            <div class="pamt">${formatCurrency(w.amount)}</div>
+            <div class="btn-row" style="margin-top:4px; justify-content:flex-end;">
+              <button class="btn btn-sm btn-outline" onclick="editWorkEntry('${w.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button>
+              <button class="btn btn-sm btn-danger" onclick="deleteWorkEntry('${w.id}')">${currentLang === "vi" ? "Xóa" : "Delete"}</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  // Advance/support history
+  const advs = (s.payments || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  const advList = document.getElementById("subAdvanceHistoryList");
+  if (advs.length === 0) {
+    advList.innerHTML = `<div class="empty-state"><p>${currentLang === "vi" ? "Chưa có tạm ứng/hỗ trợ nào" : "No advances/support yet"}</p></div>`;
+  } else {
+    advList.innerHTML = advs.map(p => `
+      <div class="payment-history-item">
+        <div>
+          <div><strong>${p.type === "support" ? t("subAdvTypeSupport") : t("subAdvTypeAdvance")}</strong></div>
+          ${p.note ? `<div>${escapeHtml(p.note)}</div>` : ""}
+          <div class="pdate">${formatDateDisplay(p.date)}</div>
+        </div>
+        <div style="text-align:right;">
+          <div class="pamt" style="color:var(--bad);">-${formatCurrency(p.amount)}</div>
+          <div class="btn-row" style="margin-top:4px; justify-content:flex-end;">
+            <button class="btn btn-sm btn-outline" onclick="editSubAdvance('${p.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button>
+            <button class="btn btn-sm btn-danger" onclick="deleteSubAdvance('${p.id}')">${currentLang === "vi" ? "Xóa" : "Delete"}</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  }
+}
+
+function saveWorkEntry() {
+  const type = document.getElementById("workEntryType").value;
+  const note = document.getElementById("weNote").value.trim();
+  let entry;
+
+  if (type === "daily") {
+    const date = document.getElementById("weDate").value;
+    const thoDays = parseFloat(document.getElementById("weThoDays").value) || 0;
+    const phuDays = parseFloat(document.getElementById("wePhuDays").value) || 0;
+    const thoRate = parseFloat(document.getElementById("weThoRate").value) || 0;
+    const phuRate = parseFloat(document.getElementById("wePhuRate").value) || 0;
+    if (!date || (thoDays <= 0 && phuDays <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
+    const amount = thoDays * thoRate + phuDays * phuRate;
+    entry = { type, date, thoDays, phuDays, thoRate, phuRate, amount, note };
+  } else {
+    const date = document.getElementById("weDate2").value;
+    const boreholeId = document.getElementById("weBoreholeId").value.trim();
+    const soilMeters = parseFloat(document.getElementById("weSoilMeters").value) || 0;
+    const rockMeters = parseFloat(document.getElementById("weRockMeters").value) || 0;
+    const soilRate = parseFloat(document.getElementById("weSoilRate").value) || 0;
+    const rockRate = parseFloat(document.getElementById("weRockRate").value) || 0;
+    if (!date || !boreholeId || (soilMeters <= 0 && rockMeters <= 0)) { showToast(t("toastFillRequired"), "error"); return; }
+    const amount = soilMeters * soilRate + rockMeters * rockRate;
+    entry = { type, date, boreholeId, soilMeters, rockMeters, soilRate, rockRate, amount, note };
+  }
+
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  if (!s.workEntries) s.workEntries = [];
+
+  if (editingWorkEntryId) {
+    const idx = s.workEntries.findIndex(w => w.id === editingWorkEntryId);
+    if (idx >= 0) s.workEntries[idx] = { ...entry, id: editingWorkEntryId, createdBy: s.workEntries[idx].createdBy, createdAt: s.workEntries[idx].createdAt };
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
+    cancelEditWorkEntry();
+  } else {
+    s.workEntries.push({ id: genId("we"), ...entry, createdBy: currentUser.id, createdAt: nowISO() });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
+  }
+
+  persistDebounced();
+  document.getElementById("weThoDays").value = ""; document.getElementById("wePhuDays").value = "";
+  document.getElementById("weSoilMeters").value = ""; document.getElementById("weRockMeters").value = "";
+  document.getElementById("weBoreholeId").value = ""; document.getElementById("weNote").value = "";
+  showToast(t("toastSaved"), "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
+
+function editWorkEntry(entryId) {
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  const w = (s.workEntries || []).find(w2 => w2.id === entryId);
+  if (!w) return;
+
+  editingWorkEntryId = entryId;
+  document.getElementById("workEntryType").value = w.type;
+  toggleWorkEntryType();
+  if (w.type === "daily") {
+    document.getElementById("weDate").value = w.date;
+    document.getElementById("weThoDays").value = w.thoDays;
+    document.getElementById("wePhuDays").value = w.phuDays;
+    document.getElementById("weThoRate").value = w.thoRate;
+    document.getElementById("wePhuRate").value = w.phuRate;
+  } else {
+    document.getElementById("weDate2").value = w.date;
+    document.getElementById("weBoreholeId").value = w.boreholeId;
+    document.getElementById("weSoilMeters").value = w.soilMeters;
+    document.getElementById("weRockMeters").value = w.rockMeters;
+    document.getElementById("weSoilRate").value = w.soilRate;
+    document.getElementById("weRockRate").value = w.rockRate;
+  }
+  document.getElementById("weNote").value = w.note || "";
+  document.getElementById("btnSaveWorkEntry").textContent = currentLang === "vi" ? "Cập nhật" : "Update";
+  document.getElementById("btnCancelEditWorkEntry").classList.remove("hidden");
+  document.getElementById("addWorkEntryCard").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditWorkEntry() {
+  editingWorkEntryId = null;
+  document.getElementById("weThoDays").value = ""; document.getElementById("wePhuDays").value = "";
+  document.getElementById("weSoilMeters").value = ""; document.getElementById("weRockMeters").value = "";
+  document.getElementById("weBoreholeId").value = ""; document.getElementById("weNote").value = "";
+  document.getElementById("btnSaveWorkEntry").textContent = t("btnSaveWorkEntry");
+  document.getElementById("btnCancelEditWorkEntry").classList.add("hidden");
+}
+
+function deleteWorkEntry(entryId) {
+  if (!confirm(currentLang === "vi" ? "Xóa bảng công/khoán này?" : "Delete this work entry?")) return;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  const w = (s.workEntries || []).find(w2 => w2.id === entryId);
+  s.workEntries = (s.workEntries || []).filter(w2 => w2.id !== entryId);
+
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${w ? formatCurrency(w.amount) : ""} - ${s.name}` });
+
+  if (editingWorkEntryId === entryId) cancelEditWorkEntry();
+  persistDebounced();
+  showToast(currentLang === "vi" ? "Đã xóa" : "Deleted", "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
+
+function saveSubAdvance() {
+  const type = document.getElementById("subAdvType").value;
+  const amount = parseFloat(document.getElementById("subAdvAmount").value);
+  const date = document.getElementById("subAdvDate").value;
+  const note = document.getElementById("subAdvNote").value.trim();
+
+  if (!amount || amount <= 0 || !date) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  if (!s.payments) s.payments = [];
+
+  if (editingSubAdvanceId) {
+    const p = s.payments.find(p2 => p2.id === editingSubAdvanceId);
+    if (p) { p.type = type; p.amount = amount; p.date = date; p.note = note; }
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
+    cancelEditSubAdvance();
+  } else {
+    s.payments.push({ id: genId("subadv"), type, amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
+  }
+
+  persistDebounced();
+  document.getElementById("subAdvAmount").value = "";
+  document.getElementById("subAdvNote").value = "";
+  showToast(t("toastSaved"), "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
+
+function editSubAdvance(paymentId) {
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  const p = (s.payments || []).find(p2 => p2.id === paymentId);
+  if (!p) return;
+
+  editingSubAdvanceId = paymentId;
+  document.getElementById("subAdvType").value = p.type;
+  document.getElementById("subAdvAmount").value = p.amount;
+  document.getElementById("subAdvDate").value = p.date;
+  document.getElementById("subAdvNote").value = p.note || "";
+  document.getElementById("btnSaveSubAdvance").textContent = currentLang === "vi" ? "Cập nhật" : "Update";
+  document.getElementById("btnCancelEditSubAdvance").classList.remove("hidden");
+  document.getElementById("addSubAdvanceCard").scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function cancelEditSubAdvance() {
+  editingSubAdvanceId = null;
+  document.getElementById("subAdvAmount").value = "";
+  document.getElementById("subAdvNote").value = "";
+  document.getElementById("btnSaveSubAdvance").textContent = t("btnSaveSubAdvance");
+  document.getElementById("btnCancelEditSubAdvance").classList.add("hidden");
+}
+
+function deleteSubAdvance(paymentId) {
+  if (!confirm(currentLang === "vi" ? "Xóa khoản tạm ứng/hỗ trợ này?" : "Delete this advance/support entry?")) return;
+  const s = STORE.subcontractors.find(s2 => s2.id === currentSubDetailId);
+  if (!s) return;
+  const p = (s.payments || []).find(p2 => p2.id === paymentId);
+  s.payments = (s.payments || []).filter(p2 => p2.id !== paymentId);
+
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${p ? formatCurrency(p.amount) : ""} - ${s.name}` });
+
+  if (editingSubAdvanceId === paymentId) cancelEditSubAdvance();
+  persistDebounced();
+  showToast(currentLang === "vi" ? "Đã xóa" : "Deleted", "success");
+  renderSubcontractorDetail(currentSubDetailId);
+  renderSubcontractorsPage();
+}
 
 // ===================== PROJECTS =====================
 function renderProjectsPage() {
