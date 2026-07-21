@@ -1528,7 +1528,8 @@ function renderEmployeeRows(list) {
           <button class="btn btn-sm btn-danger" style="margin-left:4px" onclick="toggleEmployeeStatus('${e.uid}', ${e.active !== false})">
             ${e.active !== false ? t('emp_deactivate') : t('emp_activate')}
           </button>
-          <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="resetEmployeePassword('${e.uid}', '${e.name}')">🔑</button>` : '–'}
+          <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="resetEmployeePassword('${e.uid}', '${e.name}')">🔑</button>
+          <button class="btn btn-sm btn-outline" style="margin-left:4px" onclick="openEditLeaveBalanceForEmployee('${e.uid}','${(e.name||'').replace(/'/g,"\\'")}')" title="${lang==='vi'?'Sửa số ngày phép':'Edit leave balance'}">🌴</button>` : '–'}
       </td>
     </tr>
   `).join('');
@@ -1775,6 +1776,10 @@ document.addEventListener('change', function(e) {
 });
 
 // ── LEAVE MANAGEMENT ──────────────────────────────────────────
+let _leaveRequestsCache = [];
+let _leaveBalanceMapCache = {};
+let _leaveUsedByUidCache = {};
+
 async function loadLeave() {
   showLoader();
   try {
@@ -1797,6 +1802,14 @@ async function loadLeave() {
       } catch(e) { balanceMap[uid] = 0; }
     }));
 
+    _leaveRequestsCache = requests;
+    _leaveBalanceMapCache = balanceMap;
+    _leaveUsedByUidCache = {};
+    requests.forEach(r => {
+      if (r.status === 'approved' && r.leaveType === 'paid' && r.uid) {
+        _leaveUsedByUidCache[r.uid] = (_leaveUsedByUidCache[r.uid] || 0) + (r.days || 0);
+      }
+    });
     renderLeave(requests, balanceMap);
   } catch (err) {
     toast('Error loading leave: ' + err.message, 'error');
@@ -1807,17 +1820,7 @@ async function loadLeave() {
 
 function renderLeave(requests, balanceMap) {
   balanceMap = balanceMap || {};
-
-  // Tính "Đã nghỉ" (tổng ngày đã duyệt + có lương) cho từng nhân viên dựa
-  // trên CHÍNH danh sách 100 đơn gần nhất đang tải — đủ dùng cho mục đích
-  // xem nhanh; số dư "Còn lại" lấy trực tiếp từ leave_balance (chính xác
-  // tuyệt đối, không phụ thuộc giới hạn 100 đơn).
-  const usedByUid = {};
-  requests.forEach(r => {
-    if (r.status === 'approved' && r.leaveType === 'paid' && r.uid) {
-      usedByUid[r.uid] = (usedByUid[r.uid] || 0) + (r.days || 0);
-    }
-  });
+  const usedByUid = _leaveUsedByUidCache || {};
 
   $('page-leave').innerHTML = `
     <div class="page-header">
@@ -1880,7 +1883,7 @@ function leaveRow(r, balanceMap, usedByUid) {
     <td>${r.leaveType === 'paid' ? `🟢 ${t('leave_paid')}` : `🔴 ${t('leave_unpaid')}`}</td>
     <td>${totalEntitled}</td>
     <td>${used}</td>
-    <td>${remaining}</td>
+    <td>${remaining}${canManageCountry(r.country) && r.uid ? ` <button class="btn btn-sm btn-outline" onclick="editLeaveBalance('${r.uid}','${(r.employeeName||'').replace(/'/g,"\\'")}',${typeof remaining === 'number' ? remaining : 0})" title="${lang==='vi'?'Sửa số ngày phép còn lại':'Edit remaining balance'}">✏️</button>` : ''}</td>
     <td style="max-width:200px;white-space:normal;">${r.reason || ''}</td>
     <td>${statusBadge}</td>
     <td style="white-space:nowrap;">
@@ -1896,9 +1899,50 @@ function leaveRow(r, balanceMap, usedByUid) {
   </tr>`;
 }
 
+window.openEditLeaveBalanceForEmployee = async function(uid, employeeName) {
+  showLoader();
+  let currentBalance = 0;
+  try {
+    const balSnap = await col.leaveBalance().doc(uid).get();
+    currentBalance = balSnap.exists ? (balSnap.data().balance || 0) : 0;
+  } catch(e) { /* mặc định 0 nếu chưa từng có hồ sơ số dư */ }
+  hideLoader();
+  editLeaveBalance(uid, employeeName, currentBalance);
+};
+
+window.editLeaveBalance = async function(uid, employeeName, currentBalance) {
+  const input = prompt(
+    (lang==='vi'
+      ? `Nhập số ngày phép CÒN LẠI mới cho ${employeeName}:\n(Tổng ngày phép được hưởng = số này + số ngày đã nghỉ)`
+      : `Enter the NEW remaining leave balance for ${employeeName}:\n(Total entitled = this number + days already used)`),
+    currentBalance
+  );
+  if (input === null) return; // cancelled
+  const newBalance = parseFloat(input);
+  if (isNaN(newBalance) || newBalance < 0) {
+    toast(lang==='vi' ? 'Số ngày không hợp lệ.' : 'Invalid number of days.', 'error');
+    return;
+  }
+  showLoader();
+  try {
+    await col.leaveBalance().doc(uid).set({
+      uid, employeeName,
+      balance: newBalance,
+      adjustedBy: state.userProfile.uid,
+      adjustedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    toast(lang==='vi' ? `Đã cập nhật số ngày phép còn lại: ${newBalance}` : `Updated remaining balance: ${newBalance}`, 'success');
+    loadLeave();
+  } catch(e) {
+    toast('Error: ' + e.message, 'error');
+  } finally { hideLoader(); }
+};
+
 window.filterLeave = function() {
-  // reload with filter applied – simplified
-  loadLeave();
+  const status = $('leave-filter-status')?.value || '';
+  const filtered = status ? _leaveRequestsCache.filter(r => r.status === status) : _leaveRequestsCache;
+  const tbody = $('leave-tbody');
+  if (tbody) tbody.innerHTML = filtered.map(r => leaveRow(r, _leaveBalanceMapCache, _leaveUsedByUidCache)).join('');
 };
 
 window.approveLeave = async function(id) {
