@@ -556,6 +556,7 @@
           <option value="technician">Technician</option>
           <option value="report">Report Team</option>
           <option value="admin">Admin</option>
+          <option value="superadmin">Super Admin</option>
         </select>
       </div>
       <div>
@@ -1013,13 +1014,19 @@ function enterApp(){
   detachListeners();
   attachListeners();
   buildNav();
-  goView(NAV_ITEMS[SESSION.role][0][0]);
+  const items = NAV_ITEMS[SESSION.role] || NAV_ITEMS.technician;
+  goView(items[0][0]);
 }
 
 function buildNav(){
   const nav = document.getElementById('navBar');
   nav.innerHTML='';
-  NAV_ITEMS[SESSION.role].forEach(([key,en,vi])=>{
+  // An toàn: nếu vì lý do gì đó role không khớp danh sách đã định nghĩa
+  // (dữ liệu lỗi/rỗng), KHÔNG được để cả app bị đơ trắng menu — dùng tạm
+  // danh sách của "technician" (menu tối thiểu) thay vì crash toàn bộ.
+  const items = NAV_ITEMS[SESSION.role] || NAV_ITEMS.technician;
+  if(!NAV_ITEMS[SESSION.role]) console.warn('Role không hợp lệ:', SESSION.role, '— dùng menu mặc định.');
+  items.forEach(([key,en,vi])=>{
     const b=document.createElement('button');
     b.innerHTML = `<span class="en">${en}</span><span class="vi">${vi}</span>`;
     b.dataset.view=key;
@@ -2458,6 +2465,15 @@ async function saveStaff(){
   const telegramChatId=document.getElementById('sTelegramChatId').value.trim();
 
   if(!name||!email){ alert('Please fill in name and email.\nĐiền đủ tên và email.'); return; }
+  // An toàn: không bao giờ được lưu role rỗng — đây chính là lỗi từng làm
+  // mất quyền Super Admin của chính chủ tài khoản trước đây.
+  if(!role){ alert('Please select a role.\nVui lòng chọn vai trò.'); return; }
+  // Chỉ Super Admin hiện tại mới được PHONG người khác (hoặc giữ nguyên
+  // chính mình) làm Super Admin — admin thường không được tự ý gán quyền
+  // Super Admin cho ai, kể cả chính họ.
+  if(role==='superadmin' && SESSION.role!=='superadmin'){
+    alert('Only a Super Admin can assign the Super Admin role.\nChỉ Super Admin mới được gán quyền Super Admin.'); return;
+  }
 
   if(EDIT_STAFF_ID){
     // Edit mode: update profile only (no password change)
