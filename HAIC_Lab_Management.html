@@ -351,6 +351,9 @@
       </div>
 
       <h3 style="font-family:var(--serif);margin:26px 0 12px;">Report History <span style="font-size:14px;font-weight:400;color:var(--slate);">/ Lịch sử báo cáo</span></h3>
+      <div class="filter-bar" style="margin-bottom:14px;">
+        <select id="dailyFilterEmployee" onchange="renderDaily()"><option value="">All staff / Tất cả nhân viên</option></select>
+      </div>
       <div id="dailyHistory"></div>
     </section>
 
@@ -358,6 +361,24 @@
     <section class="view" id="view-rawdata">
       <h2 class="view-title">Raw Data &amp; Test Status <span class="vi">— Theo dõi Raw Data</span></h2>
       <p class="view-sub">Track test progress per role — Technician: 3 steps / Report Team: 2 steps / Admin: all 7 steps.<br><span class="vi">Theo dõi tiến độ theo vai trò — Kỹ thuật viên: 3 bước / Report Team: 2 bước / Admin: toàn bộ 7 bước.</span></p>
+      <div class="filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <select id="rawDataFilterCountry" onchange="renderRawData()">
+          <option value="">🌏 All countries / Tất cả quốc gia</option>
+          <option value="KH">🇰🇭 Cambodia / Campuchia</option>
+          <option value="LA">🇱🇦 Laos / Lào</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam</option>
+        </select>
+        <select id="rawDataFilterType" onchange="renderRawData()">
+          <option value="">All project types / Tất cả loại dự án</option>
+          <option value="soil">Soil Investigation / Khảo sát địa kỹ thuật</option>
+          <option value="materials">Construction Materials Testing / Kiểm tra vật liệu</option>
+          <option value="topo">Topographical Survey / Khảo sát địa hình</option>
+          <option value="calibration">Equipment Calibration / Hiệu chuẩn thiết bị</option>
+          <option value="other">Other / Khác</option>
+        </select>
+        <select id="rawDataFilterClient" onchange="renderRawData()"><option value="">All clients / Tất cả khách hàng</option></select>
+        <select id="rawDataFilterEmployee" onchange="renderRawData()"><option value="">All staff / Tất cả nhân viên</option></select>
+      </div>
       <div id="rawDataList"></div>
     </section>
 
@@ -365,6 +386,24 @@
     <section class="view" id="view-report">
       <h2 class="view-title">Ready for Report <span class="vi">— Sẵn sàng làm báo cáo</span></h2>
       <p class="view-sub">Samples with the full checklist completed, ready for the report team.<br><span class="vi">Các mẫu đã hoàn tất toàn bộ checklist, sẵn sàng làm report.</span></p>
+      <div class="filter-bar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">
+        <select id="reportReadyFilterCountry" onchange="renderReportReady()">
+          <option value="">🌏 All countries / Tất cả quốc gia</option>
+          <option value="KH">🇰🇭 Cambodia / Campuchia</option>
+          <option value="LA">🇱🇦 Laos / Lào</option>
+          <option value="VN">🇻🇳 Vietnam / Việt Nam</option>
+        </select>
+        <select id="reportReadyFilterType" onchange="renderReportReady()">
+          <option value="">All project types / Tất cả loại dự án</option>
+          <option value="soil">Soil Investigation / Khảo sát địa kỹ thuật</option>
+          <option value="materials">Construction Materials Testing / Kiểm tra vật liệu</option>
+          <option value="topo">Topographical Survey / Khảo sát địa hình</option>
+          <option value="calibration">Equipment Calibration / Hiệu chuẩn thiết bị</option>
+          <option value="other">Other / Khác</option>
+        </select>
+        <select id="reportReadyFilterClient" onchange="renderReportReady()"><option value="">All clients / Tất cả khách hàng</option></select>
+        <select id="reportReadyFilterEmployee" onchange="renderReportReady()"><option value="">All staff / Tất cả nhân viên</option></select>
+      </div>
       <div id="reportReadyList"></div>
     </section>
 
@@ -400,6 +439,9 @@
           <select id="planFilterOwner" class="search-input" onchange="renderPlans()">
             <option value="">All / Tất cả</option>
             <option value="mine">My plans / Kế hoạch của tôi</option>
+          </select>
+          <select id="planFilterEmployee" class="search-input" onchange="renderPlans()">
+            <option value="">All staff / Tất cả nhân viên</option>
           </select>
           <select id="planFilterStatus" class="search-input" onchange="renderPlans()">
             <option value="">All status / Tất cả</option>
@@ -514,7 +556,12 @@
       <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
       <div>
         <label>Start time<span class="vi">Thời gian bắt đầu</span></label>
-        <input type="datetime-local" id="tStartTime" lang="en-US">
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="tStartTime_date" style="flex:1.6;">
+          <select id="tStartTime_hour" style="flex:0.8;"></select>
+          <select id="tStartTime_min" style="flex:0.8;"></select>
+          <select id="tStartTime_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
       </div>
       <div class="full" style="border-top:2px solid var(--accent2,#8a6d3b); padding-top:10px; margin-top:4px;">
         <label style="font-weight:700; font-size:14px;">🧪 Raw Data — Thí nghiệm <span class="small-muted">(3 bước: Testing in progress → Testing completed → Raw data uploaded)</span></label>
@@ -526,7 +573,12 @@
       </div>
       <div>
         <label>Raw Data — Deadline<span class="vi">Deadline Raw Data</span></label>
-        <input type="datetime-local" id="tRawDataDeadline" lang="en-US">
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="tRawDataDeadline_date" style="flex:1.6;">
+          <select id="tRawDataDeadline_hour" style="flex:0.8;"></select>
+          <select id="tRawDataDeadline_min" style="flex:0.8;"></select>
+          <select id="tRawDataDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
       </div>
       <div class="full" style="border-top:2px solid var(--accent,#333); padding-top:10px; margin-top:4px;">
         <label style="font-weight:700; font-size:14px;">📝 Final Report <span class="small-muted">(4 bước: Calculation done → Reviewed by Admin → Writing report → Report submitted)</span></label>
@@ -538,7 +590,12 @@
       </div>
       <div>
         <label>Final Report — Deadline<span class="vi">Deadline Final Report</span></label>
-        <input type="datetime-local" id="tReportDeadline" lang="en-US">
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="tReportDeadline_date" style="flex:1.6;">
+          <select id="tReportDeadline_hour" style="flex:0.8;"></select>
+          <select id="tReportDeadline_min" style="flex:0.8;"></select>
+          <select id="tReportDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
       </div>
       <div class="full" id="tTestsSection">
         <label>Tests required (select multiple)<span class="vi">Loại test (chọn nhiều)</span></label>
@@ -608,7 +665,14 @@
         <label>Assigned to<span class="vi">Giao cho</span></label>
         <select id="planAssignee"></select>
       </div>
-      <div><label>Deadline (date &amp; time)<span class="vi">Deadline</span></label><input type="datetime-local" id="planDeadline" lang="en-US"></div>
+      <div><label>Deadline (date &amp; time)<span class="vi">Deadline</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="planDeadline_date" style="flex:1.6;">
+          <select id="planDeadline_hour" style="flex:0.8;"></select>
+          <select id="planDeadline_min" style="flex:0.8;"></select>
+          <select id="planDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
       <div>
         <label>Priority<span class="vi">Ưu tiên</span></label>
         <select id="planPriority">
@@ -653,8 +717,22 @@
         <select id="stAssignee" multiple style="height:110px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
         <div class="small-muted"><span class="en">Hold Ctrl/Cmd to select multiple.</span><span class="vi">Giữ Ctrl/Cmd để chọn nhiều.</span></div>
       </div>
-      <div><label>Start time<span class="vi">Thời gian bắt đầu</span></label><input type="datetime-local" id="stStartTime" lang="en-US"></div>
-      <div><label>Deadline<span class="vi">Deadline</span></label><input type="datetime-local" id="stDeadline" lang="en-US"></div>
+      <div><label>Start time<span class="vi">Thời gian bắt đầu</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="stStartTime_date" style="flex:1.6;">
+          <select id="stStartTime_hour" style="flex:0.8;"></select>
+          <select id="stStartTime_min" style="flex:0.8;"></select>
+          <select id="stStartTime_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
+      <div><label>Deadline<span class="vi">Deadline</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="stDeadline_date" style="flex:1.6;">
+          <select id="stDeadline_hour" style="flex:0.8;"></select>
+          <select id="stDeadline_min" style="flex:0.8;"></select>
+          <select id="stDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
       <div class="full">
         <label>Tests / Steps (select from parent task)<span class="vi">Test/bước từ task gốc</span></label>
         <div class="checklist" id="stTestsChecklist" style="max-height:200px;overflow-y:auto;"></div>
@@ -698,6 +776,63 @@ const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
+
+// ── Bộ chọn giờ tự dựng — luôn hiện AM/PM ──────────────────────────────
+// Bộ chọn giờ gốc của trình duyệt (<input type="datetime-local">) hiển thị
+// SA/CH hay AM/PM tùy theo NGÔN NGỮ HỆ ĐIỀU HÀNH, không sửa được đáng tin
+// cậy bằng thuộc tính lang trên mọi trình duyệt. Nên tự dựng 4 ô riêng:
+// ngày + giờ (1-12) + phút (00-59) + AM/PM — luôn cố định tiếng Anh.
+const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline'];
+
+function initAmPmPickers(){
+  AMPM_PREFIXES.forEach(id=>{
+    const hourSel = document.getElementById(id+'_hour');
+    const minSel  = document.getElementById(id+'_min');
+    if(!hourSel || !minSel) return;
+    if(hourSel.options.length===0){
+      for(let h=1;h<=12;h++){ const o=document.createElement('option'); o.value=String(h); o.textContent=String(h)+' h'; hourSel.appendChild(o); }
+    }
+    if(minSel.options.length===0){
+      for(let m=0;m<60;m++){ const o=document.createElement('option'); o.value=String(m).padStart(2,'0'); o.textContent=String(m).padStart(2,'0')+' m'; minSel.appendChild(o); }
+    }
+  });
+}
+
+// Đọc giá trị từ 4 ô (ngày/giờ/phút/AM-PM) -> chuỗi "YYYY-MM-DDTHH:MM" (24h)
+// để lưu Firestore y hệt định dạng cũ — không đổi gì ở tầng dữ liệu.
+function getDT(id){
+  const dateEl = document.getElementById(id+'_date');
+  const hourEl = document.getElementById(id+'_hour');
+  const minEl  = document.getElementById(id+'_min');
+  const ampmEl = document.getElementById(id+'_ampm');
+  if(!dateEl || !dateEl.value) return '';
+  let h = parseInt(hourEl.value||'12',10);
+  const ampm = ampmEl.value||'AM';
+  if(ampm==='AM') h = (h===12) ? 0 : h;
+  else h = (h===12) ? 12 : h+12;
+  const hh = String(h).padStart(2,'0');
+  const mm = minEl.value || '00';
+  return `${dateEl.value}T${hh}:${mm}`;
+}
+
+// Điền lại 4 ô từ chuỗi "YYYY-MM-DDTHH:MM" đã lưu (hoặc rỗng nếu chưa có).
+function setDT(id, isoStr){
+  const dateEl = document.getElementById(id+'_date');
+  const hourEl = document.getElementById(id+'_hour');
+  const minEl  = document.getElementById(id+'_min');
+  const ampmEl = document.getElementById(id+'_ampm');
+  if(!dateEl) return;
+  if(!isoStr){ dateEl.value=''; hourEl.value='12'; minEl.value='00'; ampmEl.value='AM'; return; }
+  const [datePart, timePart] = isoStr.split('T');
+  dateEl.value = datePart;
+  let [h, m] = (timePart||'00:00').split(':').map(s=>parseInt(s,10));
+  const ampm = h>=12 ? 'PM' : 'AM';
+  let h12 = h%12; if(h12===0) h12=12;
+  hourEl.value = String(h12);
+  minEl.value = String(m).padStart(2,'0');
+  ampmEl.value = ampm;
+}
+
 
 // ── Telegram notifications — gửi vào nhóm RIÊNG của TỪNG DỰ ÁN ─────────
 // Khác với Administration/Finance (nhóm riêng theo TỪNG NGƯỜI), Lab System
@@ -1027,6 +1162,7 @@ function enterApp(){
   document.getElementById('whoName').textContent = SESSION.name || SESSION.email;
   document.getElementById('whoRole').textContent = (ROLE_LABEL[SESSION.role]||{en:SESSION.role}).en;
 
+  initAmPmPickers();
   detachListeners();
   attachListeners();
   buildNav();
@@ -1455,12 +1591,14 @@ function renderTasks(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
           <div>
             <h3 style="margin-bottom:4px;">${(()=>{ const proj=PROJECTS.find(p=>p.id===t.projectId); const cy=proj&&COUNTRY_LABEL[proj.country]; return cy?`<span style="font-size:14px;">${cy.flag}</span> `:''; })()} ${t.project||'(no project)'} — ${t.sampleId||''}</h3>
-            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'} &nbsp;|&nbsp; Assigned to / Phụ trách: <strong>${getAssigneeNames(t)}</strong>${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}
-            </div>
+            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'}${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}</div>
+            <div class="small-muted" style="margin-top:2px;">🧪 Raw Data: <strong>${(t.rawDataAssigneeIds||[]).map(id=>findUser(id)?.name).filter(Boolean).join(', ')||'—'}</strong></div>
+            <div class="small-muted">📝 Final Report: <strong>${(t.reportAssigneeIds||[]).map(id=>findUser(id)?.name).filter(Boolean).join(', ')||'—'}</strong></div>
           </div>
           <div style="text-align:right;">
             ${statusBadge(taskStatus(t))}
-            <div class="small-muted" style="margin-top:4px;">Deadline: ${fmtDateTime(t.deadline)}</div>
+            <div class="small-muted" style="margin-top:4px;">🧪 Raw Data deadline: ${t.rawDataDeadline ? fmtDateTime(t.rawDataDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
+            <div class="small-muted">📝 Report deadline: ${t.reportDeadline ? fmtDateTime(t.reportDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
           </div>
         </div>
         <div class="pill-row" style="margin:10px 0;">
@@ -1516,9 +1654,9 @@ function openTaskModal(taskId){
   document.getElementById('tClient').value = t ? (t.client||'') : '';
   document.getElementById('tSampleId').value = t ? t.sampleId : '';
   document.getElementById('tStandard').value = t ? (t.standard||'') : '';
-  document.getElementById('tStartTime').value = t ? (t.startTime||'') : '';
-  document.getElementById('tRawDataDeadline').value = t ? (t.rawDataDeadline||'') : '';
-  document.getElementById('tReportDeadline').value = t ? (t.reportDeadline||'') : '';
+  setDT('tStartTime', t ? (t.startTime||'') : '');
+  setDT('tRawDataDeadline', t ? (t.rawDataDeadline||'') : '');
+  setDT('tReportDeadline', t ? (t.reportDeadline||'') : '');
   document.getElementById('tCustomTests').value = '';
 
   const psel = document.getElementById('tProject');
@@ -1598,9 +1736,9 @@ async function saveTask(){
   const projectId=document.getElementById('tProject').value;
   const sampleId=document.getElementById('tSampleId').value.trim();
   const standard=document.getElementById('tStandard').value.trim();
-  const startTime=document.getElementById('tStartTime').value;
-  const rawDataDeadline=document.getElementById('tRawDataDeadline').value;
-  const reportDeadline=document.getElementById('tReportDeadline').value;
+  const startTime=getDT('tStartTime');
+  const rawDataDeadline=getDT('tRawDataDeadline');
+  const reportDeadline=getDT('tReportDeadline');
 
   // multi-select assignees — 2 nhóm riêng: Raw Data (3 bước) và Final Report (4 bước)
   const rawSel=document.getElementById('tRawDataAssignee');
@@ -2056,7 +2194,11 @@ function renderDaily(){
   const entryCard = document.getElementById('dailyEntryCard');
   entryCard.style.display = '';
 
+  populateEmployeeFilter('dailyFilterEmployee');
+  const fEmployee = document.getElementById('dailyFilterEmployee')?.value || '';
+
   let reports = [...DAILY_REPORTS];
+  if(fEmployee) reports = reports.filter(r=>r.userId===fEmployee);
   reports.sort((a,b)=> (b.date||'').localeCompare(a.date||''));
 
   if(reports.length===0){
@@ -2113,10 +2255,45 @@ async function submitDailyReport(){
 /* ============================================================
    RAW DATA TRACKING
    ============================================================ */
+// ── Bộ lọc dùng chung: đổ danh sách khách hàng / nhân viên vào dropdown ──
+function populateClientFilter(selectId, tasksSource){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  const clients = [...new Set(tasksSource.map(t=>t.client).filter(Boolean))].sort();
+  const current = sel.value;
+  sel.innerHTML = `<option value="">All clients / Tất cả khách hàng</option>` +
+    clients.map(c=>`<option value="${c}">${c}</option>`).join('');
+  if(clients.includes(current)) sel.value = current;
+}
+function populateEmployeeFilter(selectId){
+  const sel = document.getElementById(selectId);
+  if(!sel) return;
+  if(sel.options.length > 1) return; // đã đổ rồi, giữ nguyên lựa chọn đang chọn
+  USERS.forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+    sel.appendChild(o);
+  });
+}
+
 function renderRawData(){
   let tasks = [...TASKS];
   if(SESSION.role==='technician') tasks = tasks.filter(t=>getAssigneeIds(t).includes(SESSION.uid));
   tasks = tasks.filter(t=>!taskAllDone(t));
+
+  // Đổ danh sách khách hàng + nhân viên vào 2 ô lọc (chỉ 1 lần, giữ lựa
+  // chọn hiện tại nếu đã chọn từ trước).
+  populateClientFilter('rawDataFilterClient', TASKS);
+  populateEmployeeFilter('rawDataFilterEmployee');
+
+  const fCountry = document.getElementById('rawDataFilterCountry')?.value || '';
+  const fType = document.getElementById('rawDataFilterType')?.value || '';
+  const fClient = document.getElementById('rawDataFilterClient')?.value || '';
+  const fEmployee = document.getElementById('rawDataFilterEmployee')?.value || '';
+
+  if(fCountry) tasks = tasks.filter(t=>{ const p=PROJECTS.find(x=>x.id===t.projectId); return p && p.country===fCountry; });
+  if(fType) tasks = tasks.filter(t=>{ const p=PROJECTS.find(x=>x.id===t.projectId); return p && p.type===fType; });
+  if(fClient) tasks = tasks.filter(t=>(t.client||'')===fClient);
+  if(fEmployee) tasks = tasks.filter(t=>getAssigneeIds(t).includes(fEmployee));
 
   if(tasks.length===0){
     document.getElementById('rawDataList').innerHTML = `<div class="empty-state"><div class="icon">✅</div><span class="en">No tests pending raw data.</span><br><span class="vi">Không có test nào đang chờ raw data.</span></div>`;
@@ -2128,7 +2305,7 @@ function renderRawData(){
   tasks.forEach(t=>{
     html += `<div class="section-card">
       <h3 style="margin-bottom:2px;">${t.project} — ${t.sampleId}</h3>
-      <div class="small-muted" style="margin-bottom:10px;">Assigned to / Phụ trách: ${getAssigneeNames(t)} | Deadline: ${fmtDateTime(t.deadline)}</div>
+      <div class="small-muted" style="margin-bottom:10px;">🧪 Raw Data: ${(t.rawDataAssigneeIds||[]).map(id=>findUser(id)?.name).filter(Boolean).join(', ')||getAssigneeNames(t)} | Deadline: ${t.rawDataDeadline ? fmtDateTime(t.rawDataDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
       <div class="test-status-grid">`;
     t.tests.forEach(test=>{
       const myPartDone = visibleSteps.every(s=>test.steps[s.k]);
@@ -2152,7 +2329,21 @@ function renderRawData(){
    READY FOR REPORT
    ============================================================ */
 function renderReportReady(){
-  const tasks = TASKS.filter(t=>taskAllDone(t));
+  let tasks = TASKS.filter(t=>taskAllDone(t));
+
+  populateClientFilter('reportReadyFilterClient', TASKS);
+  populateEmployeeFilter('reportReadyFilterEmployee');
+
+  const fCountry = document.getElementById('reportReadyFilterCountry')?.value || '';
+  const fType = document.getElementById('reportReadyFilterType')?.value || '';
+  const fClient = document.getElementById('reportReadyFilterClient')?.value || '';
+  const fEmployee = document.getElementById('reportReadyFilterEmployee')?.value || '';
+
+  if(fCountry) tasks = tasks.filter(t=>{ const p=PROJECTS.find(x=>x.id===t.projectId); return p && p.country===fCountry; });
+  if(fType) tasks = tasks.filter(t=>{ const p=PROJECTS.find(x=>x.id===t.projectId); return p && p.type===fType; });
+  if(fClient) tasks = tasks.filter(t=>(t.client||'')===fClient);
+  if(fEmployee) tasks = tasks.filter(t=>getAssigneeIds(t).includes(fEmployee));
+
   if(tasks.length===0){
     document.getElementById('reportReadyList').innerHTML = `<div class="empty-state"><div class="icon">📄</div><span class="en">No samples ready for report yet.</span><br><span class="vi">Chưa có mẫu nào sẵn sàng làm report.</span></div>`;
     return;
@@ -2274,7 +2465,7 @@ function openPlanModal(planId){
 
   document.getElementById('planTitle').value = p ? p.title : '';
   document.getElementById('planGoal').value = p ? (p.goal||'') : '';
-  document.getElementById('planDeadline').value = p ? (p.deadline||'') : '';
+  setDT('planDeadline', p ? (p.deadline||'') : '');
   document.getElementById('planPriority').value = p ? (p.priority||'medium') : 'medium';
   document.getElementById('planAlertDays').value = p ? (p.alertDays||2) : 2;
   document.getElementById('planNotes').value = p ? (p.notes||'') : '';
@@ -2302,7 +2493,7 @@ async function savePlan(){
   const title = document.getElementById('planTitle').value.trim();
   const goal = document.getElementById('planGoal').value.trim();
   const assigneeId = document.getElementById('planAssignee').value;
-  const deadline = document.getElementById('planDeadline').value;
+  const deadline = getDT('planDeadline');
   const priority = document.getElementById('planPriority').value;
   const alertDays = parseInt(document.getElementById('planAlertDays').value);
   const notes = document.getElementById('planNotes').value.trim();
@@ -2361,6 +2552,8 @@ async function deletePlan(planId){
 function renderPlans(){
   const fOwner = document.getElementById('planFilterOwner').value;
   const fStatus = document.getElementById('planFilterStatus').value;
+  populateEmployeeFilter('planFilterEmployee');
+  const fEmployee = document.getElementById('planFilterEmployee')?.value || '';
 
   let plans = [...PLANS];
 
@@ -2370,6 +2563,7 @@ function renderPlans(){
   } else if(fOwner==='mine'){
     plans = plans.filter(p=>p.assigneeId===SESSION.uid);
   }
+  if(fEmployee) plans = plans.filter(p=>p.assigneeId===fEmployee);
 
   if(fStatus) plans = plans.filter(p=>planStatus(p)===fStatus);
   plans.sort((a,b)=>(a.deadline||'9999').localeCompare(b.deadline||'9999'));
@@ -2624,8 +2818,8 @@ function openSubTaskModal(parentTaskId, subTaskId){
     `Parent task / Task gốc: <strong>${parent?parent.project+' — '+parent.sampleId:'?'}</strong>`;
 
   document.getElementById('stDesc').value = sub ? (sub.sampleId||'') : '';
-  document.getElementById('stStartTime').value = sub ? (sub.startTime||'') : '';
-  document.getElementById('stDeadline').value = sub ? (sub.deadline||'') : '';
+  setDT('stStartTime', sub ? (sub.startTime||'') : '');
+  setDT('stDeadline', sub ? (sub.deadline||'') : '');
   document.getElementById('stNotes').value = sub ? (sub.client||'') : '';
 
   // Assignee: TẤT CẢ nhân viên (không lọc theo vai trò nữa) — giao việc
@@ -2660,8 +2854,8 @@ async function saveSubTask(){
   const desc = document.getElementById('stDesc').value.trim();
   const sel = document.getElementById('stAssignee');
   const assigneeIds = Array.from(sel.selectedOptions).map(o=>o.value).filter(Boolean);
-  const startTime = document.getElementById('stStartTime').value;
-  const deadline = document.getElementById('stDeadline').value;
+  const startTime = getDT('stStartTime');
+  const deadline = getDT('stDeadline');
   const notes = document.getElementById('stNotes').value.trim();
 
   if(!desc||assigneeIds.length===0||!deadline){
