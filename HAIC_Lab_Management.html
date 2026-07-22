@@ -648,9 +648,10 @@
     <div class="small-muted" id="subtaskParentInfo" style="margin-bottom:14px;padding:8px 10px;background:#f3f0e6;border-radius:2px;"></div>
     <div class="form-grid">
       <div class="full"><label>Sub-task description<span class="vi">Mô tả đầu việc</span></label><input id="stDesc" placeholder="VD: Thực hiện thí nghiệm Direct Shear cho BH-03"></div>
-      <div>
-        <label>Assigned to<span class="vi">Giao cho</span></label>
-        <select id="stAssignee"></select>
+      <div class="full">
+        <label>Assigned to (select multiple / Chọn nhiều người)<span class="vi">Giao cho — giữ Ctrl/Cmd để chọn nhiều</span></label>
+        <select id="stAssignee" multiple style="height:110px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
+        <div class="small-muted"><span class="en">Hold Ctrl/Cmd to select multiple.</span><span class="vi">Giữ Ctrl/Cmd để chọn nhiều.</span></div>
       </div>
       <div><label>Start time<span class="vi">Thời gian bắt đầu</span></label><input type="datetime-local" id="stStartTime" lang="en-US"></div>
       <div><label>Deadline<span class="vi">Deadline</span></label><input type="datetime-local" id="stDeadline" lang="en-US"></div>
@@ -2627,14 +2628,17 @@ function openSubTaskModal(parentTaskId, subTaskId){
   document.getElementById('stDeadline').value = sub ? (sub.deadline||'') : '';
   document.getElementById('stNotes').value = sub ? (sub.client||'') : '';
 
-  // Assignee: only technicians and non-admin users
+  // Assignee: TẤT CẢ nhân viên (không lọc theo vai trò nữa) — giao việc
+  // con cho bất kỳ ai, chọn được nhiều người cùng lúc.
   const sel = document.getElementById('stAssignee');
   sel.innerHTML='';
-  USERS.filter(u=>u.role==='technician'||u.role==='report').forEach(u=>{
-    const o=document.createElement('option'); o.value=u.id; o.textContent=u.name;
+  USERS.forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
     sel.appendChild(o);
   });
-  if(sub) sel.value = getAssigneeIds(sub)[0]||'';
+  const currentSubAssignees = sub ? getAssigneeIds(sub) : [];
+  Array.from(sel.options).forEach(o=>{ o.selected = currentSubAssignees.includes(o.value); });
 
   // Tests from parent: show checklist of parent's test names
   const cl = document.getElementById('stTestsChecklist');
@@ -2654,13 +2658,14 @@ function openSubTaskModal(parentTaskId, subTaskId){
 
 async function saveSubTask(){
   const desc = document.getElementById('stDesc').value.trim();
-  const assigneeId = document.getElementById('stAssignee').value;
+  const sel = document.getElementById('stAssignee');
+  const assigneeIds = Array.from(sel.selectedOptions).map(o=>o.value).filter(Boolean);
   const startTime = document.getElementById('stStartTime').value;
   const deadline = document.getElementById('stDeadline').value;
   const notes = document.getElementById('stNotes').value.trim();
 
-  if(!desc||!assigneeId||!deadline){
-    alert('Please fill in description, assignee and deadline.\nVui lòng điền mô tả, người phụ trách và deadline.');
+  if(!desc||assigneeIds.length===0||!deadline){
+    alert('Please fill in description, at least one assignee and deadline.\nVui lòng điền mô tả, ít nhất 1 người phụ trách và deadline.');
     return;
   }
 
@@ -2680,7 +2685,7 @@ async function saveSubTask(){
       return ex ? ex : {name, steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}};
     });
     await db.collection('tasks').doc(EDIT_SUBTASK_ID).update({
-      sampleId:desc, assigneeIds:[assigneeId], assigneeId,
+      sampleId:desc, assigneeIds, assigneeId:assigneeIds[0],
       startTime, deadline, client:notes, tests:newTests
     });
     EDIT_SUBTASK_ID=null; SUBTASK_PARENT_ID=null;
@@ -2695,7 +2700,7 @@ async function saveSubTask(){
     sampleId: desc,
     client: notes,
     standard: parent ? parent.standard : '',
-    assigneeIds: [assigneeId], assigneeId,
+    assigneeIds, assigneeId: assigneeIds[0],
     startTime, deadline,
     createdAt: nowISO(), completedAt: null,
     tests: checked.map(name=>({
