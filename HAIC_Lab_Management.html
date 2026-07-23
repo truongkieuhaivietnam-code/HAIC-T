@@ -516,6 +516,24 @@
         </select>
       </div>
       <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
+      <div>
+        <label>🧪 Raw Data — Deadline<span class="vi">Deadline Raw Data</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="pRawDataDeadline_date" style="flex:1.6;">
+          <select id="pRawDataDeadline_hour" style="flex:0.8;"></select>
+          <select id="pRawDataDeadline_min" style="flex:0.8;"></select>
+          <select id="pRawDataDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
+      <div>
+        <label>📝 Final Report — Deadline<span class="vi">Deadline Final Report</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="pReportDeadline_date" style="flex:1.6;">
+          <select id="pReportDeadline_hour" style="flex:0.8;"></select>
+          <select id="pReportDeadline_min" style="flex:0.8;"></select>
+          <select id="pReportDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
       <div class="full">
         <label>Status<span class="vi">Trạng thái</span></label>
         <select id="pStatus">
@@ -782,7 +800,7 @@ const db = firebase.firestore();
 // SA/CH hay AM/PM tùy theo NGÔN NGỮ HỆ ĐIỀU HÀNH, không sửa được đáng tin
 // cậy bằng thuộc tính lang trên mọi trình duyệt. Nên tự dựng 4 ô riêng:
 // ngày + giờ (1-12) + phút (00-59) + AM/PM — luôn cố định tiếng Anh.
-const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline'];
+const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline','pRawDataDeadline','pReportDeadline'];
 
 function initAmPmPickers(){
   AMPM_PREFIXES.forEach(id=>{
@@ -1957,7 +1975,9 @@ function renderProjects(){
       <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
         <div>
           <h3 style="margin-bottom:4px;">${p.code ? p.code+' — ' : ''}${p.name}</h3>
-          <div class="small-muted">Client: ${p.client||'-'}${p.investor?` &nbsp;|&nbsp; Investor: ${p.investor}`:''} &nbsp;|&nbsp; Deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
+          <div class="small-muted">Client: ${p.client||'-'}${p.investor?` &nbsp;|&nbsp; Investor: ${p.investor}`:''} &nbsp;|&nbsp; Overall deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
+          <div class="small-muted" style="margin-top:2px;">🧪 Raw Data deadline: ${p.rawDataDeadline ? fmtDateTime(p.rawDataDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
+          <div class="small-muted">📝 Report deadline: ${p.reportDeadline ? fmtDateTime(p.reportDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
         </div>
         <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
           <span class="badge ${st.cls}">${st.en} / ${st.vi}</span>
@@ -2004,6 +2024,8 @@ function openProjectModal(projectId){
   document.getElementById('pCountry').value = p ? (p.country||'KH') : 'KH';
   document.getElementById('pType').value = p ? (p.type||'soil') : 'soil';
   document.getElementById('pDeadline').value = p ? p.deadline : '';
+  setDT('pRawDataDeadline', p ? (p.rawDataDeadline||'') : '');
+  setDT('pReportDeadline', p ? (p.reportDeadline||'') : '');
   document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
   document.getElementById('pNotes').value = p ? (p.notes||'') : '';
   document.getElementById('pTelegramChatId').value = p ? (p.telegramChatId||'') : '';
@@ -2025,6 +2047,8 @@ async function saveProject(){
   const country=document.getElementById('pCountry').value;
   const type=document.getElementById('pType').value;
   const deadline=document.getElementById('pDeadline').value;
+  const rawDataDeadline=getDT('pRawDataDeadline');
+  const reportDeadline=getDT('pReportDeadline');
   const status=document.getElementById('pStatus').value;
   const notes=document.getElementById('pNotes').value.trim();
   const telegramChatId=document.getElementById('pTelegramChatId').value.trim();
@@ -2036,7 +2060,8 @@ async function saveProject(){
 
   if(EDIT_PROJECT_ID){
     await db.collection('projects').doc(EDIT_PROJECT_ID).update({
-      code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null
+      code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null,
+      rawDataDeadline, reportDeadline
     });
     EDIT_PROJECT_ID = null;
     closeModal('projectModalBg');
@@ -2044,7 +2069,8 @@ async function saveProject(){
   }
 
   await db.collection('projects').add({
-    code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null, createdAt: nowISO()
+    code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null,
+    rawDataDeadline, reportDeadline, createdAt: nowISO()
   });
   closeModal('projectModalBg');
 }
