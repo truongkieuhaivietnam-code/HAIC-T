@@ -317,6 +317,10 @@
             <option value="done">Completed / Hoàn tất</option>
             <option value="overdue">Overdue / Quá hạn</option>
           </select>
+          <select id="filterBatch" class="search-input" onchange="renderTasks()">
+            <option value="">All batches / Tất cả Batch</option>
+          </select>
+          <input type="text" id="filterSearch" class="search-input" placeholder="🔍 Search sample/batch / Tìm hố khoan, batch..." oninput="renderTasks()" style="min-width:220px;">
         </div>
         <button class="btn btn-primary" id="btnNewTask" onclick="openTaskModal()">+ New Sample <span class="vi">/ Mẫu mới</span></button>
         <button class="btn btn-secondary" id="btnBulkImport" onclick="openBulkImportModal()">+ Bulk Import <span class="vi">/ Nhập hàng loạt</span></button>
@@ -1663,6 +1667,30 @@ function renderTasks(){
   }
   if(TASKS_PROJECT_FILTER) tasks = tasks.filter(t=>t.projectId===TASKS_PROJECT_FILTER);
 
+  // Đổ danh sách Batch vào dropdown — chỉ lấy trong phạm vi đang lọc theo
+  // dự án (nếu có) hoặc toàn bộ, để không hiện Batch của dự án khác gây
+  // nhầm lẫn khi đang xem đúng 1 dự án.
+  const batchSel = document.getElementById('filterBatch');
+  const currentBatch = batchSel.value;
+  const batchSource = TASKS_PROJECT_FILTER ? TASKS.filter(t=>t.projectId===TASKS_PROJECT_FILTER) : TASKS;
+  const batchNames = [...new Set(batchSource.map(t=>t.batch).filter(Boolean))].sort();
+  batchSel.innerHTML = '<option value="">All batches / Tất cả Batch</option>' +
+    batchNames.map(b=>`<option value="${b}">${b}</option>`).join('');
+  if(batchNames.includes(currentBatch)) batchSel.value = currentBatch;
+
+  const fBatch = batchSel.value;
+  if(fBatch) tasks = tasks.filter(t=>t.batch===fBatch);
+
+  // Tìm nhanh theo tên hố khoan/mẫu (Sample ID) hoặc tên Batch — gõ tới
+  // đâu lọc tới đó, không phân biệt hoa/thường.
+  const fSearch = (document.getElementById('filterSearch')?.value || '').trim().toLowerCase();
+  if(fSearch){
+    tasks = tasks.filter(t =>
+      (t.sampleId||'').toLowerCase().includes(fSearch) ||
+      (t.batch||'').toLowerCase().includes(fSearch)
+    );
+  }
+
   tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
 
   // project filter banner + tổng hợp tiến độ theo Batch
@@ -1989,7 +2017,7 @@ async function saveBulkImport(){
   const rawNames = rawDataAssigneeIds.map(id => findUser(id)?.name).filter(Boolean).join(', ');
   const reportNames = reportAssigneeIds.map(id => findUser(id)?.name).filter(Boolean).join(', ');
   notifyProjectGroup(projectId,
-    `📋 <b>Nhập hàng loạt / Bulk Import</b>\n🏗️ ${project}\n📦 ${created} mẫu/hố khoan mới\n👤 Raw Data: ${rawNames || '—'} (deadline ${fmtDateTime(rawDataDeadline)})\n📝 Final Report: ${reportNames || '—'} (deadline ${fmtDateTime(reportDeadline)})\n🔬 Tests: ${allTestNames.join(', ')}`
+    `📋 <b>Nhập hàng loạt / Bulk Import</b>\n🏗️ ${project}\n📦 ${created} hố khoan mới / ${created} new boreholes${batch ? ` (${batch})` : ''}\n👤 Raw Data: ${rawNames || '—'} (deadline ${fmtDateTime(rawDataDeadline)})\n📝 Final Report: ${reportNames || '—'} (deadline ${fmtDateTime(reportDeadline)})\n🔬 Tests: ${allTestNames.join(', ')}`
   );
 
   closeModal('bulkImportModalBg');
