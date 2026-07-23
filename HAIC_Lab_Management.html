@@ -319,6 +319,7 @@
           </select>
         </div>
         <button class="btn btn-primary" id="btnNewTask" onclick="openTaskModal()">+ New Sample <span class="vi">/ Mẫu mới</span></button>
+        <button class="btn btn-secondary" id="btnBulkImport" onclick="openBulkImportModal()">+ Bulk Import <span class="vi">/ Nhập hàng loạt</span></button>
       </div>
 
       <div id="taskList"></div>
@@ -631,6 +632,70 @@
   </div>
 </div>
 
+<!-- ===================== MODAL: BULK IMPORT SAMPLES ===================== -->
+<div class="modal-bg" id="bulkImportModalBg">
+  <div class="modal" style="max-width:720px;">
+    <button class="modal-close" onclick="closeModal('bulkImportModalBg')">&times;</button>
+    <h3>Bulk Import Samples <span class="vi">/ Nhập hàng loạt hố khoan / mẫu</span></h3>
+    <p class="small-muted">Dùng khi 1 dự án có rất nhiều hố khoan/mẫu cùng chung 1 bộ test, cùng người phụ trách và deadline — không cần tạo tay từng cái.<br>
+    <span class="en">Use this when a project has many boreholes/samples sharing the same tests, assignees and deadlines — no need to create each one manually.</span></p>
+    <div class="form-grid">
+      <div><label>Client</label><input id="biClient"></div>
+      <div>
+        <label>Project<span class="vi">Dự án</span></label>
+        <select id="biProject"></select>
+      </div>
+      <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="biStandard" placeholder="ASTM D2487 / BS 1377..."></div>
+      <div class="full">
+        <label>Sample IDs / Boreholes — mỗi dòng 1 mẫu<span class="vi">Mỗi dòng 1 hố khoan/mẫu</span></label>
+        <textarea id="biSampleIds" rows="8" placeholder="DB-01&#10;DB-03&#10;DB-04&#10;DB-05&#10;NBB-01&#10;..."></textarea>
+        <div class="small-muted">Dán từ Excel/Notepad, mỗi dòng 1 tên hố khoan/mẫu. <span class="en">Paste from Excel/Notepad, one borehole/sample name per line.</span></div>
+      </div>
+      <div class="full">
+        <label>Tests required — áp dụng cho TẤT CẢ mẫu ở trên<span class="vi">Áp dụng chung cho toàn bộ danh sách trên</span></label>
+        <div class="checklist" id="biTestsChecklist"></div>
+        <input id="biCustomTests" placeholder="e.g. Point Load Test, Vane Shear" style="margin-top:6px;">
+      </div>
+      <div class="full" style="border-top:2px solid var(--accent2,#8a6d3b); padding-top:10px; margin-top:4px;">
+        <label style="font-weight:700; font-size:14px;">🧪 Raw Data — Thí nghiệm <span class="small-muted">(3 bước)</span></label>
+      </div>
+      <div>
+        <label>Raw Data — Assignee(s)<span class="vi">Người phụ trách Raw Data</span></label>
+        <select id="biRawDataAssignee" multiple style="height:90px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
+      </div>
+      <div>
+        <label>Raw Data — Deadline<span class="vi">Deadline Raw Data</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="biRawDataDeadline_date" style="flex:1.6;">
+          <select id="biRawDataDeadline_hour" style="flex:0.8;"></select>
+          <select id="biRawDataDeadline_min" style="flex:0.8;"></select>
+          <select id="biRawDataDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
+      <div class="full" style="border-top:2px solid var(--accent,#333); padding-top:10px; margin-top:4px;">
+        <label style="font-weight:700; font-size:14px;">📝 Final Report <span class="small-muted">(4 bước)</span></label>
+      </div>
+      <div>
+        <label>Final Report — Assignee(s)<span class="vi">Người phụ trách Final Report</span></label>
+        <select id="biReportAssignee" multiple style="height:90px;width:100%;padding:6px;border:1px solid var(--line);border-radius:1px;font-size:13px;background:#fff;"></select>
+      </div>
+      <div>
+        <label>Final Report — Deadline<span class="vi">Deadline Final Report</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="biReportDeadline_date" style="flex:1.6;">
+          <select id="biReportDeadline_hour" style="flex:0.8;"></select>
+          <select id="biReportDeadline_min" style="flex:0.8;"></select>
+          <select id="biReportDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('bulkImportModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+      <button class="btn btn-primary" onclick="saveBulkImport()">Create all <span class="vi">/ Tạo tất cả</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL: STAFF ===================== -->
 <div class="modal-bg" id="staffModalBg">
   <div class="modal" style="max-width:480px;">
@@ -800,7 +865,7 @@ const db = firebase.firestore();
 // SA/CH hay AM/PM tùy theo NGÔN NGỮ HỆ ĐIỀU HÀNH, không sửa được đáng tin
 // cậy bằng thuộc tính lang trên mọi trình duyệt. Nên tự dựng 4 ô riêng:
 // ngày + giờ (1-12) + phút (00-59) + AM/PM — luôn cố định tiếng Anh.
-const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline','pRawDataDeadline','pReportDeadline'];
+const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline','pRawDataDeadline','pReportDeadline','biRawDataDeadline','biReportDeadline'];
 
 function initAmPmPickers(){
   AMPM_PREFIXES.forEach(id=>{
@@ -1747,6 +1812,117 @@ function openTaskModal(taskId){
     : `New Sample <span class="vi">/ Mẫu mới</span>`;
 
   openModal('taskModalBg');
+}
+
+/* ============================================================
+   BULK IMPORT — tạo hàng loạt Sample/Hố khoan cùng lúc, dùng chung
+   1 bộ test + người phụ trách + deadline cho cả danh sách.
+   ============================================================ */
+function openBulkImportModal(){
+  document.getElementById('biClient').value = '';
+  document.getElementById('biStandard').value = '';
+  document.getElementById('biSampleIds').value = '';
+  document.getElementById('biCustomTests').value = '';
+
+  const projSel = document.getElementById('biProject');
+  projSel.innerHTML = PROJECTS.map(p=>`<option value="${p.id}">${p.code ? p.code+' — ' : ''}${p.name}</option>`).join('');
+
+  const rawSel = document.getElementById('biRawDataAssignee');
+  const reportSel = document.getElementById('biReportAssignee');
+  rawSel.innerHTML=''; reportSel.innerHTML='';
+  USERS.filter(u=>u.role==='technician' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
+    rawSel.appendChild(o);
+  });
+  USERS.filter(u=>u.role==='report' || isAdminLike(u.role)).forEach(u=>{
+    const o=document.createElement('option'); o.value=u.id;
+    o.textContent = isAdminLike(u.role) ? `${u.name} (${ROLE_LABEL[u.role].en})` : u.name;
+    reportSel.appendChild(o);
+  });
+
+  const cl = document.getElementById('biTestsChecklist');
+  cl.innerHTML = TEST_GROUPS.map(g=>`
+    <div class="test-group">
+      <div class="test-group-title">${g.key}. ${g.en} <span class="vi">/ ${g.vi}</span></div>
+      ${g.tests.map(name=>`<label><input type="checkbox" value="${name}"> ${name}</label>`).join('')}
+    </div>
+  `).join('');
+
+  setDT('biRawDataDeadline', '');
+  setDT('biReportDeadline', '');
+
+  openModal('bulkImportModalBg');
+}
+
+async function saveBulkImport(){
+  const client=document.getElementById('biClient').value.trim();
+  const projectId=document.getElementById('biProject').value;
+  const standard=document.getElementById('biStandard').value.trim();
+  const rawDataDeadline=getDT('biRawDataDeadline');
+  const reportDeadline=getDT('biReportDeadline');
+
+  const rawSel=document.getElementById('biRawDataAssignee');
+  const reportSel=document.getElementById('biReportAssignee');
+  const rawDataAssigneeIds = Array.from(rawSel.selectedOptions).map(o=>o.value).filter(Boolean);
+  const reportAssigneeIds = Array.from(reportSel.selectedOptions).map(o=>o.value).filter(Boolean);
+  const assigneeIds = [...new Set([...rawDataAssigneeIds, ...reportAssigneeIds])];
+  const deadline = reportDeadline || rawDataDeadline;
+
+  const sampleIds = document.getElementById('biSampleIds').value
+    .split('\n').map(s=>s.trim()).filter(Boolean);
+
+  const checked = Array.from(document.querySelectorAll('#biTestsChecklist input:checked')).map(c=>c.value);
+  const custom=document.getElementById('biCustomTests').value.trim();
+  const customList = custom ? custom.split(',').map(s=>s.trim()).filter(Boolean) : [];
+  const allTestNames = [...new Set([...checked, ...customList])];
+
+  if(!projectId || sampleIds.length===0 || allTestNames.length===0 ||
+     rawDataAssigneeIds.length===0 || reportAssigneeIds.length===0 || !rawDataDeadline || !reportDeadline){
+    alert('Please fill in Project, at least 1 Sample ID (1 per line), at least 1 test, and assignees + deadlines for both Raw Data and Final Report.\nVui lòng điền Dự án, ít nhất 1 mẫu (mỗi dòng 1 mẫu), ít nhất 1 test, và người phụ trách + deadline cho cả Raw Data và Final Report.');
+    return;
+  }
+
+  if(!confirm(`Create ${sampleIds.length} samples for this project?\nTạo ${sampleIds.length} mẫu cho dự án này?`)) return;
+
+  const projectObj = PROJECTS.find(p=>p.id===projectId);
+  const project = projectObj ? `${projectObj.code ? projectObj.code+' — ':''}${projectObj.name}` : '(unknown project)';
+
+  const btn = document.querySelector('#bulkImportModalBg .btn-primary');
+  const origLabel = btn.textContent;
+  btn.disabled = true;
+
+  let created = 0;
+  for(const sampleId of sampleIds){
+    btn.textContent = `Creating ${created+1}/${sampleIds.length}...`;
+    await db.collection('tasks').add({
+      client, project, projectId, sampleId, standard,
+      assigneeIds, assigneeId: assigneeIds[0],
+      rawDataAssigneeIds, rawDataDeadline,
+      reportAssigneeIds, reportDeadline,
+      startTime: '', deadline,
+      createdAt: nowISO(), completedAt: null,
+      tests: allTestNames.map(name=>({
+        name,
+        steps:{inprogress:false,testing:false,rawdata:false,calculation:false,reviewed:false,writing:false,submitted:false}
+      }))
+    });
+    created++;
+  }
+  btn.disabled = false;
+  btn.textContent = origLabel;
+
+  // Gửi 1 THÔNG BÁO TỔNG cho cả loạt — không gửi riêng từng mẫu, tránh
+  // spam nhóm Telegram với hàng trăm tin nhắn liên tiếp.
+  const rawNames = rawDataAssigneeIds.map(id => findUser(id)?.name).filter(Boolean).join(', ');
+  const reportNames = reportAssigneeIds.map(id => findUser(id)?.name).filter(Boolean).join(', ');
+  notifyProjectGroup(projectId,
+    `📋 <b>Nhập hàng loạt / Bulk Import</b>\n🏗️ ${project}\n📦 ${created} mẫu/hố khoan mới\n👤 Raw Data: ${rawNames || '—'} (deadline ${fmtDateTime(rawDataDeadline)})\n📝 Final Report: ${reportNames || '—'} (deadline ${fmtDateTime(reportDeadline)})\n🔬 Tests: ${allTestNames.join(', ')}`
+  );
+
+  closeModal('bulkImportModalBg');
+  alert(`Created ${created} samples.\nĐã tạo ${created} mẫu.`);
+  renderTasks();
 }
 
 async function saveTask(){
