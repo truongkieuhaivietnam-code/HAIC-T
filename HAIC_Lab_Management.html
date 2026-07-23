@@ -572,6 +572,7 @@
         <select id="tProject"></select>
       </div>
       <div><label>Sample ID</label><input id="tSampleId" placeholder="BH-03-5.0m"></div>
+      <div><label>Batch <span class="small-muted">(tùy chọn)</span><span class="vi">Đợt/Batch — để nhóm nhiều hố khoan lại, tính tiến độ riêng</span></label><input id="tBatch" placeholder="VD: Batch 1, Batch 2..."></div>
       <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="tStandard" placeholder="ASTM D2487 / BS 1377..."></div>
       <div>
         <label>Start time<span class="vi">Thời gian bắt đầu</span></label>
@@ -646,6 +647,7 @@
         <select id="biProject"></select>
       </div>
       <div><label>Standard<span class="vi">Tiêu chuẩn</span></label><input id="biStandard" placeholder="ASTM D2487 / BS 1377..."></div>
+      <div><label>Batch <span class="small-muted">(tùy chọn)</span><span class="vi">Đợt/Batch — áp dụng cho TẤT CẢ mẫu ở dưới, để tính tiến độ riêng theo từng đợt</span></label><input id="biBatch" placeholder="VD: Batch 1, Batch 2..."></div>
       <div class="full">
         <label>Sample IDs / Boreholes — mỗi dòng 1 mẫu<span class="vi">Mỗi dòng 1 hố khoan/mẫu</span></label>
         <textarea id="biSampleIds" rows="8" placeholder="DB-01&#10;DB-03&#10;DB-04&#10;DB-05&#10;NBB-01&#10;..."></textarea>
@@ -1311,6 +1313,24 @@ function taskAllDone(task){
   if(!task.tests || task.tests.length===0) return false;
   return task.tests.every(t=> STEP_LABELS.every(s=>t.steps && t.steps[s.k]) );
 }
+// Tiến độ CHỈ tính riêng 3 bước Raw Data / 4 bước Final Report — dùng cho
+// bảng tổng hợp theo Batch.
+function taskRawDataProgress(task){
+  const rawSteps = STEP_LABELS.filter(s=>s.tech);
+  if(!task.tests || task.tests.length===0 || rawSteps.length===0) return 0;
+  const total = task.tests.length * rawSteps.length;
+  let done=0;
+  task.tests.forEach(t=>{ rawSteps.forEach(s=>{ if(t.steps && t.steps[s.k]) done++; }); });
+  return Math.round(done/total*100);
+}
+function taskReportProgress(task){
+  const reportSteps = STEP_LABELS.filter(s=>!s.tech);
+  if(!task.tests || task.tests.length===0 || reportSteps.length===0) return 0;
+  const total = task.tests.length * reportSteps.length;
+  let done=0;
+  task.tests.forEach(t=>{ reportSteps.forEach(s=>{ if(t.steps && t.steps[s.k]) done++; }); });
+  return Math.round(done/total*100);
+}
 
 // Steps that count as "done" for a given staff role
 function roleCompletionSteps(role){
@@ -1645,7 +1665,7 @@ function renderTasks(){
 
   tasks.sort((a,b)=> (a.deadline||'9999').localeCompare(b.deadline||'9999'));
 
-  // project filter banner
+  // project filter banner + tổng hợp tiến độ theo Batch
   let bannerHtml='';
   if(TASKS_PROJECT_FILTER){
     const proj = PROJECTS.find(p=>p.id===TASKS_PROJECT_FILTER);
@@ -1653,6 +1673,55 @@ function renderTasks(){
       <div class="small-muted">Filtering by project / Lọc theo dự án: <strong>${proj ? (proj.code?proj.code+' — ':'')+proj.name : '(unknown)'}</strong></div>
       <button class="btn btn-secondary btn-sm" onclick="clearProjectFilter()">Clear filter <span class="vi">Bỏ lọc</span></button>
     </div>`;
+
+    // Nhóm các mẫu/hố khoan của dự án này theo Batch — mỗi Batch có tiến
+    // độ Raw Data/Report riêng, cộng thêm 1 dòng "Final Report / Tổng thể"
+    // dùng đúng deadline tổng đã gắn ở cấp Dự án.
+    const allProjTasks = TASKS.filter(t=>t.projectId===TASKS_PROJECT_FILTER && !t.parentTaskId);
+    if(allProjTasks.length>0){
+      const batchGroups = {};
+      allProjTasks.forEach(t=>{
+        const key = t.batch || '(No batch / Không thuộc batch nào)';
+        if(!batchGroups[key]) batchGroups[key]=[];
+        batchGroups[key].push(t);
+      });
+      const batchNames = Object.keys(batchGroups).sort();
+      const batchRows = batchNames.map(name=>{
+        const list = batchGroups[name];
+        const rawAvg = Math.round(list.reduce((s,t)=>s+taskRawDataProgress(t),0)/list.length);
+        const repAvg = Math.round(list.reduce((s,t)=>s+taskReportProgress(t),0)/list.length);
+        return `<tr>
+          <td><strong>${name}</strong></td>
+          <td>${list.length}</td>
+          <td><div class="progress-bar" style="width:120px;display:inline-block;vertical-align:middle;"><div class="fill" style="width:${rawAvg}%"></div></div> ${rawAvg}%</td>
+          <td><div class="progress-bar" style="width:120px;display:inline-block;vertical-align:middle;"><div class="fill" style="width:${repAvg}%"></div></div> ${repAvg}%</td>
+        </tr>`;
+      }).join('');
+      const overallRaw = Math.round(allProjTasks.reduce((s,t)=>s+taskRawDataProgress(t),0)/allProjTasks.length);
+      const overallRep = Math.round(allProjTasks.reduce((s,t)=>s+taskReportProgress(t),0)/allProjTasks.length);
+      bannerHtml += `<div class="section-card">
+        <h3 style="margin-bottom:2px;">Batch Progress <span class="vi">— Tiến độ theo Batch</span></h3>
+        <p class="small-muted" style="margin-bottom:10px;">Mỗi Batch tính riêng; dòng cuối là tiến độ tổng thể cả dự án (Final Report).<br><span class="en">Each batch is tracked separately; last row is the overall project progress (Final Report).</span></p>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Batch</th><th># Samples</th><th>🧪 Raw Data</th><th>📝 Report</th></tr></thead>
+            <tbody>
+              ${batchRows}
+              <tr style="border-top:2px solid var(--line);">
+                <td><strong>${proj ? 'Final Report / Tổng thể' : ''}</strong></td>
+                <td>${allProjTasks.length}</td>
+                <td><div class="progress-bar" style="width:120px;display:inline-block;vertical-align:middle;"><div class="fill" style="width:${overallRaw}%"></div></div> ${overallRaw}%</td>
+                <td><div class="progress-bar" style="width:120px;display:inline-block;vertical-align:middle;"><div class="fill" style="width:${overallRep}%"></div></div> ${overallRep}%</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        ${proj && (proj.rawDataDeadline || proj.reportDeadline) ? `<div class="small-muted" style="margin-top:8px;">
+          🧪 Raw Data deadline (tổng): ${proj.rawDataDeadline ? fmtDateTime(proj.rawDataDeadline) : '<em>Không có deadline</em>'} &nbsp;|&nbsp;
+          📝 Report deadline (tổng): ${proj.reportDeadline ? fmtDateTime(proj.reportDeadline) : '<em>Không có deadline</em>'}
+        </div>` : ''}
+      </div>`;
+    }
   }
 
   if(tasks.length===0){
@@ -1674,7 +1743,7 @@ function renderTasks(){
         <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;">
           <div>
             <h3 style="margin-bottom:4px;">${(()=>{ const proj=PROJECTS.find(p=>p.id===t.projectId); const cy=proj&&COUNTRY_LABEL[proj.country]; return cy?`<span style="font-size:14px;">${cy.flag}</span> `:''; })()} ${t.project||'(no project)'} — ${t.sampleId||''}</h3>
-            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'}${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}</div>
+            <div class="small-muted">Client: ${t.client||'-'} &nbsp;|&nbsp; Standard: ${t.standard||'-'}${t.batch?` &nbsp;|&nbsp; Batch: <strong>${t.batch}</strong>`:''}${t.startTime?` &nbsp;|&nbsp; Start: ${fmtDateTime(t.startTime)}`:''}</div>
             <div class="small-muted" style="margin-top:2px;">🧪 Raw Data: <strong>${(t.rawDataAssigneeIds||[]).map(id=>findUser(id)?.name).filter(Boolean).join(', ')||'—'}</strong></div>
             <div class="small-muted">📝 Final Report: <strong>${(t.reportAssigneeIds||[]).map(id=>findUser(id)?.name).filter(Boolean).join(', ')||'—'}</strong></div>
           </div>
@@ -1736,6 +1805,7 @@ function openTaskModal(taskId){
 
   document.getElementById('tClient').value = t ? (t.client||'') : '';
   document.getElementById('tSampleId').value = t ? t.sampleId : '';
+  document.getElementById('tBatch').value = t ? (t.batch||'') : '';
   document.getElementById('tStandard').value = t ? (t.standard||'') : '';
   setDT('tStartTime', t ? (t.startTime||'') : '');
   setDT('tRawDataDeadline', t ? (t.rawDataDeadline||'') : '');
@@ -1821,6 +1891,7 @@ function openTaskModal(taskId){
 function openBulkImportModal(){
   document.getElementById('biClient').value = '';
   document.getElementById('biStandard').value = '';
+  document.getElementById('biBatch').value = '';
   document.getElementById('biSampleIds').value = '';
   document.getElementById('biCustomTests').value = '';
 
@@ -1859,6 +1930,7 @@ async function saveBulkImport(){
   const client=document.getElementById('biClient').value.trim();
   const projectId=document.getElementById('biProject').value;
   const standard=document.getElementById('biStandard').value.trim();
+  const batch=document.getElementById('biBatch').value.trim();
   const rawDataDeadline=getDT('biRawDataDeadline');
   const reportDeadline=getDT('biReportDeadline');
 
@@ -1896,7 +1968,7 @@ async function saveBulkImport(){
   for(const sampleId of sampleIds){
     btn.textContent = `Creating ${created+1}/${sampleIds.length}...`;
     await db.collection('tasks').add({
-      client, project, projectId, sampleId, standard,
+      client, project, projectId, sampleId, standard, batch,
       assigneeIds, assigneeId: assigneeIds[0],
       rawDataAssigneeIds, rawDataDeadline,
       reportAssigneeIds, reportDeadline,
@@ -1929,6 +2001,7 @@ async function saveTask(){
   const client=document.getElementById('tClient').value.trim();
   const projectId=document.getElementById('tProject').value;
   const sampleId=document.getElementById('tSampleId').value.trim();
+  const batch=document.getElementById('tBatch').value.trim();
   const standard=document.getElementById('tStandard').value.trim();
   const startTime=getDT('tStartTime');
   const rawDataDeadline=getDT('tRawDataDeadline');
@@ -1982,7 +2055,7 @@ async function saveTask(){
     if(!allDone) completedAt = null;
 
     await db.collection('tasks').doc(EDIT_TASK_ID).update({
-      client, project, projectId, sampleId, standard,
+      client, project, projectId, sampleId, standard, batch,
       assigneeIds, assigneeId: assigneeIds[0],
       rawDataAssigneeIds, rawDataDeadline,
       reportAssigneeIds, reportDeadline,
@@ -1998,7 +2071,7 @@ async function saveTask(){
     return;
   }
   const task = {
-    client, project, projectId, sampleId, standard,
+    client, project, projectId, sampleId, standard, batch,
     assigneeIds, assigneeId: assigneeIds[0],
     rawDataAssigneeIds, rawDataDeadline,
     reportAssigneeIds, reportDeadline,
