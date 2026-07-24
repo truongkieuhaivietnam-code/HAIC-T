@@ -294,6 +294,78 @@
       <div id="projectList"></div>
     </section>
 
+    <!-- ===================== FIELD SURVEY ===================== -->
+    <section class="view" id="view-fieldsurvey">
+      <h2 class="view-title">Field Survey <span class="vi">— Khảo sát hiện trường</span></h2>
+      <p class="view-sub">Track daily field progress per borehole (drilling/sampling) — before samples go to lab testing.<br><span class="vi">Theo dõi tiến độ khảo sát/khoan hiện trường theo từng hố khoan — trước khi vào giai đoạn thí nghiệm (Raw Data).</span></p>
+
+      <div class="toolbar">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <select id="fsProjectSelect" class="search-input" onchange="renderFieldSurvey()">
+            <option value="">— Select project / Chọn dự án —</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-secondary" id="btnFsSetup" onclick="openFsSetupModal()">+ Setup Boreholes <span class="vi">/ Thiết lập hố khoan</span></button>
+          <button class="btn btn-primary" id="btnFsUpdate" onclick="openFsUpdateModal()">📝 Daily Update <span class="vi">/ Cập nhật hôm nay</span></button>
+        </div>
+      </div>
+
+      <div id="fsContent"></div>
+    </section>
+
+    <!-- ===================== MODAL: FIELD SURVEY SETUP ===================== -->
+    <div class="modal-bg" id="fsSetupModalBg">
+      <div class="modal" style="max-width:640px;">
+        <button class="modal-close" onclick="closeModal('fsSetupModalBg')">&times;</button>
+        <h3>Setup Boreholes <span class="vi">/ Thiết lập danh sách hố khoan</span></h3>
+        <p class="small-muted">Mỗi dòng 1 hố khoan, theo định dạng: <strong>Tên hố khoan, Đơn vị, Khối lượng theo hợp đồng</strong><br>
+        <span class="en">One borehole per line, format: <strong>Name, Unit, Contract Quantity</strong></span></p>
+        <div class="form-grid">
+          <div class="full">
+            <label>Boreholes <span class="small-muted">(VD: HKD-1, m, 30)</span></label>
+            <textarea id="fsSetupList" rows="10" placeholder="HKD-1, m, 30&#10;HKD-2, m, 25&#10;HKD-3, m, 25&#10;..."></textarea>
+            <div class="small-muted">Thêm dòng mới sẽ được BỔ SUNG vào danh sách hiện có (không xóa hố khoan cũ). <span class="en">New lines are ADDED to the existing list (existing boreholes are kept).</span></div>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal('fsSetupModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+          <button class="btn btn-primary" onclick="saveFsSetup()">Save <span class="vi">/ Lưu</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===================== MODAL: FIELD SURVEY DAILY UPDATE ===================== -->
+    <div class="modal-bg" id="fsUpdateModalBg">
+      <div class="modal" style="max-width:960px;">
+        <button class="modal-close" onclick="closeModal('fsUpdateModalBg')">&times;</button>
+        <h3>Daily Update <span class="vi">/ Cập nhật tiến độ hôm nay</span></h3>
+        <div class="form-grid">
+          <div><label>Report date<span class="vi">Ngày báo cáo</span></label><input type="date" id="fsUpdateDate"></div>
+          <div><label>Site Engineer(s)<span class="vi">Cán bộ hiện trường</span></label><input id="fsSiteEngineer" placeholder="Vu Thanh Hai, Yuon Chamnab"></div>
+        </div>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table id="fsUpdateTable">
+            <thead><tr>
+              <th>No</th><th>Scope of works</th><th>Start Date</th><th>Finish Date</th>
+              <th>Qty done</th><th>Water level (m)</th><th>Remark</th>
+            </tr></thead>
+            <tbody id="fsUpdateTbody"></tbody>
+          </table>
+        </div>
+        <div class="form-grid" style="margin-top:10px;">
+          <div class="full">
+            <label>Next day working plan<span class="vi">Kế hoạch ngày mai</span></label>
+            <textarea id="fsNextDayPlan" rows="2" placeholder="Start drilling HKD-1-5..."></textarea>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-secondary" onclick="closeModal('fsUpdateModalBg')">Cancel <span class="vi">/ Hủy</span></button>
+          <button class="btn btn-primary" onclick="saveFsUpdate()">Save today's report <span class="vi">/ Lưu báo cáo hôm nay</span></button>
+        </div>
+      </div>
+    </div>
+
     <!-- ===================== TASK ASSIGNMENT ===================== -->
     <section class="view" id="view-tasks">
       <h2 class="view-title">Task Assignment <span class="vi">— Phân việc &amp; Mẫu thử</span></h2>
@@ -521,6 +593,15 @@
         </select>
       </div>
       <div><label>Overall Deadline<span class="vi">Deadline tổng</span></label><input type="date" id="pDeadline"></div>
+      <div>
+        <label>🏗️ Field Survey — Deadline<span class="vi">Deadline Khảo sát hiện trường</span></label>
+        <div class="ampm-picker" style="display:flex;gap:4px;">
+          <input type="date" id="pFieldSurveyDeadline_date" style="flex:1.6;">
+          <select id="pFieldSurveyDeadline_hour" style="flex:0.8;"></select>
+          <select id="pFieldSurveyDeadline_min" style="flex:0.8;"></select>
+          <select id="pFieldSurveyDeadline_ampm" style="flex:0.9;"><option value="AM">AM</option><option value="PM">PM</option></select>
+        </div>
+      </div>
       <div>
         <label>🧪 Raw Data — Deadline<span class="vi">Deadline Raw Data</span></label>
         <div class="ampm-picker" style="display:flex;gap:4px;">
@@ -871,7 +952,7 @@ const db = firebase.firestore();
 // SA/CH hay AM/PM tùy theo NGÔN NGỮ HỆ ĐIỀU HÀNH, không sửa được đáng tin
 // cậy bằng thuộc tính lang trên mọi trình duyệt. Nên tự dựng 4 ô riêng:
 // ngày + giờ (1-12) + phút (00-59) + AM/PM — luôn cố định tiếng Anh.
-const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline','pRawDataDeadline','pReportDeadline','biRawDataDeadline','biReportDeadline'];
+const AMPM_PREFIXES = ['tStartTime','tRawDataDeadline','tReportDeadline','planDeadline','stStartTime','stDeadline','pFieldSurveyDeadline','pRawDataDeadline','pReportDeadline','biRawDataDeadline','biReportDeadline'];
 
 function initAmPmPickers(){
   AMPM_PREFIXES.forEach(id=>{
@@ -1051,8 +1132,10 @@ let TASKS = [];
 let DAILY_REPORTS = [];
 let PROJECTS = [];
 let PLANS = [];
+let FIELD_SURVEY_BOREHOLES = [];
+let FIELD_SURVEY_REPORTS = [];
 let TASKS_PROJECT_FILTER = '';
-let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null, unsubPlans=null;
+let unsubUsers=null, unsubTasks=null, unsubDaily=null, unsubProjects=null, unsubPlans=null, unsubFsBoreholes=null, unsubFsReports=null;
 
 /* ============================================================
    AUTH
@@ -1144,7 +1227,9 @@ function detachListeners(){
   if(unsubDaily) unsubDaily();
   if(unsubProjects) unsubProjects();
   if(unsubPlans) unsubPlans();
-  unsubUsers=unsubTasks=unsubDaily=unsubProjects=unsubPlans=null;
+  if(unsubFsBoreholes) unsubFsBoreholes();
+  if(unsubFsReports) unsubFsReports();
+  unsubUsers=unsubTasks=unsubDaily=unsubProjects=unsubPlans=unsubFsBoreholes=unsubFsReports=null;
 }
 
 function attachListeners(){
@@ -1191,6 +1276,14 @@ function attachListeners(){
     PLANS = snap.docs.map(d=>({id:d.id, ...d.data()}));
     rerenderCurrentView();
   });
+  unsubFsBoreholes = db.collection('fieldSurveyBoreholes').onSnapshot(snap=>{
+    FIELD_SURVEY_BOREHOLES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
+  unsubFsReports = db.collection('fieldSurveyReports').onSnapshot(snap=>{
+    FIELD_SURVEY_REPORTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    rerenderCurrentView();
+  });
 }
 
 let CURRENT_VIEW = 'dashboard';
@@ -1206,6 +1299,7 @@ const NAV_ITEMS = {
   superadmin: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['fieldsurvey','Field Survey','Khảo sát hiện trường'],
     ['tasks','Tasks','Phân việc'],
     ['plans','Plans','Kế hoạch'],
     ['daily','Daily Reports','Báo cáo ngày'],
@@ -1217,6 +1311,7 @@ const NAV_ITEMS = {
   admin: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['fieldsurvey','Field Survey','Khảo sát hiện trường'],
     ['tasks','Tasks','Phân việc'],
     ['plans','Plans','Kế hoạch'],
     ['daily','Daily Reports','Báo cáo ngày'],
@@ -1228,6 +1323,7 @@ const NAV_ITEMS = {
   technician: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['fieldsurvey','Field Survey','Khảo sát hiện trường'],
     ['tasks','My Tasks','Việc của tôi'],
     ['plans','Plans','Kế hoạch'],
     ['daily','Daily Report','Báo cáo ngày'],
@@ -1236,6 +1332,7 @@ const NAV_ITEMS = {
   report: [
     ['dashboard','Dashboard','Tổng quan'],
     ['projects','Projects','Dự án'],
+    ['fieldsurvey','Field Survey','Khảo sát hiện trường'],
     ['plans','Plans','Kế hoạch'],
     ['daily','Daily Report','Báo cáo ngày'],
     ['report','Ready for Report','Sẵn sàng Report'],
@@ -1285,6 +1382,7 @@ function goView(key){
 
   if(key==='dashboard') renderDashboard();
   if(key==='projects') renderProjects();
+  if(key==='fieldsurvey') renderFieldSurvey();
   if(key==='tasks') renderTasks();
   if(key==='daily') renderDaily();
   if(key==='rawdata') renderRawData();
@@ -2253,7 +2351,8 @@ function renderProjects(){
         <div>
           <h3 style="margin-bottom:4px;">${p.code ? p.code+' — ' : ''}${p.name}</h3>
           <div class="small-muted">Client: ${p.client||'-'}${p.investor?` &nbsp;|&nbsp; Investor: ${p.investor}`:''} &nbsp;|&nbsp; Overall deadline: ${fmtDate(p.deadline)} &nbsp;|&nbsp; ${tasks.length} task(s)${overdueCount>0?` &nbsp;|&nbsp; <span style="color:var(--danger);font-weight:600;">${overdueCount} overdue / quá hạn</span>`:''}</div>
-          <div class="small-muted" style="margin-top:2px;">🧪 Raw Data deadline: ${p.rawDataDeadline ? fmtDateTime(p.rawDataDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
+          <div class="small-muted" style="margin-top:2px;">🏗️ Field Survey deadline: ${p.fieldSurveyDeadline ? fmtDateTime(p.fieldSurveyDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
+          <div class="small-muted">🧪 Raw Data deadline: ${p.rawDataDeadline ? fmtDateTime(p.rawDataDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
           <div class="small-muted">📝 Report deadline: ${p.reportDeadline ? fmtDateTime(p.reportDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
         </div>
         <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
@@ -2290,6 +2389,192 @@ function filterTasksByProject(projectId){
 
 let EDIT_PROJECT_ID = null;
 
+/* ============================================================
+   FIELD SURVEY — theo dõi tiến độ khảo sát/khoan hiện trường theo
+   từng hố khoan, khớp đúng mẫu "Fieldworks Progress Record".
+   ============================================================ */
+let FS_CURRENT_PROJECT_ID = '';
+
+function renderFieldSurvey(){
+  const sel = document.getElementById('fsProjectSelect');
+  const current = FS_CURRENT_PROJECT_ID || sel.value;
+  sel.innerHTML = '<option value="">— Select project / Chọn dự án —</option>' +
+    PROJECTS.map(p=>`<option value="${p.id}">${p.code ? p.code+' — ' : ''}${p.name}</option>`).join('');
+  sel.value = current;
+  FS_CURRENT_PROJECT_ID = sel.value;
+
+  const canEdit = isAdminLike(SESSION.role);
+  document.getElementById('btnFsSetup').style.display = canEdit ? '' : 'none';
+  document.getElementById('btnFsUpdate').style.display = canEdit ? '' : 'none';
+
+  const content = document.getElementById('fsContent');
+  if(!FS_CURRENT_PROJECT_ID){
+    content.innerHTML = `<div class="empty-state"><div class="icon">🏗️</div><span class="en">Select a project above to view its field survey progress.</span><br><span class="vi">Chọn 1 dự án ở trên để xem tiến độ khảo sát hiện trường.</span></div>`;
+    return;
+  }
+
+  const boreholes = FIELD_SURVEY_BOREHOLES
+    .filter(b=>b.projectId===FS_CURRENT_PROJECT_ID)
+    .sort((a,b)=>(a.no||0)-(b.no||0));
+
+  if(boreholes.length===0){
+    content.innerHTML = `<div class="empty-state"><div class="icon">🕳️</div><span class="en">No boreholes set up yet for this project. Click "+ Setup Boreholes" to add the scope list.</span><br><span class="vi">Dự án này chưa có hố khoan nào. Bấm "+ Thiết lập hố khoan" để thêm danh sách.</span></div>`;
+    return;
+  }
+
+  // Tổng quan
+  const totalContract = boreholes.reduce((s,b)=>s+(b.qtyContract||0),0);
+  const totalDone = boreholes.reduce((s,b)=>s+(b.qtyDone||0),0);
+  const overallPct = totalContract>0 ? Math.round(totalDone/totalContract*100) : 0;
+  const fsProjObj = PROJECTS.find(p=>p.id===FS_CURRENT_PROJECT_ID);
+
+  const latestReport = FIELD_SURVEY_REPORTS
+    .filter(r=>r.projectId===FS_CURRENT_PROJECT_ID)
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
+
+  const rows = boreholes.map(b=>{
+    const pct = b.qtyContract>0 ? Math.round((b.qtyDone||0)/b.qtyContract*100) : 0;
+    return `<tr>
+      <td>${b.no||''}</td>
+      <td><strong>${b.scope||''}</strong></td>
+      <td>${b.unit||''}</td>
+      <td>${b.qtyContract||0}</td>
+      <td>${b.startDate?fmtDate(b.startDate):'—'}</td>
+      <td>${b.finishDate?fmtDate(b.finishDate):'—'}</td>
+      <td>${b.qtyDone||0}</td>
+      <td>${pct}%</td>
+      <td>${b.waterLevel!=null && b.waterLevel!=='' ? b.waterLevel : '—'}</td>
+      <td>${b.remark||''}</td>
+    </tr>`;
+  }).join('');
+
+  content.innerHTML = `
+    <div class="section-card">
+      <h3 style="margin-bottom:2px;">Overall Progress <span class="vi">— Tiến độ tổng thể</span></h3>
+      <div style="display:flex;align-items:center;gap:10px;margin:8px 0;">
+        <div class="progress-bar" style="width:220px;"><div class="fill" style="width:${overallPct}%"></div></div>
+        <span>${overallPct}% (${totalDone}/${totalContract} m)</span>
+      </div>
+      <div class="small-muted">🏗️ Field Survey deadline: ${fsProjObj && fsProjObj.fieldSurveyDeadline ? fmtDateTime(fsProjObj.fieldSurveyDeadline) : '<em>Không có deadline / No deadline</em>'}</div>
+      ${latestReport ? `<div class="small-muted">Last updated / Cập nhật lần cuối: <strong>${fmtDate(latestReport.date)}</strong> — ${latestReport.siteEngineer||''}</div>
+      ${latestReport.nextDayPlan ? `<div class="small-muted" style="margin-top:4px;">📌 Next day plan / Kế hoạch ngày mai: <strong>${latestReport.nextDayPlan}</strong></div>` : ''}` : ''}
+    </div>
+    <div class="section-card">
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>No</th><th>Scope of works</th><th>Unit</th><th>Qty Contract</th>
+            <th>Start Date</th><th>Finish Date</th><th>Qty Done</th><th>Completed rate</th>
+            <th>Water level (m)</th><th>Remark</th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function openFsSetupModal(){
+  if(!FS_CURRENT_PROJECT_ID){ alert('Please select a project first.\nVui lòng chọn dự án trước.'); return; }
+  document.getElementById('fsSetupList').value = '';
+  openModal('fsSetupModalBg');
+}
+
+async function saveFsSetup(){
+  const lines = document.getElementById('fsSetupList').value.split('\n').map(s=>s.trim()).filter(Boolean);
+  if(lines.length===0){ alert('Please enter at least 1 borehole.\nVui lòng nhập ít nhất 1 hố khoan.'); return; }
+
+  const existing = FIELD_SURVEY_BOREHOLES.filter(b=>b.projectId===FS_CURRENT_PROJECT_ID);
+  let nextNo = existing.reduce((max,b)=>Math.max(max, b.no||0), 0) + 1;
+
+  for(const line of lines){
+    const parts = line.split(',').map(s=>s.trim());
+    const scope = parts[0] || '';
+    const unit = parts[1] || 'm';
+    const qtyContract = parseFloat(parts[2]) || 0;
+    if(!scope) continue;
+    await db.collection('fieldSurveyBoreholes').add({
+      projectId: FS_CURRENT_PROJECT_ID,
+      no: nextNo++,
+      scope, unit, qtyContract,
+      startDate:'', finishDate:'', qtyDone:0, waterLevel:'', remark:'',
+      createdAt: nowISO()
+    });
+  }
+  closeModal('fsSetupModalBg');
+  showToastFs('Boreholes added / Đã thêm hố khoan.');
+}
+
+function openFsUpdateModal(){
+  if(!FS_CURRENT_PROJECT_ID){ alert('Please select a project first.\nVui lòng chọn dự án trước.'); return; }
+  const boreholes = FIELD_SURVEY_BOREHOLES
+    .filter(b=>b.projectId===FS_CURRENT_PROJECT_ID)
+    .sort((a,b)=>(a.no||0)-(b.no||0));
+  if(boreholes.length===0){ alert('No boreholes set up yet. Use "+ Setup Boreholes" first.\nChưa có hố khoan nào. Dùng "+ Thiết lập hố khoan" trước.'); return; }
+
+  document.getElementById('fsUpdateDate').value = todayStr();
+  const latestReport = FIELD_SURVEY_REPORTS
+    .filter(r=>r.projectId===FS_CURRENT_PROJECT_ID)
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''))[0];
+  document.getElementById('fsSiteEngineer').value = latestReport ? (latestReport.siteEngineer||'') : '';
+  document.getElementById('fsNextDayPlan').value = '';
+
+  const tbody = document.getElementById('fsUpdateTbody');
+  tbody.innerHTML = boreholes.map(b=>`
+    <tr data-borehole-id="${b.id}">
+      <td>${b.no||''}</td>
+      <td><strong>${b.scope||''}</strong><div class="small-muted">${b.unit||''} · contract ${b.qtyContract||0}</div></td>
+      <td><input type="date" class="fs-u-start" value="${b.startDate||''}" style="width:130px;"></td>
+      <td><input type="date" class="fs-u-finish" value="${b.finishDate||''}" style="width:130px;"></td>
+      <td><input type="number" class="fs-u-qty" value="${b.qtyDone||0}" style="width:80px;" step="0.01"></td>
+      <td><input type="number" class="fs-u-water" value="${b.waterLevel||''}" style="width:70px;" step="0.1"></td>
+      <td><input type="text" class="fs-u-remark" value="${b.remark||''}" style="width:140px;"></td>
+    </tr>
+  `).join('');
+
+  openModal('fsUpdateModalBg');
+}
+
+async function saveFsUpdate(){
+  const date = document.getElementById('fsUpdateDate').value;
+  const siteEngineer = document.getElementById('fsSiteEngineer').value.trim();
+  const nextDayPlan = document.getElementById('fsNextDayPlan').value.trim();
+  if(!date){ alert('Please select a report date.\nVui lòng chọn ngày báo cáo.'); return; }
+
+  const rows = document.querySelectorAll('#fsUpdateTbody tr');
+  for(const row of rows){
+    const boreholeId = row.dataset.boreholeId;
+    const startDate = row.querySelector('.fs-u-start').value;
+    const finishDate = row.querySelector('.fs-u-finish').value;
+    const qtyDone = parseFloat(row.querySelector('.fs-u-qty').value) || 0;
+    const waterLevelRaw = row.querySelector('.fs-u-water').value;
+    const waterLevel = waterLevelRaw === '' ? '' : parseFloat(waterLevelRaw);
+    const remark = row.querySelector('.fs-u-remark').value.trim();
+    await db.collection('fieldSurveyBoreholes').doc(boreholeId).update({
+      startDate, finishDate, qtyDone, waterLevel, remark,
+      updatedAt: nowISO(), updatedBy: SESSION.uid
+    });
+  }
+
+  await db.collection('fieldSurveyReports').add({
+    projectId: FS_CURRENT_PROJECT_ID, date, siteEngineer, nextDayPlan,
+    createdBy: SESSION.uid, createdAt: nowISO()
+  });
+
+  const proj = PROJECTS.find(p=>p.id===FS_CURRENT_PROJECT_ID);
+  notifyProjectGroup(FS_CURRENT_PROJECT_ID,
+    `🏗️ <b>Field Survey Daily Update / Cập nhật khảo sát hiện trường</b>\n📅 ${fmtDate(date)}\n👤 ${siteEngineer||'—'}${nextDayPlan?`\n📌 Next day / Ngày mai: ${nextDayPlan}`:''}`
+  );
+
+  closeModal('fsUpdateModalBg');
+  showToastFs("Today's report saved / Đã lưu báo cáo hôm nay.");
+}
+
+function showToastFs(msg){
+  if(typeof showToast==='function') showToast(msg);
+  else alert(msg);
+}
+
 function openProjectModal(projectId){
   EDIT_PROJECT_ID = projectId || null;
   const p = EDIT_PROJECT_ID ? PROJECTS.find(x=>x.id===EDIT_PROJECT_ID) : null;
@@ -2301,6 +2586,7 @@ function openProjectModal(projectId){
   document.getElementById('pCountry').value = p ? (p.country||'KH') : 'KH';
   document.getElementById('pType').value = p ? (p.type||'soil') : 'soil';
   document.getElementById('pDeadline').value = p ? p.deadline : '';
+  setDT('pFieldSurveyDeadline', p ? (p.fieldSurveyDeadline||'') : '');
   setDT('pRawDataDeadline', p ? (p.rawDataDeadline||'') : '');
   setDT('pReportDeadline', p ? (p.reportDeadline||'') : '');
   document.getElementById('pStatus').value = p ? (p.status||'active') : 'active';
@@ -2324,6 +2610,7 @@ async function saveProject(){
   const country=document.getElementById('pCountry').value;
   const type=document.getElementById('pType').value;
   const deadline=document.getElementById('pDeadline').value;
+  const fieldSurveyDeadline=getDT('pFieldSurveyDeadline');
   const rawDataDeadline=getDT('pRawDataDeadline');
   const reportDeadline=getDT('pReportDeadline');
   const status=document.getElementById('pStatus').value;
@@ -2338,7 +2625,7 @@ async function saveProject(){
   if(EDIT_PROJECT_ID){
     await db.collection('projects').doc(EDIT_PROJECT_ID).update({
       code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null,
-      rawDataDeadline, reportDeadline
+      fieldSurveyDeadline, rawDataDeadline, reportDeadline
     });
     EDIT_PROJECT_ID = null;
     closeModal('projectModalBg');
@@ -2347,7 +2634,7 @@ async function saveProject(){
 
   await db.collection('projects').add({
     code, name, client, investor, country, type, deadline, status, notes, telegramChatId: telegramChatId || null,
-    rawDataDeadline, reportDeadline, createdAt: nowISO()
+    fieldSurveyDeadline, rawDataDeadline, reportDeadline, createdAt: nowISO()
   });
   closeModal('projectModalBg');
 }
