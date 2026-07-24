@@ -2487,22 +2487,26 @@ async function saveFsSetup(){
   const existing = FIELD_SURVEY_BOREHOLES.filter(b=>b.projectId===FS_CURRENT_PROJECT_ID);
   let nextNo = existing.reduce((max,b)=>Math.max(max, b.no||0), 0) + 1;
 
-  for(const line of lines){
-    const parts = line.split(',').map(s=>s.trim());
-    const scope = parts[0] || '';
-    const unit = parts[1] || 'm';
-    const qtyContract = parseFloat(parts[2]) || 0;
-    if(!scope) continue;
-    await db.collection('fieldSurveyBoreholes').add({
-      projectId: FS_CURRENT_PROJECT_ID,
-      no: nextNo++,
-      scope, unit, qtyContract,
-      startDate:'', finishDate:'', qtyDone:0, waterLevel:'', remark:'',
-      createdAt: nowISO()
-    });
+  try{
+    for(const line of lines){
+      const parts = line.split(',').map(s=>s.trim());
+      const scope = parts[0] || '';
+      const unit = parts[1] || 'm';
+      const qtyContract = parseFloat(parts[2]) || 0;
+      if(!scope) continue;
+      await db.collection('fieldSurveyBoreholes').add({
+        projectId: FS_CURRENT_PROJECT_ID,
+        no: nextNo++,
+        scope, unit, qtyContract,
+        startDate:'', finishDate:'', qtyDone:0, waterLevel:'', remark:'',
+        createdAt: nowISO()
+      });
+    }
+    closeModal('fsSetupModalBg');
+    showToastFs('Boreholes added / Đã thêm hố khoan.');
+  }catch(e){
+    alert('Error saving boreholes / Lỗi khi lưu hố khoan:\n' + e.message);
   }
-  closeModal('fsSetupModalBg');
-  showToastFs('Boreholes added / Đã thêm hố khoan.');
 }
 
 function openFsUpdateModal(){
@@ -2541,33 +2545,36 @@ async function saveFsUpdate(){
   const nextDayPlan = document.getElementById('fsNextDayPlan').value.trim();
   if(!date){ alert('Please select a report date.\nVui lòng chọn ngày báo cáo.'); return; }
 
-  const rows = document.querySelectorAll('#fsUpdateTbody tr');
-  for(const row of rows){
-    const boreholeId = row.dataset.boreholeId;
-    const startDate = row.querySelector('.fs-u-start').value;
-    const finishDate = row.querySelector('.fs-u-finish').value;
-    const qtyDone = parseFloat(row.querySelector('.fs-u-qty').value) || 0;
-    const waterLevelRaw = row.querySelector('.fs-u-water').value;
-    const waterLevel = waterLevelRaw === '' ? '' : parseFloat(waterLevelRaw);
-    const remark = row.querySelector('.fs-u-remark').value.trim();
-    await db.collection('fieldSurveyBoreholes').doc(boreholeId).update({
-      startDate, finishDate, qtyDone, waterLevel, remark,
-      updatedAt: nowISO(), updatedBy: SESSION.uid
+  try{
+    const rows = document.querySelectorAll('#fsUpdateTbody tr');
+    for(const row of rows){
+      const boreholeId = row.dataset.boreholeId;
+      const startDate = row.querySelector('.fs-u-start').value;
+      const finishDate = row.querySelector('.fs-u-finish').value;
+      const qtyDone = parseFloat(row.querySelector('.fs-u-qty').value) || 0;
+      const waterLevelRaw = row.querySelector('.fs-u-water').value;
+      const waterLevel = waterLevelRaw === '' ? '' : parseFloat(waterLevelRaw);
+      const remark = row.querySelector('.fs-u-remark').value.trim();
+      await db.collection('fieldSurveyBoreholes').doc(boreholeId).update({
+        startDate, finishDate, qtyDone, waterLevel, remark,
+        updatedAt: nowISO(), updatedBy: SESSION.uid
+      });
+    }
+
+    await db.collection('fieldSurveyReports').add({
+      projectId: FS_CURRENT_PROJECT_ID, date, siteEngineer, nextDayPlan,
+      createdBy: SESSION.uid, createdAt: nowISO()
     });
+
+    notifyProjectGroup(FS_CURRENT_PROJECT_ID,
+      `🏗️ <b>Field Survey Daily Update / Cập nhật khảo sát hiện trường</b>\n📅 ${fmtDate(date)}\n👤 ${siteEngineer||'—'}${nextDayPlan?`\n📌 Next day / Ngày mai: ${nextDayPlan}`:''}`
+    );
+
+    closeModal('fsUpdateModalBg');
+    showToastFs("Today's report saved / Đã lưu báo cáo hôm nay.");
+  }catch(e){
+    alert('Error saving daily update / Lỗi khi lưu cập nhật hôm nay:\n' + e.message);
   }
-
-  await db.collection('fieldSurveyReports').add({
-    projectId: FS_CURRENT_PROJECT_ID, date, siteEngineer, nextDayPlan,
-    createdBy: SESSION.uid, createdAt: nowISO()
-  });
-
-  const proj = PROJECTS.find(p=>p.id===FS_CURRENT_PROJECT_ID);
-  notifyProjectGroup(FS_CURRENT_PROJECT_ID,
-    `🏗️ <b>Field Survey Daily Update / Cập nhật khảo sát hiện trường</b>\n📅 ${fmtDate(date)}\n👤 ${siteEngineer||'—'}${nextDayPlan?`\n📌 Next day / Ngày mai: ${nextDayPlan}`:''}`
-  );
-
-  closeModal('fsUpdateModalBg');
-  showToastFs("Today's report saved / Đã lưu báo cáo hôm nay.");
 }
 
 function showToastFs(msg){
