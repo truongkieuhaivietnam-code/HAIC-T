@@ -501,7 +501,15 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <h2 data-i18n="navCustomers">Công nợ khách hàng</h2>
           <div class="sub" id="customersSub"></div>
         </div>
-        <button class="btn btn-sm btn-gold" id="btnAddCustomer" data-i18n="btnAdd">+ Thêm</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <select id="customersCountryFilter" class="tab-btn" style="border:1.5px solid var(--line);background:var(--paper);">
+            <option value="all">🌏 Tất cả</option>
+            <option value="cambodia">🇰🇭 Cambodia</option>
+            <option value="laos">🇱🇦 Laos</option>
+            <option value="vietnam">🇻🇳 Việt Nam</option>
+          </select>
+          <button class="btn btn-sm btn-gold" id="btnAddCustomer" data-i18n="btnAdd">+ Thêm</button>
+        </div>
       </div>
       <div class="hero-card">
         <div class="month" data-i18n="cardTotalDebt">Tổng công nợ</div>
@@ -550,7 +558,15 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           <h2 data-i18n="navSubcontractors">Đội khoan / Thầu phụ</h2>
           <div class="sub" id="subSub"></div>
         </div>
-        <button class="btn btn-sm btn-gold" id="btnAddSubcontractor" data-i18n="btnAdd">+ Thêm</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end;">
+          <select id="subsCountryFilter" class="tab-btn" style="border:1.5px solid var(--line);background:var(--paper);">
+            <option value="all">🌏 Tất cả</option>
+            <option value="cambodia">🇰🇭 Cambodia</option>
+            <option value="laos">🇱🇦 Laos</option>
+            <option value="vietnam">🇻🇳 Việt Nam</option>
+          </select>
+          <button class="btn btn-sm btn-gold" id="btnAddSubcontractor" data-i18n="btnAdd">+ Thêm</button>
+        </div>
       </div>
       <div class="hero-card">
         <div class="month" data-i18n="cardTotalPayable">Tổng công nợ phải trả</div>
@@ -1069,11 +1085,30 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       </div>
       <div class="form-row2">
         <div class="form-group">
-          <label data-i18n="lblInvoiceContractAmount">Giá trị hợp đồng ($)</label>
+          <label data-i18n="lblCurrency">Loại tiền</label>
+          <select id="invoiceCurrency" onchange="toggleInvoiceCurrencyFields()">
+            <option value="USD">USD $</option>
+            <option value="KHR">KHR ៛</option>
+            <option value="VND">VND ₫</option>
+            <option value="LAK">LAK ₭</option>
+          </select>
+        </div>
+        <div class="form-group" id="invoiceExchangeRateGroup" style="display:none;">
+          <label id="invoiceExchangeRateLabel">Tỷ giá (1 USD = ?)</label>
+          <input type="number" id="invoiceExchangeRate" placeholder="0" min="0" step="1">
+          <div id="invoiceRateInfo" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+      </div>
+      <div class="hidden" id="invoiceCurrencyLockNote" style="font-size:.78rem;color:var(--text-muted);margin:-8px 0 6px;">
+        🔒 Đã có hóa đơn xuất — không thể đổi loại tiền để tránh sai lệch số liệu cũ.
+      </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label data-i18n="lblInvoiceContractAmount">Giá trị hợp đồng</label>
           <input type="number" id="invoiceContractAmount" placeholder="0.00" min="0" step="0.01">
         </div>
         <div class="form-group">
-          <label data-i18n="lblInvoiceActualAmount">Theo khối lượng thực tế ($) <span style="font-weight:400;">— để trống nếu chưa biết</span></label>
+          <label data-i18n="lblInvoiceActualAmount">Theo khối lượng thực tế <span style="font-weight:400;">— để trống nếu chưa biết</span></label>
           <input type="number" id="invoiceActualAmount" placeholder="0.00" min="0" step="0.01">
         </div>
       </div>
@@ -1136,7 +1171,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         </div>
         <div class="form-row2">
           <div class="form-group">
-            <label data-i18n="lblAmount">Số tiền ($)</label>
+            <label id="invPaymentAmountLabel">Số tiền</label>
             <input type="number" id="invPaymentAmount" placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="form-group">
@@ -1189,6 +1224,14 @@ main{padding:16px; max-width:880px; margin:0 auto;}
       <div class="form-group">
         <label data-i18n="lblSubPhone">Số điện thoại</label>
         <input type="text" id="subPhone" placeholder="">
+      </div>
+      <div class="form-group" id="subBranchGroup">
+        <label data-i18n="lblUserBranch">Chi nhánh</label>
+        <select id="subBranch">
+          <option value="cambodia" data-i18n="branchCambodia">Campuchia</option>
+          <option value="laos" data-i18n="branchLaos">Lào</option>
+          <option value="vietnam" data-i18n="branchVietnam">Việt Nam</option>
+        </select>
       </div>
       <div class="form-group">
         <label data-i18n="lblNote">Ghi chú</label>
@@ -1247,6 +1290,25 @@ main{padding:16px; max-width:880px; margin:0 auto;}
         <label data-i18n="lblProject">Công trình</label>
         <select id="subContractProject"></select>
       </div>
+      <div class="form-row2">
+        <div class="form-group">
+          <label data-i18n="lblCurrency">Loại tiền</label>
+          <select id="subContractCurrency" onchange="toggleSubContractCurrencyFields()">
+            <option value="USD">USD $</option>
+            <option value="KHR">KHR ៛</option>
+            <option value="VND">VND ₫</option>
+            <option value="LAK">LAK ₭</option>
+          </select>
+        </div>
+        <div class="form-group" id="subContractExchangeRateGroup" style="display:none;">
+          <label id="subContractExchangeRateLabel">Tỷ giá (1 USD = ?)</label>
+          <input type="number" id="subContractExchangeRate" placeholder="0" min="0" step="1">
+          <div id="subContractRateInfo" style="font-size:11px;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+      </div>
+      <div class="hidden" id="subContractCurrencyLockNote" style="font-size:.78rem;color:var(--text-muted);margin:-8px 0 6px;">
+        🔒 Đã có bảng công/khoán hoặc tạm ứng — không thể đổi loại tiền để tránh sai lệch số liệu cũ.
+      </div>
       <div class="form-group">
         <label data-i18n="lblNote">Ghi chú</label>
         <textarea id="subContractNote" rows="2"></textarea>
@@ -1298,11 +1360,11 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           </div>
           <div class="form-row2">
             <div class="form-group">
-              <label data-i18n="lblThoRate">Đơn giá Thợ ($/ngày)</label>
+              <label data-i18n="lblThoRate" id="lblThoRateText">Đơn giá Thợ ($/ngày)</label>
               <input type="number" id="weThoRate" placeholder="0.00" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label data-i18n="lblPhuRate">Đơn giá Phụ ($/ngày)</label>
+              <label data-i18n="lblPhuRate" id="lblPhuRateText">Đơn giá Phụ ($/ngày)</label>
               <input type="number" id="wePhuRate" placeholder="0.00" min="0" step="0.01">
             </div>
           </div>
@@ -1331,11 +1393,11 @@ main{padding:16px; max-width:880px; margin:0 auto;}
           </div>
           <div class="form-row2">
             <div class="form-group">
-              <label data-i18n="lblSoilRate">Đơn giá Đất ($/m)</label>
+              <label data-i18n="lblSoilRate" id="lblSoilRateText">Đơn giá Đất ($/m)</label>
               <input type="number" id="weSoilRate" placeholder="0.00" min="0" step="0.01">
             </div>
             <div class="form-group">
-              <label data-i18n="lblRockRate">Đơn giá Đá ($/m)</label>
+              <label data-i18n="lblRockRate" id="lblRockRateText">Đơn giá Đá ($/m)</label>
               <input type="number" id="weRockRate" placeholder="0.00" min="0" step="0.01">
             </div>
           </div>
@@ -1364,7 +1426,7 @@ main{padding:16px; max-width:880px; margin:0 auto;}
             </div>
           </div>
           <div class="form-group">
-            <label data-i18n="lblTransportRate">Đơn giá ($/đơn vị)</label>
+            <label data-i18n="lblTransportRate" id="lblTransportRateText">Đơn giá ($/đơn vị)</label>
             <input type="number" id="weTransportRate" placeholder="0.00" min="0" step="0.01">
           </div>
         </div>
@@ -1623,6 +1685,7 @@ const I18N = {
     lblCashPlanAmount: "Số tiền dự kiến ($)",
     lblCashPlanDate: "Ngày dự kiến",
     lblCashPlanCurrency: "Loại tiền",
+    lblCurrency: "Loại tiền",
     lblCashPlanFilterEmployee: "Lọc theo nhân viên",
     lblCashPlanAllEmployees: "— Tất cả nhân viên —",
     lblCashPlanTotal: "TỔNG CỘNG",
@@ -1929,6 +1992,7 @@ const I18N = {
     lblCashPlanAmount: "Projected amount ($)",
     lblCashPlanDate: "Expected date",
     lblCashPlanCurrency: "Currency",
+    lblCurrency: "Currency",
     lblCashPlanFilterEmployee: "Filter by employee",
     lblCashPlanAllEmployees: "— All employees —",
     lblCashPlanTotal: "TOTAL",
@@ -2502,6 +2566,25 @@ function persistNow() {
   return Promise.resolve();
 }
 
+let lastSyncedSavedAt = null; // dấu thời gian bản dữ liệu mới nhất mà tab này đã áp dụng
+
+// SỬA LỖI MẤT DỮ LIỆU (2026-07-28): trước đây app chỉ tải Firestore MỘT LẦN
+// lúc mở trang (docRef.get()), sau đó chạy hoàn toàn trên bản sao trong bộ
+// nhớ. Nếu 1 tab/thiết bị mở app từ trước rồi để đó không đóng, dữ liệu
+// trong bộ nhớ của tab đó dần "cũ" so với Firestore. Vì mỗi lần lưu ghi ĐÈ
+// NGUYÊN CẢ document (`.set(..., {merge:false})`), chỉ cần tab cũ đó lưu
+// 1 thao tác BẤT KỲ (dù không liên quan) là XÓA SẠCH mọi thứ người khác đã
+// thêm vào Firestore sau khi tab đó tải trang — kể cả khi thao tác đó
+// không hề đụng tới phần dữ liệu bị mất (đã xảy ra thật: mất hồ sơ nhân
+// viên mới + mất tạm ứng của nhân viên Hải, vì có tab cũ ở nơi khác lưu đè).
+//
+// CÁCH SỬA: không chỉ tải Firestore 1 lần, mà LẮNG NGHE LIÊN TỤC
+// (onSnapshot) — hễ có ai lưu gì mới lên Firestore, MỌI tab đang mở đều
+// tự động cập nhật bản trong bộ nhớ ngay lập tức. Nhờ vậy "tab cũ để lâu
+// không refresh" gần như không còn tồn tại nữa — tab nào cũng luôn có bản
+// mới nhất, nên lần lưu tiếp theo của tab đó sẽ ghi đè bằng đúng bản mới
+// nhất (đã gộp sẵn thay đổi của người khác) + thêm thao tác của chính nó,
+// thay vì ghi đè bằng bản dữ liệu cũ từ nhiều giờ trước.
 function initRealtimeSync(onUpdate) {
   if (!firebaseReady || !db) {
     if (onUpdate) onUpdate();
@@ -2515,15 +2598,40 @@ function initRealtimeSync(onUpdate) {
     if (!snap.exists) {
       // First time — push local defaults to Firestore
       docRef.set(STORE);
+      lastSyncedSavedAt = STORE._savedAt || null;
     } else {
       const remote = snap.data();
       if (remote) {
         STORE = remote;
         ensureStructure();
         lsSaveAll(STORE);
+        lastSyncedSavedAt = remote._savedAt || null;
       }
     }
     if (onUpdate) onUpdate();
+
+    // Bắt đầu lắng nghe realtime NGAY SAU lần tải đầu tiên — không đợi
+    // onUpdate xong, để không bỏ lỡ thay đổi nào xảy ra ngay sau khi mở trang.
+    const unsubscribeRealtime = docRef.onSnapshot(liveSnap => {
+      // Bỏ qua sự kiện "optimistic" của chính lần ghi chưa được server xác
+      // nhận (hasPendingWrites) — chỉ áp dụng khi server đã xác nhận thật.
+      if (liveSnap.metadata.hasPendingWrites) return;
+      if (!liveSnap.exists) return;
+      const remote = liveSnap.data();
+      if (!remote) return;
+      // Đã áp dụng đúng bản này rồi (ví dụ do chính tab này vừa lưu xong) — bỏ qua.
+      if (remote._savedAt && remote._savedAt === lastSyncedSavedAt) return;
+
+      STORE = remote;
+      ensureStructure();
+      lsSaveAll(STORE);
+      lastSyncedSavedAt = remote._savedAt || null;
+      console.log(`🔄 Đồng bộ realtime: đã cập nhật dữ liệu mới nhất (lưu lúc ${remote._savedAt || "?"} bởi ${remote._savedBy || "?"})`);
+      renderAll();
+    }, err => {
+      console.warn("Realtime sync listener error:", err);
+    });
+    unsubscribers.push(unsubscribeRealtime);
   }).catch(err => {
     console.warn("Firestore fetch failed, using local cache:", err);
     if (onUpdate) onUpdate();
@@ -2768,6 +2876,8 @@ function determineAdvanceStatus(amount, role) {
 // ===================== APP =====================
 let currentDashMonth = null;
 let currentDashCompany = "all"; // "all" | "cambodia" | "laos" | "vietnam"
+let currentCustomersCountry = "all"; // bộ lọc quốc gia cho trang Công nợ khách hàng
+let currentSubsCountry = "all"; // bộ lọc quốc gia cho trang Đội khoan/Vận chuyển
 let txFilterStatus = "all";
 let txFilterUserId = "all";
 let advanceFilterStatus = "all";
@@ -2796,7 +2906,10 @@ document.addEventListener("DOMContentLoaded", async () => {
         bootApp();
       } else {
         // Có tài khoản Firebase Auth nhưng chưa có/không còn hồ sơ vai trò
-        // hợp lệ trong Finance -> không cho vào, đăng xuất luôn.
+        // hợp lệ trong Finance -> không cho vào, đăng xuất luôn (dọn luôn
+        // listener realtime vừa gắn để không rò rỉ khi đã đăng xuất).
+        unsubscribers.forEach(u => { try { u(); } catch (e) {} });
+        unsubscribers = [];
         auth.signOut();
       }
     });
@@ -2842,6 +2955,8 @@ async function handleLoginClick() {
     if (loadProfileAfterAuth()) {
       bootApp();
     } else {
+      unsubscribers.forEach(u => { try { u(); } catch (e) {} });
+      unsubscribers = [];
       auth.signOut();
       errEl.textContent = t("toastLoginError");
     }
@@ -3610,6 +3725,63 @@ async function fetchExchangeRateFor(context) {
 }
 
 function fetchExchangeRate() { fetchExchangeRateFor("tx"); }
+
+// ── GENERIC CURRENCY HELPERS (dùng cho Hợp đồng khách hàng & Công trình đội khoan) ──
+// Khác với Transaction/Advance (mỗi khoản có thể khác tiền tệ), một Hợp đồng
+// hoặc một Công trình chỉ có 1 loại tiền tệ cố định cho toàn bộ vòng đời của nó
+// (số tiền hợp đồng, các hóa đơn/đợt xuất, bảng công/khoán, tạm ứng bên trong).
+async function fetchExchangeRateGeneric(currencyElId, rateElId, infoElId) {
+  const currencyEl = document.getElementById(currencyElId);
+  const rateEl = document.getElementById(rateElId);
+  const infoEl = document.getElementById(infoElId);
+  if (!currencyEl || !rateEl || !infoEl) return;
+  const currency = currencyEl.value;
+  if (currency === "USD") return;
+
+  infoEl.textContent = currentLang === "vi" ? "Đang lấy tỷ giá..." : "Fetching rate...";
+  try {
+    const res = await fetch(`https://api.exchangerate-api.com/v4/latest/USD`);
+    const data = await res.json();
+    const rate = data.rates[currency];
+    if (rate) {
+      cachedRates[currency] = rate;
+      rateEl.value = Math.round(rate);
+      infoEl.textContent = `1 USD = ${Math.round(rate).toLocaleString()} ${currency} (${new Date().toLocaleDateString()})`;
+    } else {
+      infoEl.textContent = currentLang === "vi" ? "Không tìm thấy tỷ giá." : "Rate not found.";
+    }
+  } catch (e) {
+    infoEl.textContent = currentLang === "vi" ? "Lỗi kết nối, nhập tỷ giá tay." : "Connection error, enter rate manually.";
+  }
+}
+
+function toggleCurrencyFieldsGeneric(currencyElId, rateGroupId, rateLabelId, rateElId, infoElId) {
+  const currencyEl = document.getElementById(currencyElId);
+  const currency = currencyEl.value;
+  const group = document.getElementById(rateGroupId);
+  const label = document.getElementById(rateLabelId);
+  if (currency === "USD") {
+    group.style.display = "none";
+    return;
+  }
+  group.style.display = "";
+  label.textContent = `Tỷ giá (1 USD = ? ${currency})`;
+  if (cachedRates[currency]) {
+    document.getElementById(rateElId).value = Math.round(cachedRates[currency]);
+  } else {
+    fetchExchangeRateGeneric(currencyElId, rateElId, infoElId);
+  }
+}
+
+function fetchExchangeRateInvoice() { fetchExchangeRateGeneric("invoiceCurrency", "invoiceExchangeRate", "invoiceRateInfo"); }
+function toggleInvoiceCurrencyFields() {
+  toggleCurrencyFieldsGeneric("invoiceCurrency", "invoiceExchangeRateGroup", "invoiceExchangeRateLabel", "invoiceExchangeRate", "invoiceRateInfo");
+}
+
+function fetchExchangeRateSubContract() { fetchExchangeRateGeneric("subContractCurrency", "subContractExchangeRate", "subContractRateInfo"); }
+function toggleSubContractCurrencyFields() {
+  toggleCurrencyFieldsGeneric("subContractCurrency", "subContractExchangeRateGroup", "subContractExchangeRateLabel", "subContractExchangeRate", "subContractRateInfo");
+}
 
 function toggleCurrencyFields(currencyEl, rateGroupId, rateLabelId, rateInfoId) {
   const currency = currencyEl.value;
@@ -4592,16 +4764,35 @@ function renderCustomersPage() {
   document.getElementById("btnAddCustomer").classList.toggle("hidden", !can("manageCustomers"));
   document.getElementById("customersSub").textContent = currentLang === "vi" ? "Quản lý công nợ khách hàng" : "Manage customer debts";
 
-  const customers = (STORE.customers || []).filter(c => canAccessBranch(c.branch || "cambodia"));
+  // Wire country filter dropdown (chỉ hiện cho người xem được nhiều hơn 1 chi nhánh)
+  const countryFilterEl = document.getElementById("customersCountryFilter");
+  if (countryFilterEl) {
+    if (currentUser.role === "branch_manager") {
+      countryFilterEl.style.display = "none";
+      currentCustomersCountry = "all";
+    } else {
+      countryFilterEl.style.display = "";
+      countryFilterEl.value = currentCustomersCountry;
+      countryFilterEl.onchange = () => {
+        currentCustomersCountry = countryFilterEl.value;
+        renderCustomersPage();
+      };
+    }
+  }
+
+  let customers = (STORE.customers || []).filter(c => canAccessBranch(c.branch || "cambodia"));
+  if (currentCustomersCountry !== "all") {
+    customers = customers.filter(c => (c.branch || "cambodia") === currentCustomersCountry);
+  }
 
   // Compute totals
   let totalInvoiced = 0, totalCollected = 0, totalOutstanding = 0, totalOpening = 0;
   customers.forEach(c => {
     totalOpening += c.initialDebt || 0;
     (c.invoices || []).forEach(inv => {
-      totalInvoiced += inv.actualAmount || 0;
-      totalCollected += calcInvoicePaid(inv);
-      totalOutstanding += calcInvoiceRemaining(inv);
+      totalInvoiced += calcInvoiceActualUSD(inv);
+      totalCollected += calcInvoicePaidUSD(inv);
+      totalOutstanding += calcInvoiceRemainingUSD(inv);
     });
   });
   const totalDebt = totalOpening + totalOutstanding;
@@ -4715,6 +4906,10 @@ function renderDebtCharts(customers, totalCollected, totalOutstanding) {
   });
 }
 
+// calcInvoiceRemaining/calcInvoicePaid trả về số tiền THEO ĐÚNG LOẠI TIỀN TỆ
+// của hợp đồng đó (để hiển thị chi tiết từng hợp đồng). Khi cần CỘNG TỔNG
+// nhiều hợp đồng lại (có thể khác loại tiền), dùng bản *USD bên dưới —
+// tự quy đổi qua USD bằng tỷ giá đã lưu, tránh cộng nhầm số khác loại tiền.
 function calcInvoiceRemaining(invoice) {
   const totalPaid = (invoice.payments || []).reduce((s, p) => s + p.amount, 0);
   return Math.max(0, (invoice.actualAmount || 0) - totalPaid);
@@ -4724,9 +4919,20 @@ function calcInvoicePaid(invoice) {
   return (invoice.payments || []).reduce((s, p) => s + p.amount, 0);
 }
 
+function invoiceToUSD(invoice, rawAmount) {
+  const currency = invoice.currency || "USD";
+  if (currency === "USD") return rawAmount;
+  return toUSD(rawAmount, currency, invoice.exchangeRate);
+}
+
+function calcInvoiceRemainingUSD(invoice) { return invoiceToUSD(invoice, calcInvoiceRemaining(invoice)); }
+function calcInvoicePaidUSD(invoice) { return invoiceToUSD(invoice, calcInvoicePaid(invoice)); }
+function calcInvoiceActualUSD(invoice) { return invoiceToUSD(invoice, invoice.actualAmount || 0); }
+
 function calcCustomerDebt(customer) {
+  // Công nợ đầu kỳ luôn tính bằng USD (không đổi từ trước tới nay).
   const openingBalance = customer.initialDebt || 0;
-  const invoiceTotal = (customer.invoices || []).reduce((s, inv) => s + calcInvoiceRemaining(inv), 0);
+  const invoiceTotal = (customer.invoices || []).reduce((s, inv) => s + calcInvoiceRemainingUSD(inv), 0);
   return Math.max(0, openingBalance + invoiceTotal);
 }
 
@@ -4868,18 +5074,20 @@ function renderCustomerDetail(customerId) {
   empty.classList.add("hidden");
 
   list.innerHTML = invoices.map(inv => {
+    const invCur = inv.currency || "USD";
     const remaining = calcInvoiceRemaining(inv);
     const statusClass = remaining <= 0 ? "approved" : "pending";
     const statusLabel = remaining <= 0 ? t("invoiceFully_paid") : t("statusPending");
     const project = inv.projectId ? getProjectById(inv.projectId) : null;
+    const usdNote = (invCur !== "USD") ? ` (≈ ${formatCurrency(calcInvoiceRemainingUSD(inv))})` : "";
     return `
       <div class="payment-history-item" style="cursor:pointer;" onclick="openInvoiceDetail('${c.id}','${inv.id}')">
         <div>
-          <div style="font-weight:600;">${escapeHtml(inv.name || (project ? project.name : (currentLang === "vi" ? "Hợp đồng" : "Contract")))}</div>
-          <div class="pdate">${formatDateDisplay(inv.date)} • ${formatCurrency(inv.actualAmount || 0)}${project ? ` • <span class="project-pill">${escapeHtml(project.name)}</span>` : ""}</div>
+          <div style="font-weight:600;">${escapeHtml(inv.name || (project ? project.name : (currentLang === "vi" ? "Hợp đồng" : "Contract")))} ${invCur !== "USD" ? `<span class="project-pill" style="background:var(--gold-soft);color:var(--forest)">${invCur}</span>` : ""}</div>
+          <div class="pdate">${formatDateDisplay(inv.date)} • ${formatAmountWithCurrency(inv.actualAmount || 0, invCur)}${project ? ` • <span class="project-pill">${escapeHtml(project.name)}</span>` : ""}</div>
         </div>
         <div style="text-align:right;">
-          <div class="pamt" style="color:${remaining > 0 ? 'var(--bad)' : 'var(--good)'}">${formatCurrency(remaining)}</div>
+          <div class="pamt" style="color:${remaining > 0 ? 'var(--bad)' : 'var(--good)'}">${formatAmountWithCurrency(remaining, invCur)}${usdNote}</div>
           <span class="status-pill ${statusClass}" style="margin-top:4px;">${statusLabel}</span>
         </div>
       </div>
@@ -4902,6 +5110,23 @@ function openInvoiceModal(invoiceId) {
   document.getElementById("invoiceDate").value = inv ? inv.date : todayStr();
   document.getElementById("invoiceContractAmount").value = inv ? inv.contractAmount : "";
   document.getElementById("invoiceActualAmount").value = inv ? inv.actualAmount : "";
+
+  const invCurrency = inv ? (inv.currency || "USD") : "USD";
+  document.getElementById("invoiceCurrency").value = invCurrency;
+  if (invCurrency !== "USD" && inv && inv.exchangeRate) {
+    document.getElementById("invoiceExchangeRate").value = inv.exchangeRate;
+    document.getElementById("invoiceRateInfo").textContent = `1 USD = ${inv.exchangeRate.toLocaleString()} ${invCurrency}`;
+  } else {
+    document.getElementById("invoiceExchangeRate").value = "";
+    document.getElementById("invoiceRateInfo").textContent = "";
+  }
+  toggleInvoiceCurrencyFields();
+
+  const invCurrencySelect = document.getElementById("invoiceCurrency");
+  const hasPayments = inv && (inv.payments || []).length > 0;
+  invCurrencySelect.disabled = !!hasPayments;
+  document.getElementById("invoiceCurrencyLockNote").classList.toggle("hidden", !hasPayments);
+
   populateProjectOptions(document.getElementById("invoiceProject"));
   document.getElementById("invoiceProject").value = inv ? (inv.projectId || "") : "";
   document.getElementById("invoiceNote").value = inv ? (inv.note || "") : "";
@@ -4916,8 +5141,14 @@ function saveInvoice() {
   const actualAmount = parseFloat(document.getElementById("invoiceActualAmount").value) || 0;
   const projectId = document.getElementById("invoiceProject").value || null;
   const note = document.getElementById("invoiceNote").value.trim();
+  const currency = document.getElementById("invoiceCurrency").value || "USD";
+  const exchangeRate = currency !== "USD" ? (parseFloat(document.getElementById("invoiceExchangeRate").value) || null) : null;
 
   if (!date || !contractAmount) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+  if (currency !== "USD" && !exchangeRate) {
     showToast(t("toastFillRequired"), "error");
     return;
   }
@@ -4926,20 +5157,24 @@ function saveInvoice() {
   if (!c) return;
   if (!c.invoices) c.invoices = [];
 
+  const amtLabel = formatAmountWithCurrency(contractAmount, currency);
+
   if (editingInvoiceId) {
     const inv = c.invoices.find(i => i.id === editingInvoiceId);
     inv.name = name; inv.date = date;
     inv.contractAmount = contractAmount; inv.actualAmount = actualAmount; inv.projectId = projectId; inv.note = note;
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || formatCurrency(contractAmount)} - ${c.name}` });
+    inv.currency = currency; inv.exchangeRate = exchangeRate;
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || amtLabel} - ${c.name}` });
   } else {
     c.invoices.push({
       // Công nợ được ghi nhận NGAY khi tạo hợp đồng (dùng actualAmount nếu
       // đã biết khối lượng thực tế, còn không thì tạm dùng contractAmount
       // — không cần đợi có hóa đơn nào mới tính công nợ.
       id: genId("inv"), name, date, contractAmount, actualAmount: actualAmount || contractAmount, projectId, note,
+      currency, exchangeRate,
       payments: [], createdBy: currentUser.id, createdAt: nowISO()
     });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || formatCurrency(contractAmount)} - ${c.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${name || amtLabel} - ${c.name}` });
   }
 
   persistDebounced();
@@ -4961,7 +5196,7 @@ function deleteInvoice() {
   const inv = (c.invoices || []).find(i => i.id === currentInvoiceDetailId);
   c.invoices = c.invoices.filter(i => i.id !== currentInvoiceDetailId);
 
-  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${inv ? formatCurrency(inv.contractAmount||0) : ""} - ${c.name}` });
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "hợp đồng" : "contract", detail: `${inv ? formatAmountWithCurrency(inv.contractAmount||0, inv.currency||"USD") : ""} - ${c.name}` });
 
   persistDebounced();
   closeModal("modalInvoiceDetail");
@@ -5005,15 +5240,20 @@ function renderInvoiceDetail(customerId, invoiceId) {
   document.getElementById("invDetailName").textContent = inv.name || "—";
   document.getElementById("invDetailDate").textContent = formatDateDisplay(inv.date);
   document.getElementById("invDetailProject").textContent = proj ? proj.name : "—";
-  document.getElementById("invDetailContractAmount").textContent = formatCurrency(inv.contractAmount || 0);
-  document.getElementById("invDetailActualAmount").textContent = formatCurrency(inv.actualAmount || 0);
+  const invCur = inv.currency || "USD";
+  const usdSuffix = (amt) => invCur !== "USD" ? ` <span style="font-size:.75em;color:var(--text-muted);">(≈ ${formatCurrency(invoiceToUSD(inv, amt))})</span>` : "";
+  document.getElementById("invDetailContractAmount").innerHTML = formatAmountWithCurrency(inv.contractAmount || 0, invCur) + usdSuffix(inv.contractAmount || 0);
+  document.getElementById("invDetailActualAmount").innerHTML = formatAmountWithCurrency(inv.actualAmount || 0, invCur) + usdSuffix(inv.actualAmount || 0);
 
   const paid = calcInvoicePaid(inv);
   const remaining = calcInvoiceRemaining(inv);
-  document.getElementById("invDetailPaid").textContent = formatCurrency(paid);
+  document.getElementById("invDetailPaid").innerHTML = formatAmountWithCurrency(paid, invCur) + usdSuffix(paid);
   const remEl = document.getElementById("invDetailRemaining");
-  remEl.textContent = formatCurrency(remaining);
+  remEl.innerHTML = formatAmountWithCurrency(remaining, invCur) + usdSuffix(remaining);
   remEl.style.color = remaining > 0 ? "var(--bad)" : "var(--good)";
+
+  document.getElementById("invPaymentAmountLabel").textContent =
+    (currentLang === "vi" ? "Số tiền" : "Amount") + ` (${CURRENCY_SYMBOLS[invCur] || invCur})`;
 
   const typeLabels = {
     advance: currentLang === "vi" ? "Tạm ứng" : "Advance",
@@ -5037,7 +5277,7 @@ function renderInvoiceDetail(customerId, invoiceId) {
           <div class="pdate">${formatDateDisplay(p.date)}</div>
         </div>
         <div style="text-align:right;">
-          <div class="pamt">+${formatCurrency(p.amount)}</div>
+          <div class="pamt">+${formatAmountWithCurrency(p.amount, invCur)}</div>
           <div class="btn-row" style="margin-top:4px; justify-content:flex-end;">
             <button class="btn btn-sm btn-outline" onclick="editInvoicePayment('${p.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button>
             <button class="btn btn-sm btn-danger" onclick="deleteInvoicePayment('${p.id}')">${currentLang === "vi" ? "Xóa" : "Delete"}</button>
@@ -5072,6 +5312,8 @@ function addInvoicePayment() {
   if (!inv) return;
   if (!inv.payments) inv.payments = [];
 
+  const invPayCur = inv.currency || "USD";
+
   if (editingPaymentId) {
     const p = inv.payments.find(p2 => p2.id === editingPaymentId);
     if (!p) return;
@@ -5079,7 +5321,7 @@ function addInvoicePayment() {
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name, action: "edited",
       targetType: currentLang === "vi" ? "hóa đơn" : "invoice",
-      detail: `${formatCurrency(amount)} - ${c.name} (${vatNo || commNo || customType || type})`
+      detail: `${formatAmountWithCurrency(amount, invPayCur)} - ${c.name} (${vatNo || commNo || customType || type})`
     });
     cancelEditInvoicePayment();
   } else {
@@ -5087,7 +5329,7 @@ function addInvoicePayment() {
     addAuditLog({
       userId: currentUser.id, userName: currentUser.name, action: "created",
       targetType: currentLang === "vi" ? "hóa đơn" : "invoice",
-      detail: `${formatCurrency(amount)} - ${c.name} (${vatNo || commNo || customType || type})`
+      detail: `${formatAmountWithCurrency(amount, invPayCur)} - ${c.name} (${vatNo || commNo || customType || type})`
     });
   }
 
@@ -5151,7 +5393,7 @@ function deleteInvoicePayment(paymentId) {
   addAuditLog({
     userId: currentUser.id, userName: currentUser.name, action: "deleted",
     targetType: currentLang === "vi" ? "hóa đơn" : "invoice",
-    detail: `${p ? formatCurrency(p.amount) : ""} - ${c.name}`
+    detail: `${p ? formatAmountWithCurrency(p.amount, inv.currency || "USD") : ""} - ${c.name}`
   });
 
   if (editingPaymentId === paymentId) cancelEditInvoicePayment();
@@ -5173,6 +5415,10 @@ let currentContractDetailId = null;  // công trình (hợp đồng) đang xem c
 let editingWorkEntryId = null;
 let editingSubAdvanceId = null;
 
+// calcContractEarned/AdvancedOut/Balance trả về số THEO ĐÚNG LOẠI TIỀN TỆ của
+// công trình đó (dùng để hiển thị chi tiết 1 công trình). Khi cộng nhiều công
+// trình / nhiều đội lại (có thể khác loại tiền), dùng bản *USD — tự quy đổi
+// qua USD bằng tỷ giá đã lưu, tránh cộng nhầm số khác loại tiền với nhau.
 function calcContractEarned(c) {
   return (c.workEntries || []).reduce((s, w) => s + (w.amount || 0), 0);
 }
@@ -5182,11 +5428,20 @@ function calcContractAdvancedOut(c) {
 function calcContractBalance(c) {
   return calcContractEarned(c) - calcContractAdvancedOut(c);
 }
+function contractToUSD(c, rawAmount) {
+  const currency = c.currency || "USD";
+  if (currency === "USD") return rawAmount;
+  return toUSD(rawAmount, currency, c.exchangeRate);
+}
+function calcContractEarnedUSD(c) { return contractToUSD(c, calcContractEarned(c)); }
+function calcContractAdvancedOutUSD(c) { return contractToUSD(c, calcContractAdvancedOut(c)); }
+function calcContractBalanceUSD(c) { return calcContractEarnedUSD(c) - calcContractAdvancedOutUSD(c); }
+
 function calcSubEarned(sub) {
-  return (sub.contracts || []).reduce((s, c) => s + calcContractEarned(c), 0);
+  return (sub.contracts || []).reduce((s, c) => s + calcContractEarnedUSD(c), 0);
 }
 function calcSubAdvancedOut(sub) {
-  return (sub.contracts || []).reduce((s, c) => s + calcContractAdvancedOut(c), 0);
+  return (sub.contracts || []).reduce((s, c) => s + calcContractAdvancedOutUSD(c), 0);
 }
 function calcSubBalance(sub) {
   return calcSubEarned(sub) - calcSubAdvancedOut(sub);
@@ -5206,7 +5461,26 @@ function renderSubcontractorsPage() {
   document.getElementById("btnAddSubcontractor").classList.toggle("hidden", !can("manageSubcontractors"));
   document.getElementById("subSub").textContent = currentLang === "vi" ? "Quản lý công nợ đội khoan / đội vận chuyển / thầu phụ" : "Manage subcontractor payables";
 
-  const subs = STORE.subcontractors || [];
+  // Wire country filter dropdown (chỉ hiện cho người xem được nhiều hơn 1 chi nhánh)
+  const subsCountryFilterEl = document.getElementById("subsCountryFilter");
+  if (subsCountryFilterEl) {
+    if (currentUser.role === "branch_manager") {
+      subsCountryFilterEl.style.display = "none";
+      currentSubsCountry = "all";
+    } else {
+      subsCountryFilterEl.style.display = "";
+      subsCountryFilterEl.value = currentSubsCountry;
+      subsCountryFilterEl.onchange = () => {
+        currentSubsCountry = subsCountryFilterEl.value;
+        renderSubcontractorsPage();
+      };
+    }
+  }
+
+  let subs = (STORE.subcontractors || []).filter(s => canAccessBranch(s.branch || "cambodia"));
+  if (currentSubsCountry !== "all") {
+    subs = subs.filter(s => (s.branch || "cambodia") === currentSubsCountry);
+  }
 
   let totalEarned = 0, totalAdvancedOut = 0;
   subs.forEach(s => {
@@ -5230,6 +5504,7 @@ function renderSubcontractorsPage() {
   }
   empty.classList.add("hidden");
 
+  const showSubBranch = currentUser.role !== "branch_manager";
   const sorted = subs.slice().sort((a, b) => calcSubBalance(b) - calcSubBalance(a));
   list.innerHTML = sorted.map(s => {
     const balance = calcSubBalance(s);
@@ -5238,7 +5513,7 @@ function renderSubcontractorsPage() {
       <div class="customer-row" onclick="openSubcontractorDetail('${s.id}')">
         <div class="customer-avatar">${subTypeIcon(s.type)}</div>
         <div class="customer-info">
-          <div class="nm">${escapeHtml(s.name)} <span class="project-pill">${subTypeLabel(s.type)}</span></div>
+          <div class="nm">${escapeHtml(s.name)} <span class="project-pill">${subTypeLabel(s.type)}</span> ${showSubBranch ? `<span class="project-pill">${branchLabel(s.branch || "cambodia")}</span>` : ""}</div>
           <div class="sub">${s.phone || "—"} · ${numContracts} ${currentLang === "vi" ? "công trình" : "project(s)"}</div>
         </div>
         <div style="text-align:right;">
@@ -5261,6 +5536,16 @@ function openSubcontractorModal(subId) {
   document.getElementById("subPhone").value = s ? (s.phone || "") : "";
   document.getElementById("subNote").value = s ? (s.note || "") : "";
 
+  const subBranchGroup = document.getElementById("subBranchGroup");
+  const subBranchSelect = document.getElementById("subBranch");
+  if (currentUser.role === "branch_manager") {
+    subBranchGroup.classList.add("hidden");
+    subBranchSelect.value = currentUser.branch;
+  } else {
+    subBranchGroup.classList.remove("hidden");
+    subBranchSelect.value = s ? (s.branch || "cambodia") : "cambodia";
+  }
+
   openModal("modalSubcontractor");
 }
 
@@ -5269,6 +5554,7 @@ function saveSubcontractor() {
   const name = document.getElementById("subName").value.trim();
   const phone = document.getElementById("subPhone").value.trim();
   const note = document.getElementById("subNote").value.trim();
+  const branch = currentUser.role === "branch_manager" ? currentUser.branch : document.getElementById("subBranch").value;
 
   if (!name) {
     showToast(t("toastFillRequired"), "error");
@@ -5277,10 +5563,10 @@ function saveSubcontractor() {
 
   if (editingSubcontractorId) {
     const s = STORE.subcontractors.find(s2 => s2.id === editingSubcontractorId);
-    s.type = type; s.name = name; s.phone = phone; s.note = note;
+    s.type = type; s.name = name; s.phone = phone; s.note = note; s.branch = branch;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "đội khoan/vận chuyển" : "subcontractor", detail: name });
   } else {
-    STORE.subcontractors.push({ id: genId("sub"), type, name, phone, note, contracts: [], createdBy: currentUser.id, createdAt: nowISO() });
+    STORE.subcontractors.push({ id: genId("sub"), type, name, phone, note, branch, contracts: [], createdBy: currentUser.id, createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "đội khoan/vận chuyển" : "subcontractor", detail: name });
   }
 
@@ -5350,19 +5636,21 @@ function renderSubcontractorDetail(subId) {
   }
   empty.classList.add("hidden");
 
-  const sorted = contracts.slice().sort((a, b) => calcContractBalance(b) - calcContractBalance(a));
+  const sorted = contracts.slice().sort((a, b) => calcContractBalanceUSD(b) - calcContractBalanceUSD(a));
   list.innerHTML = sorted.map(c => {
     const proj = c.projectId ? getProjectById(c.projectId) : null;
     const bal = calcContractBalance(c);
+    const cCur = c.currency || "USD";
+    const usdNote = cCur !== "USD" ? ` <span style="font-size:.75em;color:var(--text-muted);">(≈ ${formatCurrency(calcContractBalanceUSD(c))})</span>` : "";
     return `
       <div class="customer-row" onclick="openSubContractDetail('${s.id}','${c.id}')">
         <div class="customer-avatar">🏗️</div>
         <div class="customer-info">
-          <div class="nm">${escapeHtml(proj ? proj.name : (currentLang === "vi" ? "(Chưa gắn công trình)" : "(No project linked)"))}</div>
+          <div class="nm">${escapeHtml(proj ? proj.name : (currentLang === "vi" ? "(Chưa gắn công trình)" : "(No project linked)"))} ${cCur !== "USD" ? `<span class="project-pill" style="background:var(--gold-soft);color:var(--forest)">${cCur}</span>` : ""}</div>
           <div class="sub">${(c.workEntries || []).length} ${currentLang === "vi" ? "mục công/khoán" : "work entries"}</div>
         </div>
         <div style="text-align:right;">
-          <div class="${bal > 0 ? "payroll-negative" : ""}" style="font-weight:700;">${formatCurrency(bal)}</div>
+          <div class="${bal > 0 ? "payroll-negative" : ""}" style="font-weight:700;">${formatAmountWithCurrency(bal, cCur)}${usdNote}</div>
           <div class="sub">${currentLang === "vi" ? "còn phải trả" : "payable"}</div>
         </div>
       </div>
@@ -5383,14 +5671,36 @@ function openSubContractModal(contractId) {
   projSelect.value = c ? (c.projectId || "") : "";
   document.getElementById("subContractNote").value = c ? (c.note || "") : "";
 
+  const subCCurrency = c ? (c.currency || "USD") : "USD";
+  document.getElementById("subContractCurrency").value = subCCurrency;
+  if (subCCurrency !== "USD" && c && c.exchangeRate) {
+    document.getElementById("subContractExchangeRate").value = c.exchangeRate;
+    document.getElementById("subContractRateInfo").textContent = `1 USD = ${c.exchangeRate.toLocaleString()} ${subCCurrency}`;
+  } else {
+    document.getElementById("subContractExchangeRate").value = "";
+    document.getElementById("subContractRateInfo").textContent = "";
+  }
+  toggleSubContractCurrencyFields();
+
+  const subCCurrencySelect = document.getElementById("subContractCurrency");
+  const hasEntries = c && (((c.workEntries || []).length > 0) || ((c.payments || []).length > 0));
+  subCCurrencySelect.disabled = !!hasEntries;
+  document.getElementById("subContractCurrencyLockNote").classList.toggle("hidden", !hasEntries);
+
   openModal("modalSubContract");
 }
 
 function saveSubContract() {
   const projectId = document.getElementById("subContractProject").value || null;
   const note = document.getElementById("subContractNote").value.trim();
+  const currency = document.getElementById("subContractCurrency").value || "USD";
+  const exchangeRate = currency !== "USD" ? (parseFloat(document.getElementById("subContractExchangeRate").value) || null) : null;
 
   if (!projectId) {
+    showToast(t("toastFillRequired"), "error");
+    return;
+  }
+  if (currency !== "USD" && !exchangeRate) {
     showToast(t("toastFillRequired"), "error");
     return;
   }
@@ -5402,9 +5712,10 @@ function saveSubContract() {
   if (editingSubContractId) {
     const c = s.contracts.find(c2 => c2.id === editingSubContractId);
     c.projectId = projectId; c.note = note;
+    c.currency = currency; c.exchangeRate = exchangeRate;
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "công trình đội khoan" : "subcontractor project", detail: s.name });
   } else {
-    s.contracts.push({ id: genId("subc"), projectId, note, workEntries: [], payments: [], createdBy: currentUser.id, createdAt: nowISO() });
+    s.contracts.push({ id: genId("subc"), projectId, note, currency, exchangeRate, workEntries: [], payments: [], createdBy: currentUser.id, createdAt: nowISO() });
     addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "công trình đội khoan" : "subcontractor project", detail: s.name });
   }
 
@@ -5495,13 +5806,28 @@ function renderSubContractDetail() {
   if (!s || !c) return;
 
   const proj = c.projectId ? getProjectById(c.projectId) : null;
+  const cCur = c.currency || "USD";
+  const cUsdSuffix = (amt) => cCur !== "USD" ? ` (≈ ${formatCurrency(contractToUSD(c, amt))})` : "";
   document.getElementById("subContractDetailTitle").textContent = `${s.name}${proj ? " — " + proj.name : ""}`;
-  document.getElementById("contractDetailEarned").textContent = formatCurrency(calcContractEarned(c));
-  document.getElementById("contractDetailAdvanced").textContent = "-" + formatCurrency(calcContractAdvancedOut(c));
+  document.getElementById("contractDetailEarned").textContent = formatAmountWithCurrency(calcContractEarned(c), cCur) + cUsdSuffix(calcContractEarned(c));
+  document.getElementById("contractDetailAdvanced").textContent = "-" + formatAmountWithCurrency(calcContractAdvancedOut(c), cCur) + cUsdSuffix(calcContractAdvancedOut(c));
   const balance = calcContractBalance(c);
   const balEl = document.getElementById("contractDetailBalance");
-  balEl.textContent = formatCurrency(balance);
+  balEl.textContent = formatAmountWithCurrency(balance, cCur) + cUsdSuffix(balance);
   balEl.style.color = balance > 0 ? "var(--bad)" : "var(--good)";
+
+  // Cập nhật nhãn đơn giá theo đúng loại tiền của công trình này
+  const curSym = CURRENCY_SYMBOLS[cCur] || cCur;
+  const thoRateLbl = document.getElementById("lblThoRateText");
+  const phuRateLbl = document.getElementById("lblPhuRateText");
+  const soilRateLbl = document.getElementById("lblSoilRateText");
+  const rockRateLbl = document.getElementById("lblRockRateText");
+  const transportRateLbl = document.getElementById("lblTransportRateText");
+  if (thoRateLbl) thoRateLbl.textContent = (currentLang === "vi" ? "Đơn giá Thợ" : "Skilled Rate") + ` (${curSym}/${currentLang === "vi" ? "ngày" : "day"})`;
+  if (phuRateLbl) phuRateLbl.textContent = (currentLang === "vi" ? "Đơn giá Phụ" : "Assistant Rate") + ` (${curSym}/${currentLang === "vi" ? "ngày" : "day"})`;
+  if (soilRateLbl) soilRateLbl.textContent = (currentLang === "vi" ? "Đơn giá Đất" : "Soil Rate") + ` (${curSym}/m)`;
+  if (rockRateLbl) rockRateLbl.textContent = (currentLang === "vi" ? "Đơn giá Đá" : "Rock Rate") + ` (${curSym}/m)`;
+  if (transportRateLbl) transportRateLbl.textContent = (currentLang === "vi" ? "Đơn giá" : "Rate") + ` (${curSym}/${currentLang === "vi" ? "đơn vị" : "unit"})`;
 
   // Work entries history
   const entries = (c.workEntries || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
@@ -5526,7 +5852,7 @@ function renderSubContractDetail() {
             <div class="pdate">${formatDateDisplay(w.date)}</div>
           </div>
           <div style="text-align:right;">
-            <div class="pamt">${formatCurrency(w.amount)}</div>
+            <div class="pamt">${formatAmountWithCurrency(w.amount, cCur)}</div>
             <div class="btn-row" style="margin-top:4px; justify-content:flex-end;">
               <button class="btn btn-sm btn-outline" onclick="editWorkEntry('${w.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button>
               <button class="btn btn-sm btn-danger" onclick="deleteWorkEntry('${w.id}')">${currentLang === "vi" ? "Xóa" : "Delete"}</button>
@@ -5551,7 +5877,7 @@ function renderSubContractDetail() {
           <div class="pdate">${formatDateDisplay(p.date)}</div>
         </div>
         <div style="text-align:right;">
-          <div class="pamt" style="color:var(--bad);">-${formatCurrency(p.amount)}</div>
+          <div class="pamt" style="color:var(--bad);">-${formatAmountWithCurrency(p.amount, cCur)}</div>
           <div class="btn-row" style="margin-top:4px; justify-content:flex-end;">
             <button class="btn btn-sm btn-outline" onclick="editSubAdvance('${p.id}')">${currentLang === "vi" ? "Sửa" : "Edit"}</button>
             <button class="btn btn-sm btn-danger" onclick="deleteSubAdvance('${p.id}')">${currentLang === "vi" ? "Xóa" : "Delete"}</button>
@@ -5613,11 +5939,11 @@ function saveWorkEntry() {
   if (editingWorkEntryId) {
     const idx = c.workEntries.findIndex(w => w.id === editingWorkEntryId);
     if (idx >= 0) c.workEntries[idx] = { ...entry, id: editingWorkEntryId, createdBy: c.workEntries[idx].createdBy, createdAt: c.workEntries[idx].createdAt };
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatAmountWithCurrency(entry.amount, c.currency || "USD")} - ${s.name}` });
     cancelEditWorkEntry();
   } else {
     c.workEntries.push({ id: genId("we"), ...entry, createdBy: currentUser.id, createdAt: nowISO() });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatCurrency(entry.amount)} - ${s.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${formatAmountWithCurrency(entry.amount, c.currency || "USD")} - ${s.name}` });
   }
 
   persistDebounced();
@@ -5685,7 +6011,7 @@ function deleteWorkEntry(entryId) {
   const w = (c.workEntries || []).find(w2 => w2.id === entryId);
   c.workEntries = (c.workEntries || []).filter(w2 => w2.id !== entryId);
 
-  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${w ? formatCurrency(w.amount) : ""} - ${s.name}` });
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "bảng công/khoán" : "work entry", detail: `${w ? formatAmountWithCurrency(w.amount, c.currency || "USD") : ""} - ${s.name}` });
 
   if (editingWorkEntryId === entryId) cancelEditWorkEntry();
   persistDebounced();
@@ -5713,11 +6039,11 @@ function saveSubAdvance() {
   if (editingSubAdvanceId) {
     const p = c.payments.find(p2 => p2.id === editingSubAdvanceId);
     if (p) { p.type = type; p.amount = amount; p.date = date; p.note = note; }
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "edited", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatAmountWithCurrency(amount, c.currency || "USD")} - ${s.name}` });
     cancelEditSubAdvance();
   } else {
     c.payments.push({ id: genId("subadv"), type, amount, date, note, createdBy: currentUser.id, createdAt: nowISO() });
-    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatCurrency(amount)} - ${s.name}` });
+    addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "created", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${formatAmountWithCurrency(amount, c.currency || "USD")} - ${s.name}` });
   }
 
   persistDebounced();
@@ -5760,7 +6086,7 @@ function deleteSubAdvance(paymentId) {
   const p = (c.payments || []).find(p2 => p2.id === paymentId);
   c.payments = (c.payments || []).filter(p2 => p2.id !== paymentId);
 
-  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${p ? formatCurrency(p.amount) : ""} - ${s.name}` });
+  addAuditLog({ userId: currentUser.id, userName: currentUser.name, action: "deleted", targetType: currentLang === "vi" ? "tạm ứng đội khoan" : "subcontractor advance", detail: `${p ? formatAmountWithCurrency(p.amount, c.currency || "USD") : ""} - ${s.name}` });
 
   if (editingSubAdvanceId === paymentId) cancelEditSubAdvance();
   persistDebounced();
