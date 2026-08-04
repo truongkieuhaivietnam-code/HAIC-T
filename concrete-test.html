@@ -261,7 +261,7 @@
       <div class="field"><label>Cấu kiện bê tông / Concrete structure</label><input id="fConcreteStructure" type="text" placeholder="vd: Cột C1 tầng 3"></div>
       <div class="field">
         <label>Tiết diện mẫu / Specimen shape</label>
-        <select id="fSpecimenShape">
+        <select id="fSpecimenShape" onchange="setSpecimenShape(this.value)">
           <option value="cube">Cube (22500mm²)</option>
           <option value="cylinder">Cylinder (17671.46mm²)</option>
         </select>
@@ -436,7 +436,13 @@ let currentProjectId = null;
 let projectsCache = [];
 let reportsCache = [];
 let groupCount = 0;
-let currentStandard = 'astm'; // 'astm' | 'tcvn'
+let currentStandard = 'astm'; // 'astm' | 'tcvn' — chỉ ảnh hưởng thuật ngữ/mã form, KHÔNG quyết định hình dạng mẫu nữa
+// SỬA LỖI: trước đây hình dạng mẫu (trụ/lập phương) bị SUY RA từ tiêu
+// chuẩn (ASTM luôn = trụ, TCVN luôn = lập phương) — khiến ô "Specimen
+// shape" không có tác dụng thật, dù chọn gì cũng tính theo ASTM/trụ vì đó
+// là tiêu chuẩn mặc định. Giờ tách hẳn: hình dạng có biến RIÊNG, đúng
+// theo ô người dùng thực sự chọn, độc lập với tiêu chuẩn thí nghiệm.
+let currentSpecimenShape = 'cube'; // 'cube' | 'cylinder' — khớp đúng option mặc định của ô Specimen shape
 
 /* ---- THEME ---- */
 function applyStoredTheme(){
@@ -467,6 +473,19 @@ function setStandard(std){
     ? 'II. Kết Quả Thí Nghiệm / Testing Result (ASTM C39)'
     : 'II. Kết Quả Thí Nghiệm / Testing Result (TCVN 3118-2022)';
   // Rebuild all groups UI to reflect new standard
+  const container = document.getElementById('groupsContainer');
+  const groups = collectGroups();
+  container.innerHTML = '';
+  groupCount = 0;
+  groups.forEach(g => addGroup(g));
+  if(groupCount === 0) addGroup();
+}
+
+// Khi đổi hình dạng mẫu (Cube/Cylinder), dựng lại toàn bộ bảng số liệu
+// theo đúng hình dạng mới — khớp cách setStandard() đang làm, để không
+// còn tình trạng "chọn rồi mà vẫn tính theo hình cũ".
+function setSpecimenShape(shape){
+  currentSpecimenShape = shape;
   const container = document.getElementById('groupsContainer');
   const groups = collectGroups();
   container.innerHTML = '';
@@ -719,13 +738,16 @@ function showToast(msg){ const t = document.getElementById('toast'); t.textConte
 function setEditingUI(on){ document.getElementById('editingIndicator').style.display = on?'block':'none'; document.getElementById('updateBtn').style.display = on?'inline-block':'none'; }
 
 /* ---- CONCRETE CALC ---- */
-// ASTM C39 (cylinder): Area = π × (D/2)²,  f'c = P×1000/Area MPa
-// TCVN 3118 (cube):    Area = L × W,        Rc  = P×1000/Area MPa
-function calcStrength(load_kN, dims, std){
+// Diện tích tiết diện phụ thuộc HÌNH DẠNG MẪU (trụ/lập phương), KHÔNG
+// phụ thuộc tiêu chuẩn thí nghiệm (ASTM/TCVN) — 1 tiêu chuẩn vẫn có thể
+// test trên cả 2 loại hình dạng mẫu tùy thực tế công trường.
+// Cylinder: Area = π × (D/2)²,  f'c = P×1000/Area MPa
+// Cube:     Area = L × W,        Rc  = P×1000/Area MPa
+function calcStrength(load_kN, dims, shape){
   const P = parseFloat(load_kN);
   if(!isFinite(P) || P <= 0) return NaN;
   let area;
-  if(std === 'astm'){
+  if(shape === 'cylinder'){
     const D = parseFloat(dims.d);
     if(!isFinite(D) || D <= 0) return NaN;
     area = Math.PI * (D/2) * (D/2);
@@ -749,17 +771,18 @@ function addGroup(data){
   groupCount++;
   const idx = groupCount;
   const isAstm = currentStandard === 'astm';
+  const isCylinder = currentSpecimenShape === 'cylinder'; // ← quyết định hình dạng thật, KHÔNG dùng isAstm nữa
   const container = document.getElementById('groupsContainer');
   const div = document.createElement('div');
   div.className = `group-card ${isAstm?'astm-card':'tcvn-card'}`;
   div.id = `group-${idx}`;
 
   // Default dimensions from original Excel forms
-  const defDim = isAstm ? '150' : '150'; // D=150 for cylinder; L=W=H=150 for cube
+  const defDim = isCylinder ? '150' : '150'; // D=150 for cylinder; L=W=H=150 for cube
 
   const specs = data?.specimens || [{},{},{}];
-  const dimLabel = isAstm ? 'D (mm)' : 'L (mm)';
-  const dimLabel2 = isAstm ? 'H (mm)' : 'W (mm)';
+  const dimLabel = isCylinder ? 'D (mm)' : 'L (mm)';
+  const dimLabel2 = isCylinder ? 'H (mm)' : 'W (mm)';
 
   div.innerHTML = `
     <div class="group-header ${isAstm?'':'tcvn-hdr'}">
@@ -787,7 +810,7 @@ function addGroup(data){
           <tr>
             <th>Ký hiệu<br>Symbol</th>
             <th>${dimLabel}</th>
-            ${isAstm ? `<th>${dimLabel2}</th>` : `<th>${dimLabel2}</th><th>H (mm)</th>`}
+            ${isCylinder ? `<th>${dimLabel2}</th>` : `<th>${dimLabel2}</th><th>H (mm)</th>`}
             <th>Tải trọng<br>Load (kN)</th>
             <th>Cường độ từng mẫu<br>Individual (MPa)</th>
           </tr>
@@ -797,7 +820,7 @@ function addGroup(data){
           <tr class="spec-row" id="g${idx}-r${i}">
             <td class="spec-sym">${sym}</td>
             <td><input type="number" step="any" id="g${idx}-r${i}-d1" value="${specs[i]?.d1||defDim}" onchange="recalcGroup(${idx})" min="1"></td>
-            ${isAstm
+            ${isCylinder
               ? `<td><input type="number" step="any" id="g${idx}-r${i}-d2" value="${specs[i]?.d2||'300'}" onchange="recalcGroup(${idx})" min="1"></td>`
               : `<td><input type="number" step="any" id="g${idx}-r${i}-d2" value="${specs[i]?.d2||defDim}" onchange="recalcGroup(${idx})" min="1"></td>
                  <td><input type="number" step="any" id="g${idx}-r${i}-d3" value="${specs[i]?.d3||defDim}" onchange="recalcGroup(${idx})" min="1"></td>`
@@ -806,7 +829,7 @@ function addGroup(data){
             <td class="calc" id="g${idx}-r${i}-str">—</td>
           </tr>`).join('')}
           <tr class="avg-row">
-            <td colspan="${isAstm ? 3 : 4}" class="avg-cell" style="text-align:right;font-size:12px;">Trung bình / Average:</td>
+            <td colspan="${isCylinder ? 3 : 4}" class="avg-cell" style="text-align:right;font-size:12px;">Trung bình / Average:</td>
             <td></td>
             <td class="avg-cell calc" id="g${idx}-avg">—</td>
           </tr>
@@ -841,7 +864,7 @@ function recalcGroup(idx){
     const strEl = document.getElementById(`g${idx}-r${i}-str`);
     if(!loadEl || !strEl) continue;
     const dims = { d: d1El?.value, l: d1El?.value, w: d2El?.value, h: d3El?.value };
-    const str = calcStrength(loadEl.value, dims, currentStandard);
+    const str = calcStrength(loadEl.value, dims, currentSpecimenShape);
     strEl.textContent = isFinite(str) ? fmt(str, 2) : '—';
     if(isFinite(str)) strengths.push(str);
   }
@@ -908,6 +931,7 @@ function applyFormData(d){
   sv('fTestMethod', d.testMethod || 'AASHTO T22'); sv('fTestMethodOther', d.testMethodOther);
   sv('fTestCondition', d.testCondition || 'Dry naturally');
   sv('fConcreteStructure', d.concreteStructure); sv('fSpecimenShape', d.specimenShape || 'cube');
+  currentSpecimenShape = d.specimenShape || 'cube'; // đồng bộ đúng hình dạng đã lưu, không giữ giá trị cũ từ báo cáo trước
   sv('fQC', d.qc); sv('fRemarks', d.remarks);
   sv('fLabTech', d.labTech); sv('fCheckedBy', d.checkedBy);
   sv('fDirector', d.director); sv('fDirectorDisplay', d.director); sv('fReportDate', d.reportDate); sv('fReportCity', d.reportCity||'Phnom Penh');
@@ -1079,13 +1103,14 @@ async function deleteReport(docId){
 function buildExportData(){
   const d = collectFormData();
   const isAstm = d.standard === 'astm';
-  const dimHeader = isAstm ? ['D (mm)', 'H (mm)'] : ['L (mm)', 'W (mm)', 'H (mm)'];
+  const isCylinder = (d.specimenShape || 'cube') === 'cylinder'; // ← hình dạng thật, không dùng isAstm cho kích thước nữa
+  const dimHeader = isCylinder ? ['D (mm)', 'H (mm)'] : ['L (mm)', 'W (mm)', 'H (mm)'];
   const headers = ['Tổ mẫu / No', 'Ký hiệu / Symbol', 'Ngày đúc', 'Ngày nén', 'Tuổi (ngày)', ...dimHeader, 'Tải trọng (kN)', 'Cường độ (MPa)', 'Trung bình (MPa)'];
   const rows = [];
   d.groups.forEach((g, gi) => {
     const syms = ['S1','S2','S3'];
     g.specimens.forEach((s, si) => {
-      const dimVals = isAstm ? [s.d1, s.d2] : [s.d1, s.d2, s.d3];
+      const dimVals = isCylinder ? [s.d1, s.d2] : [s.d1, s.d2, s.d3];
       rows.push([
         si===0 ? gi+1 : '',
         syms[si],
@@ -1099,7 +1124,7 @@ function buildExportData(){
       ]);
     });
   });
-  return { d, headers, rows, isAstm };
+  return { d, headers, rows, isAstm, isCylinder };
 }
 
 /* ---- EXPORT EXCEL ---- */
@@ -1148,6 +1173,7 @@ function registerFonts(doc){
 function exportPDF(){
   const d = collectFormData();
   const isAstm = d.standard === 'astm';
+  const isCylinder = (d.specimenShape || 'cube') === 'cylinder'; // ← hình dạng thật, dùng cho kích thước/diện tích
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
   registerFonts(doc);
@@ -1157,7 +1183,7 @@ function exportPDF(){
   const blue=[26,82,118];
   const stdName  = isAstm ? 'ASTM C39'        : 'TCVN 3118 - 2022';
   const formCode = isAstm ? 'F-12.1.HAIC-LAB-15MAT' : 'F-12.2.HAIC-LAB-15MAT';
-  const dimHeader = isAstm ? 'DxH' : 'LxWxH';
+  const dimHeader = isCylinder ? 'DxH' : 'LxWxH';
 
   // shortcuts
   const B=(sz)=>{ doc.setFont('Roboto','bold');   doc.setFontSize(sz); };
@@ -1339,7 +1365,7 @@ function exportPDF(){
     }
     // Specimen rows with rowSpan on shared cells
     g.specimens.forEach((s,si) => {
-      const dim = isAstm
+      const dim = isCylinder
         ? `${s.d1||''}x${s.d2||''}`
         : `${s.d1||''}x${s.d2||''}x${s.d3||''}`;
 
@@ -1460,6 +1486,7 @@ function exportPDF(){
 function exportMinutePDF(){
   const d = collectFormData();
   const isAstm = d.standard === 'astm';
+  const isCylinder = (d.specimenShape || 'cube') === 'cylinder'; // ← hình dạng thật, dùng cho kích thước/diện tích
   const langMode = document.getElementById('minuteLangMode')?.value || 'bilingual';
   const isEN = langMode === 'en';
   // bi(vi, en): trả về "vi / en" ở chế độ song ngữ, hoặc chỉ "en" ở chế độ English only.
@@ -1473,7 +1500,7 @@ function exportMinutePDF(){
   const blue=[26,82,118], purple=[108,52,131];
   const stdName  = isAstm ? 'ASTM C39' : 'TCVN 3118 - 2022';
   const formCode = isAstm ? 'F-12.1.HAIC-LAB-15MAT' : 'F-12.2.HAIC-LAB-15MAT';
-  const dimHeader = isAstm ? 'DxH' : 'LxWxH';
+  const dimHeader = isCylinder ? 'DxH' : 'LxWxH';
 
   const B=(sz)=>{ doc.setFont('Roboto','bold');   doc.setFontSize(sz); };
   const N=(sz)=>{ doc.setFont('Roboto','normal'); doc.setFontSize(sz); };
@@ -1594,7 +1621,7 @@ function exportMinutePDF(){
       {content:bi('Ký hiệu\nmẫu','Specimen\nsymbol'),rowSpan:3,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
       {content:bi('Ngày','Date')+'\n(dd/mm/yyyy)',colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
       {content:bi('Tuổi\nmẫu','Age at\nTest'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
-      {content:bi('Kích thước mẫu',isAstm?'Dimension\nDxH (mm)':'Dimension\nLxWxH (mm)'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
+      {content:bi('Kích thước mẫu',isCylinder?'Dimension\nDxH (mm)':'Dimension\nLxWxH (mm)'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
       {content:bi('Tải trọng\nphá hủy\nmẫu','Maximum\nLoad at\nFailure'),rowSpan:2,styles:{halign:'center',valign:'middle',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
       {content:bi('Cường độ kháng nén','Compressive Strength'),colSpan:2,styles:{halign:'center',font:'Roboto',fontStyle:'normal',fontSize:7.5}},
     ],
@@ -1620,7 +1647,7 @@ function exportMinutePDF(){
     if(g.item) tb.push([{content:g.item,colSpan:9,
       styles:{font:'Roboto',fontStyle:'normal',fontSize:9,halign:'center',fillColor:[255,255,255],textColor:0,cellPadding:2}}]);
     g.specimens.forEach((s,si)=>{
-      const dim=isAstm?`${s.d1||''}x${s.d2||''}`:`${s.d1||''}x${s.d2||''}x${s.d3||''}`;
+      const dim=isCylinder?`${s.d1||''}x${s.d2||''}`:`${s.d1||''}x${s.d2||''}x${s.d3||''}`;
       if(si===0){
         tb.push([
           {content:String(gi+1),rowSpan:3,styles:{font:'Roboto',fontStyle:'normal',halign:'center',valign:'middle',fontSize:10}},
