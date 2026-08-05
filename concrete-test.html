@@ -488,6 +488,22 @@ function setSpecimenShape(shape){
   currentSpecimenShape = shape;
   const container = document.getElementById('groupsContainer');
   const groups = collectGroups();
+  // SỬA LỖI: d1/d2/d3 mang Ý NGHĨA KHÁC NHAU tùy hình dạng (D+H cho trụ,
+  // L+W+H cho lập phương) — nếu giữ nguyên số cũ khi đổi hình sẽ hiểu
+  // nhầm (VD: W=150mm lúc đang là lập phương, đổi sang trụ lại hiện
+  // thành H=150mm, trong khi H tiêu chuẩn của trụ phải là 300mm = 2×D).
+  // Chỉ giữ lại Load (không phụ thuộc hình dạng); kích thước được đặt lại
+  // đúng mặc định chuẩn của hình mới.
+  const isCylinder = shape === 'cylinder';
+  groups.forEach(g => {
+    g.specimens = (g.specimens || []).map(s => ({
+      d1: '150',
+      d2: isCylinder ? '300' : '150',
+      d3: isCylinder ? '' : '150',
+      load: s.load || '',
+      strength: '',
+    }));
+  });
   container.innerHTML = '';
   groupCount = 0;
   groups.forEach(g => addGroup(g));
