@@ -1212,6 +1212,35 @@ function exportPDF(){
   const drawBorder = () => { doc.setDrawColor(150,150,150); doc.setLineWidth(0.5); doc.rect(4,4,pageW-8,pageH-8,'S'); };
   drawBorder();
 
+  // ── Vẽ nhãn/tiêu đề song ngữ trên 1 dòng: phần tiếng Việt giữ nguyên
+  // kiểu chữ hiện tại (do nơi gọi set bằng B()/N() trước đó), phần tiếng
+  // Anh LUÔN in nghiêng — kể cả ở chế độ chỉ tiếng Anh. Trả về tổng bề
+  // rộng đã vẽ (để căn tiếp phần sau nếu cần).
+  const biRun = (vi, en, x, y, opts) => {
+    opts = opts || {};
+    const curStyle = doc.internal.getFont().fontStyle;
+    if (isEN) {
+      doc.setFont('Roboto','italic');
+      doc.text(en, x, y, opts);
+      doc.setFont('Roboto', curStyle);
+      return doc.getTextWidth(en);
+    }
+    const sep = ' / ';
+    doc.setFont('Roboto', curStyle); const wVi = doc.getTextWidth(vi);
+    const wSep = doc.getTextWidth(sep);
+    doc.setFont('Roboto','italic'); const wEn = doc.getTextWidth(en);
+    const total = wVi + wSep + wEn;
+    let startX = x;
+    if (opts.align === 'center') startX = x - total/2;
+    else if (opts.align === 'right') startX = x - total;
+    let cx = startX;
+    doc.setFont('Roboto', curStyle); doc.text(vi, cx, y); cx += wVi;
+    doc.text(sep, cx, y); cx += wSep;
+    doc.setFont('Roboto','italic'); doc.text(en, cx, y);
+    doc.setFont('Roboto', curStyle);
+    return total;
+  };
+
   // ── HEADER — logo trái/phải + tiêu đề giữa, đúng mẫu chuẩn ──
   const HY=5, HH=22;
   doc.setDrawColor(180,180,180); doc.setLineWidth(0.4);
@@ -1224,8 +1253,16 @@ function exportPDF(){
   doc.addImage(ISO_LOGO_B64,'PNG',RX+1.5,HY+12,RW-3,9);
 
   const TX = ML+40, TW = RX-ML-42;
-  BLUE(); B(10);
-  doc.text(bi('KẾT QUẢ THÍ NGHIỆM ĐỘ CHẶT K HIỆN TRƯỜNG BẰNG PHƯƠNG PHÁP RÓT CÁT','FIELD DENSITY TEST RESULTS BY THE SAND-CONE METHOD'), TX+TW/2, HY+8, {align:'center', maxWidth:TW});
+  BLUE();
+  if (isEN) {
+    B(9.5);
+    doc.text('FIELD DENSITY TEST RESULTS BY THE SAND-CONE METHOD', TX+TW/2, HY+9, {align:'center', maxWidth:TW});
+  } else {
+    B(9.5);
+    doc.text('KẾT QUẢ THÍ NGHIỆM ĐỘ CHẶT K HIỆN TRƯỜNG BẰNG PHƯƠNG PHÁP RÓT CÁT', TX+TW/2, HY+7, {align:'center', maxWidth:TW});
+    I(8.5);
+    doc.text('FIELD DENSITY TEST RESULTS BY THE SAND-CONE METHOD', TX+TW/2, HY+12.5, {align:'center', maxWidth:TW});
+  }
   I(7.5); BLACK();
   doc.text('(22TCN 346-06, ASTM D1556/D1556M-15e1)', TX+TW/2, HY+18, {align:'center', maxWidth:TW});
 
@@ -1247,19 +1284,20 @@ function exportPDF(){
   y += 5.5;
 
   // ── I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION ─────────
-  const secH = (txt) => {
-    B(9); BLUE(); doc.text(txt, ML+2, y);
-    const tw = doc.getTextWidth(txt);
+  const secH = (vi, en) => {
+    B(9); BLUE();
+    const tw = biRun(vi, en, ML+2, y, {align:'left'});
     doc.setDrawColor(...blue); doc.setLineWidth(0.4);
     doc.line(ML+2,y+1,ML+2+tw,y+1); BLACK();
     y += 5.5;
   };
   // ── Hàng thông tin dạng bảng có khung viền — đúng bố cục mẫu gốc ──
   const infoLabelW = usW * 0.30;
-  const infoRow = (label, value) => {
+  const infoRow = (labelVi, labelEn, value) => {
     const fs = 8;
+    const labelPlain = bi(labelVi, labelEn);
     doc.setFont('Roboto','bold'); doc.setFontSize(fs);
-    const labelLines = doc.splitTextToSize(label, infoLabelW - 4);
+    const labelLines = doc.splitTextToSize(labelPlain, infoLabelW - 4);
     doc.setFont('Roboto','normal'); doc.setFontSize(fs);
     const valueLines = doc.splitTextToSize(String(value||''), usW - infoLabelW - 4);
     const lineCount = Math.max(labelLines.length, valueLines.length, 1);
@@ -1268,16 +1306,17 @@ function exportPDF(){
     doc.rect(ML, y, infoLabelW, rowH, 'S');
     doc.rect(ML+infoLabelW, y, usW-infoLabelW, rowH, 'S');
     BLACK(); B(fs);
-    doc.text(labelLines, ML+2, y+3.6);
+    biRun(labelVi, labelEn, ML+2, y+3.6, {align:'left'});
     N(fs);
     doc.text(valueLines, ML+infoLabelW+2, y+3.6);
     y += rowH;
   };
-  const infoRowSplit = (label1, value1, label2, value2) => {
+  const infoRowSplit = (label1Vi, label1En, value1, label2Vi, label2En, value2) => {
     const fs = 8;
     const c1 = usW*0.17, c2 = usW*0.35, c3 = usW*0.25, c4 = usW - c1 - c2 - c3;
+    const l1Plain = bi(label1Vi, label1En), l2Plain = bi(label2Vi, label2En);
     doc.setFont('Roboto','bold'); doc.setFontSize(fs);
-    const l1 = doc.splitTextToSize(label1, c1-3), l2 = doc.splitTextToSize(label2, c3-3);
+    const l1 = doc.splitTextToSize(l1Plain, c1-3), l2 = doc.splitTextToSize(l2Plain, c3-3);
     doc.setFont('Roboto','normal'); doc.setFontSize(fs);
     const v1 = doc.splitTextToSize(String(value1||''), c2-4), v2 = doc.splitTextToSize(String(value2||''), c4-4);
     const rowH = Math.max(l1.length, l2.length, v1.length, v2.length, 1) * 3.6 + 2.4;
@@ -1285,60 +1324,103 @@ function exportPDF(){
     let x = ML;
     [c1,c2,c3,c4].forEach(w => { doc.rect(x,y,w,rowH,'S'); x += w; });
     x = ML; BLACK();
-    B(fs); doc.text(l1, x+2, y+3.6); x += c1;
+    B(fs); biRun(label1Vi, label1En, x+2, y+3.6, {align:'left'}); x += c1;
     N(fs); doc.text(v1, x+2, y+3.6); x += c2;
-    B(fs); doc.text(l2, x+2, y+3.6); x += c3;
+    B(fs); biRun(label2Vi, label2En, x+2, y+3.6, {align:'left'}); x += c3;
     N(fs); doc.text(v2, x+2, y+3.6);
     y += rowH;
   };
 
-  secH(bi('I. CÁC THÔNG TIN LIÊN QUAN','PROJECT INFORMATION'));
+  secH('I. CÁC THÔNG TIN LIÊN QUAN','PROJECT INFORMATION');
   // ĐÚNG mẫu gốc: dòng đầu là "Tư vấn giám sát / Consultant" (field supervisor),
   // KHÔNG phải "Chủ đầu tư / Investor" — trước đây in nhầm field.
-  infoRow(bi('Tư vấn giám sát','Consultant'), data.supervisor);
-  infoRow(bi('ĐV thi công','Contractor'), data.contractor);
-  infoRow(bi('Công trình','Project'), data.project);
-  infoRow(bi('Địa điểm XD','Location'), data.location);
-  infoRow(bi('Khu vực TN','Testing Area'), data.testingArea);
-  infoRowSplit(bi('Mô tả','Description'), data.description, bi('Ngày TN hiện trường','Field testing date'), data.testDate);
+  infoRow('Tư vấn giám sát','Consultant', data.supervisor);
+  infoRow('ĐV thi công','Contractor', data.contractor);
+  infoRow('Công trình','Project', data.project);
+  infoRow('Địa điểm XD','Location', data.location);
+  infoRow('Khu vực TN','Testing Area', data.testingArea);
+  infoRowSplit('Mô tả','Description', data.description, 'Ngày TN hiện trường','Field testing date', data.testDate);
   y += 6;
 
   // ── II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT ──────────────────
-  secH(bi('II. KẾT QUẢ THÍ NGHIỆM','TESTING RESULT'));
+  secH('II. KẾT QUẢ THÍ NGHIỆM','TESTING RESULT');
   N(8.5); doc.text('- ', ML+2, y);
-  B(8.5); const mLbl = bi('Khối lượng cát làm đầy miệng phễu','Mass of sand fill cone')+': '; doc.text(mLbl, ML+6, y);
-  N(8.5); doc.text(`${data.sandFillMass||''} (g)`, ML+6+doc.getTextWidth(mLbl), y);
-  B(8.5); const bLbl = bi('Khối lượng thể tích của cát','Bulk density of sand')+': '; doc.text(bLbl, ML+2+usW*0.55, y);
-  N(8.5); doc.text(`${data.sandBulkDensity||''} (g/cm³)`, ML+2+usW*0.55+doc.getTextWidth(bLbl), y);
+  B(8.5); const mW = biRun('Khối lượng cát làm đầy miệng phễu','Mass of sand fill cone', ML+6, y, {align:'left'}) + doc.getTextWidth(': ');
+  doc.text(': ', ML+6+mW-doc.getTextWidth(': '), y);
+  N(8.5); doc.text(`${data.sandFillMass||''} (g)`, ML+6+mW, y);
+  B(8.5); const bX = ML+2+usW*0.55;
+  const bW = biRun('Khối lượng thể tích của cát','Bulk density of sand', bX, y, {align:'left'}) + doc.getTextWidth(': ');
+  doc.text(': ', bX+bW-doc.getTextWidth(': '), y);
+  N(8.5); doc.text(`${data.sandBulkDensity||''} (g/cm³)`, bX+bW, y);
   y += 6;
 
-  // ── BẢNG KẾT QUẢ — đúng cấu trúc 3 nhóm cột như mẫu gốc ──────
-  // th2: ghép Việt/Anh xuống 2 dòng cho cột hẹp (khác bi() ghép ngang bằng "/")
-  // — trước đây dùng "isEN ? en : vi" nên ở chế độ song ngữ chỉ hiện tiếng Việt.
-  const th2 = (vi, en) => isEN ? en : `${vi}\n${en}`;
-  const head = [
-    [
-      {content:bi('STT','No.'), rowSpan:3},
-      {content:bi('Vị trí thí nghiệm','Testing Point'), rowSpan:3},
-      {content:bi('Phễu cát','Sand-Cone'), colSpan:3},
-      {content:bi('Độ ẩm','Moisture Content'), colSpan:5},
-      {content:bi('Khối lượng thể tích','Density'), colSpan:3},
-    ],
-    [
-      {content:th2('KL phễu cát trước khi rót','Mass of Sand-Cone before pouring')},
-      {content:th2('KL phễu cát sau khi rót','Mass of Sand-Cone after pouring')},
-      {content:th2('KL vật liệu trong hố','Mass of material from test hole')},
-      {content:th2('Lon ẩm số','ID Can')},
-      {content:th2('KL lon ẩm','Mass of can')},
-      {content:th2('KL lon + vật liệu ướt','Mass of can + moist material')},
-      {content:th2('KL lon + vật liệu khô','Mass of can + dry material')},
-      {content:th2('Độ ẩm','Moisture content')},
-      {content:th2('KL thể tích tự nhiên','Wet density')},
-      {content:th2('KL thể tích khô','Dry density')},
-      {content:th2('Độ chặt lu lèn (K)','Compaction (K)')},
-    ],
-    ['(g)','(g)','(g)','','(g)','(g)','(g)','(%)','(g/cm³)','(g/cm³)','(%)'],
-  ];
+  // ── BẢNG KẾT QUẢ — tách riêng dòng Việt (thường) và dòng Anh (nghiêng)
+  // bằng thuộc tính styles theo từng ô của autoTable, thay vì gộp chung
+  // 1 dòng "\n" (không tách được kiểu chữ theo từng phần trong 1 ô).
+  const rs = isEN ? 3 : 5;
+  const head = [];
+  if (isEN) {
+    head.push([
+      {content:'No.', rowSpan:rs, styles:{fontStyle:'italic'}},
+      {content:'Testing Point', rowSpan:rs, styles:{fontStyle:'italic'}},
+      {content:'Sand-Cone', colSpan:3, styles:{fontStyle:'italic'}},
+      {content:'Moisture Content', colSpan:5, styles:{fontStyle:'italic'}},
+      {content:'Density', colSpan:3, styles:{fontStyle:'italic'}},
+    ]);
+    head.push([
+      {content:'Mass of Sand-Cone before pouring', styles:{fontStyle:'italic'}},
+      {content:'Mass of Sand-Cone after pouring', styles:{fontStyle:'italic'}},
+      {content:'Mass of material from test hole', styles:{fontStyle:'italic'}},
+      {content:'ID Can', styles:{fontStyle:'italic'}},
+      {content:'Mass of can', styles:{fontStyle:'italic'}},
+      {content:'Mass of can + moist material', styles:{fontStyle:'italic'}},
+      {content:'Mass of can + dry material', styles:{fontStyle:'italic'}},
+      {content:'Moisture content', styles:{fontStyle:'italic'}},
+      {content:'Wet density', styles:{fontStyle:'italic'}},
+      {content:'Dry density', styles:{fontStyle:'italic'}},
+      {content:'Compaction (K)', styles:{fontStyle:'italic'}},
+    ]);
+  } else {
+    head.push([
+      {content:'STT\nNo.', rowSpan:rs},
+      {content:'Vị trí thí nghiệm\nTesting Point', rowSpan:rs},
+      {content:'Phễu cát', colSpan:3},
+      {content:'Độ ẩm', colSpan:5},
+      {content:'Khối lượng thể tích', colSpan:3},
+    ]);
+    head.push([
+      {content:'Sand-Cone', colSpan:3, styles:{fontStyle:'italic'}},
+      {content:'Moisture Content', colSpan:5, styles:{fontStyle:'italic'}},
+      {content:'Density', colSpan:3, styles:{fontStyle:'italic'}},
+    ]);
+    head.push([
+      {content:'KL phễu cát trước khi rót'},
+      {content:'KL phễu cát sau khi rót'},
+      {content:'KL vật liệu trong hố'},
+      {content:'Lon ẩm số'},
+      {content:'KL lon ẩm'},
+      {content:'KL lon + vật liệu ướt'},
+      {content:'KL lon + vật liệu khô'},
+      {content:'Độ ẩm'},
+      {content:'KL thể tích tự nhiên'},
+      {content:'KL thể tích khô'},
+      {content:'Độ chặt lu lèn (K)'},
+    ]);
+    head.push([
+      {content:'Mass of Sand-Cone before pouring', styles:{fontStyle:'italic'}},
+      {content:'Mass of Sand-Cone after pouring', styles:{fontStyle:'italic'}},
+      {content:'Mass of material from test hole', styles:{fontStyle:'italic'}},
+      {content:'ID Can', styles:{fontStyle:'italic'}},
+      {content:'Mass of can', styles:{fontStyle:'italic'}},
+      {content:'Mass of can + moist material', styles:{fontStyle:'italic'}},
+      {content:'Mass of can + dry material', styles:{fontStyle:'italic'}},
+      {content:'Moisture content', styles:{fontStyle:'italic'}},
+      {content:'Wet density', styles:{fontStyle:'italic'}},
+      {content:'Dry density', styles:{fontStyle:'italic'}},
+      {content:'Compaction (K)', styles:{fontStyle:'italic'}},
+    ]);
+  }
+  head.push(['(g)','(g)','(g)','','(g)','(g)','(g)','(%)','(g/cm³)','(g/cm³)','(%)']);
   const body = [];
   document.querySelectorAll('#tbody tr').forEach((tr,i) => {
     body.push([
@@ -1368,7 +1450,7 @@ function exportPDF(){
   let finalY = doc.lastAutoTable.finalY + 5;
 
   // Sang trang mới nếu không đủ chỗ cho phần còn lại (ghi chú + ký tên + chân trang)
-  if(finalY > pageH - 68){
+  if(finalY > pageH - 76){
     doc.addPage();
     drawBorder();
     finalY = 14;
@@ -1376,43 +1458,49 @@ function exportPDF(){
 
   // ── Ghi chú / Remarks ─────────────────────────────────────────
   N(8.5); BLACK();
-  const rLbl = bi('Ghi chú','Remarks')+': ';
-  doc.text(rLbl, ML+2, finalY);
-  doc.text(String(data.remarks||''), ML+2+doc.getTextWidth(rLbl), finalY, {maxWidth: usW-doc.getTextWidth(rLbl)-4});
+  const rW = biRun('Ghi chú','Remarks', ML+2, finalY, {align:'left'});
+  N(8.5); doc.text(': ', ML+2+rW, finalY);
+  const rColonW = doc.getTextWidth(': ');
+  doc.text(String(data.remarks||''), ML+2+rW+rColonW, finalY, {maxWidth: usW-rW-rColonW-4});
   finalY += 7;
 
   // ── Khối lượng thể tích khô lớn nhất / Maximum dry density ────
   B(8.5);
-  const gLbl = bi('Khối lượng thể tích khô lớn nhất','Maximum dry density')+': ';
-  doc.text(gLbl, ML+2, finalY);
-  PURPLE(); doc.text(`γmax = ${data.gammaMax||''} g/cm³`, ML+2+doc.getTextWidth(gLbl), finalY);
+  const gW = biRun('Khối lượng thể tích khô lớn nhất','Maximum dry density', ML+2, finalY, {align:'left'});
+  B(8.5); doc.text(': ', ML+2+gW, finalY);
+  const gColonW = doc.getTextWidth(': ');
+  PURPLE(); doc.text(`γmax = ${data.gammaMax||''} g/cm³`, ML+2+gW+gColonW, finalY);
   BLACK();
   finalY += 10;
 
   // ── XÁC NHẬN — 3 người ký theo đúng mẫu gốc: Thí nghiệm viên, Người
   // kiểm tra, và Giám đốc (đại diện công ty) ────────────────────────
   const sx = [ML + usW*0.17, ML + usW*0.5, ML + usW*0.83];
-  N(6.8); PURPLE();
+  B(6.8); PURPLE();
   doc.text('HAI (CAMBODIA)', sx[2], finalY-6.5, {align:'center'});
   doc.text('SURVEY & CONSTRUCTION CO., LTD', sx[2], finalY-3, {align:'center'});
-  B(8.5);
-  doc.text(bi('Thí nghiệm viên','Lab Technician'), sx[0], finalY, {align:'center'});
-  doc.text(bi('Người kiểm tra','Checked by'), sx[1], finalY, {align:'center'});
-  doc.text(bi('Giám đốc','Director'), sx[2], finalY, {align:'center'});
-  finalY += 16;
-  I(8.5); BLACK();
+  B(8.5); BLUE();
+  biRun('Thí nghiệm viên','Lab Technician', sx[0], finalY, {align:'center'});
+  biRun('Người kiểm tra','Checked by', sx[1], finalY, {align:'center'});
+  biRun('Giám đốc','Director', sx[2], finalY, {align:'center'});
+  // Chừa thêm khoảng trống để có đủ chỗ ký tên tay/đóng dấu trước khi in tên.
+  finalY += 24;
+  I(8.5); BLUE();
   doc.text(data.labTech||'', sx[0], finalY, {align:'center'});
   doc.text(data.checkedBy||'', sx[1], finalY, {align:'center'});
   doc.text(data.director||'', sx[2], finalY, {align:'center'});
+  BLACK();
 
-  // ── FOOTER — luôn cố định ở cuối trang, không trôi theo nội dung ──
+  // ── FOOTER — luôn cố định ở cuối trang, đóng khung, không trôi theo nội dung ──
   const footerY = pageH - 16;
+  doc.setDrawColor(120,120,120); doc.setLineWidth(0.3);
+  doc.rect(ML, footerY-4.5, usW, 15.5, 'S');
   N(7.5); GRAY();
   doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, footerY, {align:'center'});
   doc.text('Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia', pageW/2, footerY+4, {align:'center'});
   doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, footerY+8, {align:'center'});
   N(7); doc.setTextColor(100,100,100);
-  doc.text(formCode, pageW-MR, footerY+8, {align:'right'});
+  doc.text(formCode, pageW-MR-2, footerY+8, {align:'right'});
 
   const fname = `F03_SandCone_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${isEN?'EN':'BI'}_${data.testDate||''}.pdf`;
   doc.save(fname);
