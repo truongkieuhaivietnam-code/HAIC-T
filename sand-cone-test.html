@@ -87,7 +87,7 @@
     padding:10px; display:flex; gap:8px; flex-wrap:wrap; justify-content:center; z-index:40;
     box-shadow:0 -2px 6px rgba(0,0,0,.08);
   }
-  .signoff{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .signoff{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px;}
   @media(max-width:640px){.signoff{grid-template-columns:1fr;}}
   .signoff .box{text-align:center;}
   .signoff .box .ttl{font-weight:700; font-size:12px; margin-bottom:36px;}
@@ -341,6 +341,10 @@
       <div class="box">
         <div class="ttl">Người kiểm tra / Checked by</div>
         <input id="checkedBy" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
+      </div>
+      <div class="box">
+        <div class="ttl">Giám đốc <span class="vi">/ Director</span><br><small style="font-weight:400;">HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD</small></div>
+        <input id="director" type="text" placeholder="Họ tên / Full name" style="text-align:center; margin-top:8px;">
       </div>
     </div>
     <div class="companyfoot">
@@ -915,7 +919,7 @@ function collectData(){
     supervisor: val('supervisor'), location: val('location'), testingArea: val('testingArea'),
     description: val('description'), testDate: val('testDate'), remarks: val('remarks'),
     sandFillMass: val('sandFillMass'), sandBulkDensity: val('sandBulkDensity'), gammaMax: val('gammaMax'),
-    labTech: val('labTech'), checkedBy: val('checkedBy'),
+    labTech: val('labTech'), checkedBy: val('checkedBy'), director: val('director'),
     rows
   };
 }
@@ -929,7 +933,7 @@ function setEditingUI(isEditing){
 
 function newReport(){
   if(!confirm('Tạo báo cáo mới? Dữ liệu chưa lưu sẽ mất.\nCreate new report? Unsaved data will be lost.')) return;
-  ['investor','contractor','project','supervisor','location','testingArea','description','testDate','remarks','labTech','checkedBy']
+  ['investor','contractor','project','supervisor','location','testingArea','description','testDate','remarks','labTech','checkedBy','director']
     .forEach(id => setVal(id, ''));
   setVal('sandFillMass', 1450);
   setVal('sandBulkDensity', 1.44);
@@ -1106,7 +1110,7 @@ async function loadReport(docId){
     if(!snap.exists){ showToast('Báo cáo không còn tồn tại.'); return; }
     const r = snap.data();
     ['investor','contractor','project','supervisor','location','testingArea','description','testDate','remarks',
-     'sandFillMass','sandBulkDensity','gammaMax','labTech','checkedBy'].forEach(id => setVal(id, r[id]));
+     'sandFillMass','sandBulkDensity','gammaMax','labTech','checkedBy','director'].forEach(id => setVal(id, r[id]));
     document.getElementById('tbody').innerHTML = '';
     rowCount = 0;
     (r.rows||[]).forEach(rowData => addRow(rowData));
@@ -1171,7 +1175,7 @@ function exportExcel(){
     ]);
   });
   aoa.push([]);
-  aoa.push(['Lab Technician', data.labTech, '', 'Checked by', data.checkedBy]);
+  aoa.push(['Lab Technician', data.labTech, '', 'Checked by', data.checkedBy, '', 'Director', data.director]);
   const ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [{wch:6},{wch:18},{wch:14},{wch:14},{wch:16},{wch:8},{wch:12},{wch:14},{wch:14},{wch:10},{wch:12},{wch:12},{wch:12}];
   XLSX.utils.book_append_sheet(wb, ws, 'FDT Sand Cone');
@@ -1228,7 +1232,19 @@ function exportPDF(){
   doc.setDrawColor(0,0,0); doc.setLineWidth(0.6);
   doc.line(ML,HY+HH+1,pageW-MR,HY+HH+1);
 
+  // ── Dòng "Phnom Penh, Ngày/date ..." — có trên mẫu gốc, trước đây thiếu ──
   let y = HY+HH+5;
+  const dObj = data.testDate ? new Date(data.testDate+'T00:00:00') : new Date();
+  const dd = String(dObj.getDate()).padStart(2,'0');
+  const mm = String(dObj.getMonth()+1).padStart(2,'0');
+  const yyyy = dObj.getFullYear();
+  const dateLine = isEN
+    ? `Phnom Penh, date ${dd} month ${mm} year ${yyyy}`
+    : `Phnom Penh, Ngày / date ${dd} tháng/ month ${mm} năm/ year ${yyyy}`;
+  I(8.5); PURPLE();
+  doc.text(dateLine, pageW-MR-2, y, {align:'right'});
+  BLACK();
+  y += 5.5;
 
   // ── I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION ─────────
   const secH = (txt) => {
@@ -1238,26 +1254,54 @@ function exportPDF(){
     doc.line(ML+2,y+1,ML+2+tw,y+1); BLACK();
     y += 5.5;
   };
-  const bullet = (label, value) => {
-    N(8.5); doc.text('- ', ML+2, y);
-    B(8.5); doc.text(label+': ', ML+6, y);
-    N(8.5); doc.text(String(value||''), ML+6+doc.getTextWidth(label+': '), y);
-    y += 5;
+  // ── Hàng thông tin dạng bảng có khung viền — đúng bố cục mẫu gốc ──
+  const infoLabelW = usW * 0.30;
+  const infoRow = (label, value) => {
+    const fs = 8;
+    doc.setFont('Roboto','bold'); doc.setFontSize(fs);
+    const labelLines = doc.splitTextToSize(label, infoLabelW - 4);
+    doc.setFont('Roboto','normal'); doc.setFontSize(fs);
+    const valueLines = doc.splitTextToSize(String(value||''), usW - infoLabelW - 4);
+    const lineCount = Math.max(labelLines.length, valueLines.length, 1);
+    const rowH = lineCount * 3.6 + 2.4;
+    doc.setDrawColor(120,120,120); doc.setLineWidth(0.25);
+    doc.rect(ML, y, infoLabelW, rowH, 'S');
+    doc.rect(ML+infoLabelW, y, usW-infoLabelW, rowH, 'S');
+    BLACK(); B(fs);
+    doc.text(labelLines, ML+2, y+3.6);
+    N(fs);
+    doc.text(valueLines, ML+infoLabelW+2, y+3.6);
+    y += rowH;
+  };
+  const infoRowSplit = (label1, value1, label2, value2) => {
+    const fs = 8;
+    const c1 = usW*0.17, c2 = usW*0.35, c3 = usW*0.25, c4 = usW - c1 - c2 - c3;
+    doc.setFont('Roboto','bold'); doc.setFontSize(fs);
+    const l1 = doc.splitTextToSize(label1, c1-3), l2 = doc.splitTextToSize(label2, c3-3);
+    doc.setFont('Roboto','normal'); doc.setFontSize(fs);
+    const v1 = doc.splitTextToSize(String(value1||''), c2-4), v2 = doc.splitTextToSize(String(value2||''), c4-4);
+    const rowH = Math.max(l1.length, l2.length, v1.length, v2.length, 1) * 3.6 + 2.4;
+    doc.setDrawColor(120,120,120); doc.setLineWidth(0.25);
+    let x = ML;
+    [c1,c2,c3,c4].forEach(w => { doc.rect(x,y,w,rowH,'S'); x += w; });
+    x = ML; BLACK();
+    B(fs); doc.text(l1, x+2, y+3.6); x += c1;
+    N(fs); doc.text(v1, x+2, y+3.6); x += c2;
+    B(fs); doc.text(l2, x+2, y+3.6); x += c3;
+    N(fs); doc.text(v2, x+2, y+3.6);
+    y += rowH;
   };
 
   secH(bi('I. CÁC THÔNG TIN LIÊN QUAN','PROJECT INFORMATION'));
-  bullet(bi('Chủ đầu tư','Investor'), data.investor);
-  bullet(bi('ĐV thi công','Contractor'), data.contractor);
-  bullet(bi('Công trình','Project'), data.project);
-  bullet(bi('Địa điểm XD','Location'), data.location);
-  bullet(bi('Khu vực TN','Testing Area'), data.testingArea);
-  // Mô tả + Ngày TN trên cùng 1 dòng, đúng mẫu gốc
-  N(8.5); doc.text('- ', ML+2, y);
-  B(8.5); const dLbl = bi('Mô tả','Description')+': '; doc.text(dLbl, ML+6, y);
-  N(8.5); doc.text(String(data.description||''), ML+6+doc.getTextWidth(dLbl), y, {maxWidth: usW*0.55});
-  B(8.5); const tLbl = bi('Ngày TN hiện trường','Testing date')+': '; doc.text(tLbl, ML+2+usW*0.62, y);
-  N(8.5); doc.text(String(data.testDate||''), ML+2+usW*0.62+doc.getTextWidth(tLbl), y);
-  y += 7;
+  // ĐÚNG mẫu gốc: dòng đầu là "Tư vấn giám sát / Consultant" (field supervisor),
+  // KHÔNG phải "Chủ đầu tư / Investor" — trước đây in nhầm field.
+  infoRow(bi('Tư vấn giám sát','Consultant'), data.supervisor);
+  infoRow(bi('ĐV thi công','Contractor'), data.contractor);
+  infoRow(bi('Công trình','Project'), data.project);
+  infoRow(bi('Địa điểm XD','Location'), data.location);
+  infoRow(bi('Khu vực TN','Testing Area'), data.testingArea);
+  infoRowSplit(bi('Mô tả','Description'), data.description, bi('Ngày TN hiện trường','Field testing date'), data.testDate);
+  y += 2;
 
   // ── II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT ──────────────────
   secH(bi('II. KẾT QUẢ THÍ NGHIỆM','TESTING RESULT'));
@@ -1321,7 +1365,7 @@ function exportPDF(){
   let finalY = doc.lastAutoTable.finalY + 5;
 
   // Sang trang mới nếu không đủ chỗ cho phần còn lại (ghi chú + ký tên + chân trang)
-  if(finalY > pageH - 55){
+  if(finalY > pageH - 60){
     doc.addPage();
     drawBorder();
     finalY = 14;
@@ -1340,19 +1384,23 @@ function exportPDF(){
   doc.text(gLbl, ML+2, finalY);
   PURPLE(); doc.text(`γmax = ${data.gammaMax||''} g/cm³`, ML+2+doc.getTextWidth(gLbl), finalY);
   BLACK();
-  finalY += 10;
+  finalY += 12;
 
-  // ── XÁC NHẬN — đúng 2 người ký theo mẫu gốc (không phải 4) ────
-  const sx = [ML + usW*0.25, ML + usW*0.75];
-  const sigLabels = [
-    [bi('Thí nghiệm viên','Lab Technician'), data.labTech],
-    [bi('Người kiểm tra','Checked by'), data.checkedBy],
-  ];
-  B(8.5); PURPLE();
-  sigLabels.forEach(([lbl], i) => doc.text(lbl, sx[i], finalY, {align:'center'}));
+  // ── XÁC NHẬN — 3 người ký theo đúng mẫu gốc: Thí nghiệm viên, Người
+  // kiểm tra, và Giám đốc (đại diện công ty) ────────────────────────
+  const sx = [ML + usW*0.17, ML + usW*0.5, ML + usW*0.83];
+  N(6.8); PURPLE();
+  doc.text('HAI (CAMBODIA)', sx[2], finalY-6.5, {align:'center'});
+  doc.text('SURVEY & CONSTRUCTION CO., LTD', sx[2], finalY-3, {align:'center'});
+  B(8.5);
+  doc.text(bi('Thí nghiệm viên','Lab Technician'), sx[0], finalY, {align:'center'});
+  doc.text(bi('Người kiểm tra','Checked by'), sx[1], finalY, {align:'center'});
+  doc.text(bi('Giám đốc','Director'), sx[2], finalY, {align:'center'});
   finalY += 16;
   I(8.5); BLACK();
-  sigLabels.forEach(([,val], i) => doc.text(val||'', sx[i], finalY, {align:'center'}));
+  doc.text(data.labTech||'', sx[0], finalY, {align:'center'});
+  doc.text(data.checkedBy||'', sx[1], finalY, {align:'center'});
+  doc.text(data.director||'', sx[2], finalY, {align:'center'});
 
   // ── FOOTER ───────────────────────────────────────────────────
   finalY += 10;
