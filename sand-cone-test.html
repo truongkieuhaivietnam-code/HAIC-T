@@ -1301,7 +1301,7 @@ function exportPDF(){
   infoRow(bi('Địa điểm XD','Location'), data.location);
   infoRow(bi('Khu vực TN','Testing Area'), data.testingArea);
   infoRowSplit(bi('Mô tả','Description'), data.description, bi('Ngày TN hiện trường','Field testing date'), data.testDate);
-  y += 2;
+  y += 6;
 
   // ── II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT ──────────────────
   secH(bi('II. KẾT QUẢ THÍ NGHIỆM','TESTING RESULT'));
@@ -1313,6 +1313,9 @@ function exportPDF(){
   y += 6;
 
   // ── BẢNG KẾT QUẢ — đúng cấu trúc 3 nhóm cột như mẫu gốc ──────
+  // th2: ghép Việt/Anh xuống 2 dòng cho cột hẹp (khác bi() ghép ngang bằng "/")
+  // — trước đây dùng "isEN ? en : vi" nên ở chế độ song ngữ chỉ hiện tiếng Việt.
+  const th2 = (vi, en) => isEN ? en : `${vi}\n${en}`;
   const head = [
     [
       {content:bi('STT','No.'), rowSpan:3},
@@ -1322,17 +1325,17 @@ function exportPDF(){
       {content:bi('Khối lượng thể tích','Density'), colSpan:3},
     ],
     [
-      {content:isEN?'Mass of Sand-Cone\nbefore pouring':'KL phễu cát\ntrước khi rót'},
-      {content:isEN?'Mass of Sand-Cone\nafter pouring':'KL phễu cát\nsau khi rót'},
-      {content:isEN?'Mass of material\nfrom test hole':'KL vật liệu\ntrong hố'},
-      {content:isEN?'ID Can':'Lon ẩm số'},
-      {content:isEN?'Mass of can':'KL lon ẩm'},
-      {content:isEN?'Mass of can\n+ moist material':'KL lon +\nvật liệu ướt'},
-      {content:isEN?'Mass of can\n+ dry material':'KL lon +\nvật liệu khô'},
-      {content:isEN?'Moisture\ncontent':'Độ ẩm'},
-      {content:isEN?'Wet\ndensity':'KL thể tích\ntự nhiên'},
-      {content:isEN?'Dry\ndensity':'KL thể tích\nkhô'},
-      {content:isEN?'Compaction\n(K)':'Độ chặt\nlu lèn (K)'},
+      {content:th2('KL phễu cát trước khi rót','Mass of Sand-Cone before pouring')},
+      {content:th2('KL phễu cát sau khi rót','Mass of Sand-Cone after pouring')},
+      {content:th2('KL vật liệu trong hố','Mass of material from test hole')},
+      {content:th2('Lon ẩm số','ID Can')},
+      {content:th2('KL lon ẩm','Mass of can')},
+      {content:th2('KL lon + vật liệu ướt','Mass of can + moist material')},
+      {content:th2('KL lon + vật liệu khô','Mass of can + dry material')},
+      {content:th2('Độ ẩm','Moisture content')},
+      {content:th2('KL thể tích tự nhiên','Wet density')},
+      {content:th2('KL thể tích khô','Dry density')},
+      {content:th2('Độ chặt lu lèn (K)','Compaction (K)')},
     ],
     ['(g)','(g)','(g)','','(g)','(g)','(g)','(%)','(g/cm³)','(g/cm³)','(%)'],
   ];
@@ -1365,7 +1368,7 @@ function exportPDF(){
   let finalY = doc.lastAutoTable.finalY + 5;
 
   // Sang trang mới nếu không đủ chỗ cho phần còn lại (ghi chú + ký tên + chân trang)
-  if(finalY > pageH - 60){
+  if(finalY > pageH - 68){
     doc.addPage();
     drawBorder();
     finalY = 14;
@@ -1384,7 +1387,7 @@ function exportPDF(){
   doc.text(gLbl, ML+2, finalY);
   PURPLE(); doc.text(`γmax = ${data.gammaMax||''} g/cm³`, ML+2+doc.getTextWidth(gLbl), finalY);
   BLACK();
-  finalY += 12;
+  finalY += 10;
 
   // ── XÁC NHẬN — 3 người ký theo đúng mẫu gốc: Thí nghiệm viên, Người
   // kiểm tra, và Giám đốc (đại diện công ty) ────────────────────────
@@ -1402,15 +1405,14 @@ function exportPDF(){
   doc.text(data.checkedBy||'', sx[1], finalY, {align:'center'});
   doc.text(data.director||'', sx[2], finalY, {align:'center'});
 
-  // ── FOOTER ───────────────────────────────────────────────────
-  finalY += 10;
-  if(finalY > pageH - 20) finalY = pageH - 20;
+  // ── FOOTER — luôn cố định ở cuối trang, không trôi theo nội dung ──
+  const footerY = pageH - 16;
   N(7.5); GRAY();
-  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, finalY, {align:'center'});
-  doc.text('Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia', pageW/2, finalY+4, {align:'center'});
-  doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, finalY+8, {align:'center'});
+  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', pageW/2, footerY, {align:'center'});
+  doc.text('Address: No.06, Street D, Sangkat Krang Tnorng, Khan Sen Sok, Phnom Penh, Cambodia', pageW/2, footerY+4, {align:'center'});
+  doc.text('Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com', pageW/2, footerY+8, {align:'center'});
   N(7); doc.setTextColor(100,100,100);
-  doc.text(formCode, pageW-MR, finalY+8, {align:'right'});
+  doc.text(formCode, pageW-MR, footerY+8, {align:'right'});
 
   const fname = `F03_SandCone_${(data.project||'report').replace(/[^a-z0-9]+/gi,'_')}_${isEN?'EN':'BI'}_${data.testDate||''}.pdf`;
   doc.save(fname);
