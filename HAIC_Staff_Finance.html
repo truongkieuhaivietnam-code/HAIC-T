@@ -2537,22 +2537,71 @@ function sanitizeForFirestore(value) {
   return out;
 }
 
+let pendingPersistFlush = null; // Promise của lượt ghi Firestore đang chạy dở (nếu có)
+
+function flushPersist() {
+  if (!firebaseReady || !db) return Promise.resolve();
+  try {
+    const p = db.collection(COLLECTION_NAME).doc("main")
+      .set(sanitizeForFirestore(STORE), { merge: false })
+      .catch(err => console.warn("Firestore save failed:", err));
+    pendingPersistFlush = p;
+    p.finally(() => { if (pendingPersistFlush === p) pendingPersistFlush = null; });
+    return p;
+  } catch (syncErr) {
+    console.warn("Firestore save threw synchronously (dữ liệu không hợp lệ?):", syncErr);
+    return Promise.resolve();
+  }
+}
+
 function persistDebounced() {
   STORE._savedBy = currentUser ? currentUser.id : "system";
   STORE._savedAt = nowISO();
   lsSaveAll(STORE);
   if (persistTimer) clearTimeout(persistTimer);
   persistTimer = setTimeout(() => {
-    if (firebaseReady && db) {
-      try {
-        db.collection(COLLECTION_NAME).doc("main").set(sanitizeForFirestore(STORE), { merge: false })
-          .catch(err => console.warn("Firestore save failed:", err));
-      } catch (syncErr) {
-        console.warn("Firestore save threw synchronously (dữ liệu không hợp lệ?):", syncErr);
-      }
-    }
+    persistTimer = null;
+    flushPersist();
   }, 600);
 }
+
+// SỬA LỖI MẤT DỮ LIỆU KHI ĐÓNG TAB QUÁ NHANH (2026-08-22): persistDebounced()
+// ở trên đợi 600ms trước khi THỰC SỰ ghi lên Firestore (để gộp nhiều thao
+// tác gõ liên tiếp lại thành 1 lần ghi, đỡ tốn mạng). Nhưng màn hình lại
+// cập nhật "đã lưu" NGAY LẬP TỨC (vì chỉ là vẽ lại từ bộ nhớ trong tab,
+// không phụ thuộc việc ghi mạng đã xong hay chưa). Nếu người dùng đóng
+// tab/thoát trình duyệt ẩn danh trong đúng 600ms đó, lượt ghi lên Firestore
+// KHÔNG BAO GIỜ XẢY RA — dữ liệu biến mất hoàn toàn dù vừa "thấy đã lưu".
+// Ở tab ẩn danh còn nặng hơn: không còn localStorage dự phòng khi đóng
+// tab, nên mất là mất hẳn, không cách nào cứu lại (đã xảy ra thật: anh
+// tạo thử 1 khoản chi ở tab ẩn danh, thấy hiện lên, đóng tab rồi mở lại
+// thì mất — do lượt ghi 600ms chưa kịp chạy thì tab đã đóng).
+//
+// CÁCH SỬA: theo dõi mọi thời điểm tab CÓ THỂ sắp đóng (ẩn đi, chuyển tab,
+// đóng hẳn) — nếu vẫn còn lượt lưu đang chờ (persistTimer chưa chạy), kích
+// hoạt ghi NGAY LẬP TỨC thay vì đợi hết 600ms, để tăng tối đa khả năng kịp
+// hoàn tất trước khi trang đóng hẳn.
+function flushPendingPersistIfAny() {
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+    flushPersist();
+  }
+}
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") flushPendingPersistIfAny();
+});
+window.addEventListener("pagehide", flushPendingPersistIfAny);
+window.addEventListener("beforeunload", (e) => {
+  if (persistTimer || pendingPersistFlush) {
+    flushPendingPersistIfAny();
+    // Báo cho trình duyệt biết còn thao tác chưa chắc đã ghi xong, để hỏi
+    // lại người dùng có chắc muốn rời trang không — cho thêm chút thời
+    // gian để lượt ghi kịp hoàn tất trước khi trang thực sự đóng.
+    e.preventDefault();
+    e.returnValue = "";
+  }
+});
 
 function persistNow() {
   STORE._savedBy = currentUser ? currentUser.id : "system";
@@ -2575,6 +2624,8 @@ function persistNow() {
     // công hay thất bại kiểu gì.
     try {
       const firestoreWrite = db.collection(COLLECTION_NAME).doc("main").set(sanitizeForFirestore(STORE), { merge: false });
+      pendingPersistFlush = firestoreWrite;
+      firestoreWrite.finally(() => { if (pendingPersistFlush === firestoreWrite) pendingPersistFlush = null; });
       const timeout = new Promise((_, reject) =>
         setTimeout(() => reject(new Error("Firestore save timed out after 15s")), 15000)
       );
