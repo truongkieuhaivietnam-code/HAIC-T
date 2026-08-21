@@ -4544,34 +4544,43 @@ function handleSettlementReceiptUpload(itemId, inputEl) {
 // Firebase Storage, thay bằng đường link nhỏ, rồi lưu lại. Chạy 1 LẦN
 // DUY NHẤT từ Console (F12) bằng lệnh: migrateReceiptsToStorage()
 window.migrateReceiptsToStorage = async function() {
-  if (!firebaseReady || !storage) {
-    console.log("⚠️ Chưa kết nối được Storage, thử lại sau.");
-    return;
-  }
-  let migrated = 0, failed = 0, skipped = 0;
+  let migrated = 0, failed = 0, stripped = 0, skipped = 0;
   for (const adv of (STORE.advances || [])) {
     const items = adv.settlement && adv.settlement.items;
     if (!items || !items.length) continue;
     for (const it of items) {
       if (!it.receipt || !it.receipt.startsWith("data:")) { skipped++; continue; }
-      try {
-        const res = await fetch(it.receipt);
-        const blob = await res.blob();
-        const path = `receipts/${adv.id}/${it.id}_${Date.now()}_migrated.jpg`;
-        const ref = storage.ref(path);
-        await ref.put(blob);
-        const url = await ref.getDownloadURL();
-        it.receipt = url;
-        migrated++;
-        console.log(`✅ Đã chuyển ảnh biên lai: tạm ứng ${adv.id} / mục ${it.id}`);
-      } catch (err) {
+      let uploaded = false;
+      if (firebaseReady && storage) {
+        try {
+          const res = await fetch(it.receipt);
+          const blob = await res.blob();
+          const path = `receipts/${adv.id}/${it.id}_${Date.now()}_migrated.jpg`;
+          const ref = storage.ref(path);
+          await ref.put(blob);
+          const url = await ref.getDownloadURL();
+          it.receipt = url;
+          migrated++;
+          uploaded = true;
+          console.log(`✅ Đã chuyển ảnh biên lai: tạm ứng ${adv.id} / mục ${it.id}`);
+        } catch (err) {
+          console.warn(`⚠️ Không tải lên Storage được (thường do CORS chưa cấu hình) — tạm ứng ${adv.id} / mục ${it.id}:`, err);
+        }
+      }
+      // Không tải lên Storage được (VD Storage chưa cấu hình CORS cho domain
+      // này) — thay vì để ảnh nặng kẹt mãi trong document khiến CẢ CÔNG TY
+      // không lưu được gì, XÓA BỎ ảnh đó khỏi dữ liệu (giữ nguyên các thông
+      // tin khác của khoản quyết toán, chỉ mất riêng ảnh biên lai đó).
+      if (!uploaded) {
+        it.receipt = null;
+        it.receiptRemovedNote = "Ảnh biên lai gốc đã bị gỡ để khắc phục lỗi vượt dung lượng Firestore (2026-08-23)";
+        stripped++;
         failed++;
-        console.warn(`❌ Lỗi chuyển ảnh (tạm ứng ${adv.id} / mục ${it.id}):`, err);
       }
     }
   }
-  console.log(`=== Hoàn tất quét: ${migrated} ảnh đã chuyển, ${failed} lỗi, ${skipped} mục không có ảnh base64 cần chuyển ===`);
-  if (migrated === 0) {
+  console.log(`=== Hoàn tất quét: ${migrated} ảnh đã chuyển lên Storage, ${stripped} ảnh phải gỡ bỏ (không tải lên được), ${skipped} mục không có ảnh base64 cần xử lý ===`);
+  if (migrated === 0 && stripped === 0) {
     console.log("Không có ảnh nào cần dọn — có thể vấn đề vượt 1MB nằm ở chỗ khác, báo lại cho người phát triển app.");
     return;
   }
