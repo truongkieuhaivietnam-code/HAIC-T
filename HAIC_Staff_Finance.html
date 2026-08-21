@@ -2662,6 +2662,61 @@ function initRealtimeSync(onUpdate) {
   });
 }
 
+// SỬA LỖI MẤT DỮ LIỆU TRÊN ĐIỆN THOẠI (2026-08-22): đồng bộ realtime ở
+// trên chỉ có tác dụng khi JavaScript của tab còn đang CHẠY. Nhưng iOS/
+// Android thường TẠM DỪNG HẲN JavaScript của tab chạy nền khi khoá màn
+// hình hoặc chuyển sang app khác — nghĩa là listener realtime cũng
+// "ngủ" theo dù code đúng. Nếu ai đó mở app trên điện thoại từ tối hôm
+// trước rồi khoá máy qua đêm, tab đó thực chất đã quay lại y hệt tình
+// trạng "tab cũ" ban đầu: dữ liệu trong bộ nhớ cũ, và chỉ cần họ thao
+// tác/lưu bất kỳ gì khi mở lại máy là ghi đè mất dữ liệu người khác đã
+// thêm vào trong lúc điện thoại bị khoá (đã xảy ra thật với đề xuất tạm
+// ứng và các khoản chi của Chea Sok, Sambat, Van Vith).
+//
+// CÁCH SỬA: theo dõi thời điểm tab bị ẩn đi (khoá màn hình/chuyển app).
+// Khi tab hiện lại sau một khoảng đủ lâu, coi như dữ liệu trong bộ nhớ
+// không còn đáng tin — tự tải lại trang để lấy đúng dữ liệu mới nhất
+// trước khi cho phép lưu bất kỳ gì. Nếu đang có hộp thoại nhập liệu mở
+// dở (để không làm mất nội dung đang gõ dở), chỉ âm thầm đồng bộ lại
+// dữ liệu nền thay vì tải lại cả trang.
+const STALE_TAB_RELOAD_THRESHOLD_MS = 30 * 1000; // ẩn quá 30 giây coi như có thể đã bị hệ điều hành treo
+let tabHiddenAt = null;
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    tabHiddenAt = Date.now();
+    return;
+  }
+  if (tabHiddenAt === null) return;
+  const hiddenDuration = Date.now() - tabHiddenAt;
+  tabHiddenAt = null;
+  if (hiddenDuration < STALE_TAB_RELOAD_THRESHOLD_MS) return; // chỉ vắng mặt chốc lát, bỏ qua
+  if (!firebaseReady || !db || !currentUser) return; // chưa đăng nhập/chưa sẵn sàng thì thôi
+
+  const hasOpenModal = document.querySelector(".modal-overlay.active");
+  if (hasOpenModal) {
+    // Đang có form dở dang trên màn hình — không tải lại trang (tránh làm
+    // mất nội dung đang gõ), chỉ âm thầm đồng bộ lại dữ liệu nền để lần
+    // lưu tiếp theo chắc chắn ghi đè trên đúng bản mới nhất.
+    const docRef = db.collection(COLLECTION_NAME).doc("main");
+    docRef.get().then(snap => {
+      if (!snap.exists) return;
+      const remote = snap.data();
+      if (!remote) return;
+      if (remote._savedAt && remote._savedAt === lastSyncedSavedAt) return;
+      STORE = remote;
+      ensureStructure();
+      lsSaveAll(STORE);
+      lastSyncedSavedAt = remote._savedAt || null;
+      console.log(`🔄 Đồng bộ lại sau ${Math.round(hiddenDuration/1000)}s tab bị ẩn (đang có form mở nên không tải lại trang).`);
+      renderAll();
+    }).catch(err => console.warn("Re-sync after visibility change failed:", err));
+  } else {
+    console.log(`🔄 Tab vừa hoạt động trở lại sau ${Math.round(hiddenDuration/1000)}s bị ẩn — tải lại trang để đảm bảo dữ liệu mới nhất.`);
+    location.reload();
+  }
+});
+
 function genId(prefix) {
   return prefix + "_" + Date.now().toString(36) + "_" + Math.random().toString(36).substr(2, 6);
 }
