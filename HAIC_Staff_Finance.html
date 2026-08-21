@@ -2539,17 +2539,47 @@ function sanitizeForFirestore(value) {
 
 let pendingPersistFlush = null; // Promise của lượt ghi Firestore đang chạy dở (nếu có)
 
+// SỬA LỖI "GHI THẤT BẠI MÀ KHÔNG AI BIẾT" (2026-08-23): trước đây khi ghi
+// Firestore thất bại (hết dung lượng, vượt giới hạn 1MB/document, mất
+// mạng, hay bất kỳ lý do gì), lỗi CHỈ được ghi vào console — nơi không ai
+// xem tới — trong khi màn hình đã báo "đã lưu" từ trước đó rồi (vì UI cập
+// nhật ngay từ bộ nhớ, không đợi kết quả ghi mạng). Người dùng hoàn toàn
+// không biết dữ liệu của mình chưa thực sự lên Firestore. Giờ báo thẳng
+// lên màn hình bằng thông báo đỏ, đứng yên (không tự biến mất) để không
+// ai bỏ lỡ.
+function reportPersistFailure(err) {
+  console.warn("Firestore save failed:", err);
+  const code = err && err.code ? err.code : "";
+  let hint = "";
+  if (code === "resource-exhausted") {
+    hint = " (có thể đã hết hạn mức miễn phí Firestore trong ngày)";
+  } else if (code === "invalid-argument" || (err && /longer than|exceeds|maximum/i.test(err.message || ""))) {
+    hint = " (có thể dữ liệu đã vượt giới hạn 1MB/document của Firestore — cần báo ngay cho người phát triển app)";
+  } else if (code === "permission-denied") {
+    hint = " (tài khoản có thể đã bị khoá quyền ghi)";
+  } else if (code === "unavailable" || !navigator.onLine) {
+    hint = " (mất kết nối mạng)";
+  }
+  const toast = document.getElementById("toast");
+  if (toast) {
+    toast.textContent = `⚠️ LƯU THẤT BẠI${hint} — vui lòng chụp màn hình này và báo ngay, đừng thoát trang!`;
+    toast.className = "toast show error";
+    if (toastTimer) clearTimeout(toastTimer);
+    // Không tự ẩn — lỗi lưu là nghiêm trọng, phải để người dùng chủ động đóng/thấy.
+  }
+}
+
 function flushPersist() {
   if (!firebaseReady || !db) return Promise.resolve();
   try {
     const p = db.collection(COLLECTION_NAME).doc("main")
       .set(sanitizeForFirestore(STORE), { merge: false })
-      .catch(err => console.warn("Firestore save failed:", err));
+      .catch(err => { reportPersistFailure(err); });
     pendingPersistFlush = p;
     p.finally(() => { if (pendingPersistFlush === p) pendingPersistFlush = null; });
     return p;
   } catch (syncErr) {
-    console.warn("Firestore save threw synchronously (dữ liệu không hợp lệ?):", syncErr);
+    reportPersistFailure(syncErr);
     return Promise.resolve();
   }
 }
@@ -2624,11 +2654,11 @@ function persistNow() {
         setTimeout(() => reject(new Error("Firestore save timed out after 15s")), 15000)
       );
       return Promise.race([firestoreWrite, timeout]).catch(err => {
-        console.warn("Firestore save failed or timed out:", err);
+        reportPersistFailure(err);
         throw err; // để caller (VD confirmSettlement) biết mà báo đúng cho người dùng
       });
     } catch (syncErr) {
-      console.warn("Firestore save threw synchronously (dữ liệu không hợp lệ?):", syncErr);
+      reportPersistFailure(syncErr);
       return Promise.reject(syncErr);
     }
   }
