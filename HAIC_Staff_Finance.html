@@ -7,6 +7,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -2287,6 +2288,7 @@ const firebaseConfig = {
 
 let db = null;
 let auth = null;
+let storage = null;
 let firebaseReady = false;
 
 try {
@@ -2295,6 +2297,7 @@ try {
   }
   db = firebase.firestore();
   auth = firebase.auth();
+  storage = firebase.storage();
   firebaseReady = true;
 } catch (e) {
   console.warn("Firebase init failed, using localStorage only:", e);
@@ -4480,6 +4483,7 @@ function renderSettlementItems() {
         <div class="form-group">
           <label>${t("lblSettlementItemReceipt")}</label>
           <input type="file" accept="image/*" onchange="handleSettlementReceiptUpload('${it.id}', this)">
+          ${it.receiptUploading ? `<div style="font-size:.85em;color:var(--text-muted);margin-top:6px;">⏳ ${currentLang === "vi" ? "Đang tải ảnh lên..." : "Uploading photo..."}</div>` : ""}
           ${it.receipt ? `<img src="${it.receipt}" style="max-width:120px; border-radius:8px; margin-top:6px;">` : ""}
         </div>
         <button class="btn btn-danger btn-sm" onclick="removeSettlementItemRow('${it.id}')">${t("btnRemoveItem")}</button>
@@ -4502,16 +4506,83 @@ function updateSettlementItem(itemId, field, value) {
 function handleSettlementReceiptUpload(itemId, inputEl) {
   const file = inputEl.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = () => {
-    const item = settlementItems.find(it => it.id === itemId);
-    if (item) {
-      item.receipt = reader.result;
-      renderSettlementItems();
-    }
-  };
-  reader.readAsDataURL(file);
+  const item = settlementItems.find(it => it.id === itemId);
+  if (!item) return;
+
+  // SỬA LỖI VƯỢT GIỚI HẠN 1MB/DOCUMENT CỦA FIRESTORE (2026-08-23): trước
+  // đây ảnh biên lai được đọc thành base64 (readAsDataURL) rồi NHÉT THẲNG
+  // vào dữ liệu tạm ứng — mỗi ảnh vài trăm KB cộng dồn qua nhiều lượt
+  // quyết toán đã làm document chính vượt 1MB, khiến CẢ CÔNG TY không lưu
+  // được gì nữa. Giờ ảnh được tải lên Firebase Storage (dịch vụ lưu file
+  // riêng, không giới hạn 1MB) — Firestore chỉ lưu 1 đường link nhỏ (vài
+  // chục byte) trỏ tới ảnh đó, không còn phình to nữa.
+  if (!firebaseReady || !storage) {
+    showToast(currentLang === "vi" ? "Chưa kết nối được máy chủ lưu ảnh, thử lại sau." : "Storage not available, please retry later.", "error");
+    return;
+  }
+  item.receiptUploading = true;
+  renderSettlementItems();
+
+  const path = `receipts/${currentSettlementAdvanceId}/${itemId}_${Date.now()}_${file.name}`;
+  const ref = storage.ref(path);
+  ref.put(file).then(() => ref.getDownloadURL()).then(url => {
+    item.receipt = url;
+    item.receiptUploading = false;
+    renderSettlementItems();
+  }).catch(err => {
+    console.warn("Tải ảnh biên lai lên Storage thất bại:", err);
+    item.receiptUploading = false;
+    renderSettlementItems();
+    showToast(currentLang === "vi" ? "Tải ảnh lên thất bại, thử lại." : "Photo upload failed, please retry.", "error");
+  });
 }
+
+// DỌN DẸP DỮ LIỆU CŨ (2026-08-23): các ảnh biên lai được lưu TRƯỚC bản vá
+// lỗi 1MB/document vẫn còn nằm dạng base64 ngay trong dữ liệu tạm ứng,
+// khiến document chính vượt giới hạn 1MB và CẢ CÔNG TY không lưu được gì
+// nữa. Hàm này quét toàn bộ tạm ứng, chuyển từng ảnh biên lai base64 lên
+// Firebase Storage, thay bằng đường link nhỏ, rồi lưu lại. Chạy 1 LẦN
+// DUY NHẤT từ Console (F12) bằng lệnh: migrateReceiptsToStorage()
+window.migrateReceiptsToStorage = async function() {
+  if (!firebaseReady || !storage) {
+    console.log("⚠️ Chưa kết nối được Storage, thử lại sau.");
+    return;
+  }
+  let migrated = 0, failed = 0, skipped = 0;
+  for (const adv of (STORE.advances || [])) {
+    const items = adv.settlement && adv.settlement.items;
+    if (!items || !items.length) continue;
+    for (const it of items) {
+      if (!it.receipt || !it.receipt.startsWith("data:")) { skipped++; continue; }
+      try {
+        const res = await fetch(it.receipt);
+        const blob = await res.blob();
+        const path = `receipts/${adv.id}/${it.id}_${Date.now()}_migrated.jpg`;
+        const ref = storage.ref(path);
+        await ref.put(blob);
+        const url = await ref.getDownloadURL();
+        it.receipt = url;
+        migrated++;
+        console.log(`✅ Đã chuyển ảnh biên lai: tạm ứng ${adv.id} / mục ${it.id}`);
+      } catch (err) {
+        failed++;
+        console.warn(`❌ Lỗi chuyển ảnh (tạm ứng ${adv.id} / mục ${it.id}):`, err);
+      }
+    }
+  }
+  console.log(`=== Hoàn tất quét: ${migrated} ảnh đã chuyển, ${failed} lỗi, ${skipped} mục không có ảnh base64 cần chuyển ===`);
+  if (migrated === 0) {
+    console.log("Không có ảnh nào cần dọn — có thể vấn đề vượt 1MB nằm ở chỗ khác, báo lại cho người phát triển app.");
+    return;
+  }
+  console.log("Đang lưu lại dữ liệu đã dọn dẹp lên Firestore...");
+  try {
+    await persistNow();
+    console.log("✅✅✅ ĐÃ LƯU THÀNH CÔNG! Document giờ đã giảm dung lượng đáng kể, mọi người có thể lưu bình thường trở lại.");
+  } catch (err) {
+    console.warn("❌ Vẫn còn lỗi khi lưu — báo lại cho người phát triển app kèm nội dung lỗi này:", err);
+  }
+};
 
 function updateSettlementTotals() {
   const adv = STORE.advances.find(a => a.id === currentSettlementAdvanceId);
