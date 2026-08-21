@@ -2554,47 +2554,41 @@ function flushPersist() {
   }
 }
 
+// SỬA LỖI MẤT DỮ LIỆU (2026-08-23): trước đây persistDebounced() CỐ TÌNH
+// đợi 600ms trước khi ghi lên Firestore, với mục đích gộp nhiều thao tác
+// gõ liên tiếp lại thành 1 lần ghi. Nhưng rà lại toàn bộ code thì phát
+// hiện: tất cả 35 chỗ gọi persistDebounced() đều chỉ gọi ĐÚNG 1 LẦN ngay
+// sau 1 hành động bấm nút (Lưu/Xóa/Duyệt...), không có chỗ nào gọi liên
+// tục theo từng phím gõ cả — nghĩa là 600ms chờ đó không đem lại lợi ích
+// gộp lệnh nào thực sự, mà CHỈ THÊM RA một khoảng thời gian rủi ro: nếu
+// người dùng đóng tab/thoát trình duyệt trong đúng 600ms đó, lượt ghi
+// không bao giờ xảy ra — dữ liệu mất hẳn dù màn hình đã báo "đã lưu".
+// Vì vậy bỏ hẳn độ trễ này — persistDebounced() giờ ghi lên Firestore
+// NGAY LẬP TỨC giống persistNow(), giữ nguyên tên hàm để không phải sửa
+// lại 35 chỗ đang gọi nó.
 function persistDebounced() {
   STORE._savedBy = currentUser ? currentUser.id : "system";
   STORE._savedAt = nowISO();
   lsSaveAll(STORE);
-  if (persistTimer) clearTimeout(persistTimer);
-  persistTimer = setTimeout(() => {
-    persistTimer = null;
-    flushPersist();
-  }, 600);
+  if (persistTimer) { clearTimeout(persistTimer); persistTimer = null; }
+  flushPersist();
 }
 
-// SỬA LỖI MẤT DỮ LIỆU KHI ĐÓNG TAB QUÁ NHANH (2026-08-22): persistDebounced()
-// ở trên đợi 600ms trước khi THỰC SỰ ghi lên Firestore (để gộp nhiều thao
-// tác gõ liên tiếp lại thành 1 lần ghi, đỡ tốn mạng). Nhưng màn hình lại
-// cập nhật "đã lưu" NGAY LẬP TỨC (vì chỉ là vẽ lại từ bộ nhớ trong tab,
-// không phụ thuộc việc ghi mạng đã xong hay chưa). Nếu người dùng đóng
-// tab/thoát trình duyệt ẩn danh trong đúng 600ms đó, lượt ghi lên Firestore
-// KHÔNG BAO GIỜ XẢY RA — dữ liệu biến mất hoàn toàn dù vừa "thấy đã lưu".
-// Ở tab ẩn danh còn nặng hơn: không còn localStorage dự phòng khi đóng
-// tab, nên mất là mất hẳn, không cách nào cứu lại (đã xảy ra thật: anh
-// tạo thử 1 khoản chi ở tab ẩn danh, thấy hiện lên, đóng tab rồi mở lại
-// thì mất — do lượt ghi 600ms chưa kịp chạy thì tab đã đóng).
+// SỬA LỖI MẤT DỮ LIỆU KHI ĐÓNG TAB QUÁ NHANH (2026-08-23): persistDebounced()
+// giờ đã ghi lên Firestore NGAY LẬP TỨC (xem chú thích ở hàm đó), không còn
+// đợi 600ms nữa. Nhưng bản thân việc ghi lên mạng vẫn cần thời gian (độ trễ
+// mạng, dù chỉ vài chục/vài trăm mili-giây) — nếu người dùng đóng tab ngay
+// trong khoảnh khắc đó, trình duyệt có thể cắt kết nối mạng giữa chừng
+// trước khi Firestore kịp xác nhận, khiến dữ liệu vẫn có thể mất dù đã bắt
+// đầu ghi (đã xảy ra thật ở tab ẩn danh: tạo khoản chi → thấy hiện lên →
+// đóng tab ngay → mở lại thì mất).
 //
-// CÁCH SỬA: theo dõi mọi thời điểm tab CÓ THỂ sắp đóng (ẩn đi, chuyển tab,
-// đóng hẳn) — nếu vẫn còn lượt lưu đang chờ (persistTimer chưa chạy), kích
-// hoạt ghi NGAY LẬP TỨC thay vì đợi hết 600ms, để tăng tối đa khả năng kịp
-// hoàn tất trước khi trang đóng hẳn.
-function flushPendingPersistIfAny() {
-  if (persistTimer) {
-    clearTimeout(persistTimer);
-    persistTimer = null;
-    flushPersist();
-  }
-}
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") flushPendingPersistIfAny();
-});
-window.addEventListener("pagehide", flushPendingPersistIfAny);
+// CÁCH SỬA THÊM: theo dõi thời điểm tab CÓ THỂ sắp đóng — nếu đang có lượt
+// ghi CHƯA HOÀN TẤT (pendingPersistFlush), chặn việc rời trang lại và hỏi
+// xác nhận, cho thêm thời gian để lượt ghi kịp hoàn tất trước khi trang
+// thực sự đóng.
 window.addEventListener("beforeunload", (e) => {
-  if (persistTimer || pendingPersistFlush) {
-    flushPendingPersistIfAny();
+  if (pendingPersistFlush) {
     // Báo cho trình duyệt biết còn thao tác chưa chắc đã ghi xong, để hỏi
     // lại người dùng có chắc muốn rời trang không — cho thêm chút thời
     // gian để lượt ghi kịp hoàn tất trước khi trang thực sự đóng.
