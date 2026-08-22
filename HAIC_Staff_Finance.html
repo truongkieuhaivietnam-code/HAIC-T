@@ -4557,7 +4557,8 @@ window.migrateReceiptsToStorage = async function() {
           const blob = await res.blob();
           const path = `receipts/${adv.id}/${it.id}_${Date.now()}_migrated.jpg`;
           const ref = storage.ref(path);
-          await ref.put(blob);
+          const uploadTimeout = new Promise((_, reject) => setTimeout(() => reject(new Error("Storage upload timed out (8s) — có thể do CORS chưa cấu hình")), 8000));
+          await Promise.race([ref.put(blob), uploadTimeout]);
           const url = await ref.getDownloadURL();
           it.receipt = url;
           migrated++;
@@ -4579,17 +4580,21 @@ window.migrateReceiptsToStorage = async function() {
       }
     }
   }
-  console.log(`=== Hoàn tất quét: ${migrated} ảnh đã chuyển lên Storage, ${stripped} ảnh phải gỡ bỏ (không tải lên được), ${skipped} mục không có ảnh base64 cần xử lý ===`);
+  const summaryLine = `Hoàn tất quét: ${migrated} ảnh đã chuyển lên Storage, ${stripped} ảnh phải gỡ bỏ (không tải lên được), ${skipped} mục không có ảnh base64 cần xử lý.`;
+  console.log(`=== ${summaryLine} ===`);
   if (migrated === 0 && stripped === 0) {
-    console.log("Không có ảnh nào cần dọn — có thể vấn đề vượt 1MB nằm ở chỗ khác, báo lại cho người phát triển app.");
+    alert("⚠️ Không có ảnh nào cần dọn.\n\nCó thể vấn đề vượt 1MB nằm ở chỗ khác — báo lại cho người phát triển app.");
     return;
   }
   console.log("Đang lưu lại dữ liệu đã dọn dẹp lên Firestore...");
   try {
     await persistNow();
+    const newSize = new Blob([JSON.stringify(sanitizeForFirestore(STORE))]).size;
     console.log("✅✅✅ ĐÃ LƯU THÀNH CÔNG! Document giờ đã giảm dung lượng đáng kể, mọi người có thể lưu bình thường trở lại.");
+    alert(`✅ ĐÃ LƯU THÀNH CÔNG!\n\n${summaryLine}\n\nDung lượng document hiện tại: ${(newSize/1024).toFixed(0)} KB (giới hạn Firestore: 1024 KB).\n\nMọi người có thể lưu bình thường trở lại. Anh có thể đóng cửa sổ này và thử tạo 1 khoản chi để kiểm tra lại.`);
   } catch (err) {
-    console.warn("❌ Vẫn còn lỗi khi lưu — báo lại cho người phát triển app kèm nội dung lỗi này:", err);
+    console.warn("❌ Vẫn còn lỗi khi lưu:", err);
+    alert(`❌ VẪN CÒN LỖI KHI LƯU\n\n${summaryLine}\n\nLỗi: ${err && err.message ? err.message : err}\n\nChụp màn hình popup này gửi cho người phát triển app.`);
   }
 };
 
