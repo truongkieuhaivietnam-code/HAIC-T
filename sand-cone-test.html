@@ -1191,6 +1191,15 @@ function exportPDF(){
   const langMode = document.getElementById('pdfLangMode')?.value || 'bilingual';
   const isEN = langMode === 'en';
   const bi = (vi, en) => isEN ? en : `${vi} / ${en}`;
+  // Ô ngày (input type="date") trả về dạng YYYY-MM-DD — đổi sang DD-MM-YYYY
+  // để hiển thị trong báo cáo, đúng định dạng quen dùng (vd: 24-08-2026).
+  const formatDMY = (isoDate) => {
+    if (!isoDate) return '';
+    const parts = String(isoDate).split('-');
+    if (parts.length !== 3) return isoDate;
+    const [yyyy, mm, dd] = parts;
+    return `${dd}-${mm}-${yyyy}`;
+  };
 
   const { jsPDF } = window.jspdf;
   // ĐÚNG khổ A4 DỌC theo mẫu chuẩn F-03.HAIC-LAB-15MAT (trước đây làm nhầm
@@ -1373,7 +1382,7 @@ function exportPDF(){
   infoRow('Công trình','Project', data.project);
   infoRow('Địa điểm XD','Location', data.location);
   infoRow('Khu vực TN','Testing Area', data.testingArea);
-  infoRowSplit('Mô tả','Description', data.description, 'Ngày TN hiện trường','Field testing date', data.testDate);
+  infoRowSplit('Mô tả','Description', data.description, 'Ngày TN hiện trường','Field testing date', formatDMY(data.testDate));
   y += 6;
 
   // ── II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT ──────────────────
@@ -1476,8 +1485,10 @@ function exportPDF(){
 
   doc.autoTable({
     head, body, startY: y, margin:{left:ML,right:MR}, tableWidth:usW, theme:'grid',
-    styles:{ font:'Roboto', fontStyle:'normal', fontSize:6.8, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25, cellPadding:1 },
-    headStyles:{ font:'Roboto', fontStyle:'normal', fillColor:blue, textColor:255, fontSize:6.3 },
+    styles:{ font:'Roboto', fontStyle:'normal', fontSize:9, halign:'center', valign:'middle', lineColor:[0,0,0], lineWidth:0.25, cellPadding:1.3 },
+    headStyles:{ font:'Roboto', fontStyle:'normal', fillColor:[93,156,196], textColor:255, fontSize:7.8 },
+    // Dòng kết quả (body) kéo cao hơn ~1.5 lần so với chiều cao tự nhiên trước đây, dễ đọc hơn.
+    bodyStyles:{ minCellHeight:9 },
     columnStyles:{ 0:{cellWidth:8}, 1:{cellWidth:22,halign:'left'} },
   });
 
