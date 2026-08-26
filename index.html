@@ -469,6 +469,24 @@ const COL_EXPENSES  = 'chitieu_expenses';
 const COL_MEALS     = 'chitieu_meals';
 const COL_QT        = 'chitieu_quyettoan';
 
+// ==================== SECURITY HELPERS ====================
+// Hash passwords with SHA-256 so plaintext is never stored/sent to the client.
+async function sha256Hex(str) {
+  const enc = new TextEncoder().encode(str);
+  const buf = await crypto.subtle.digest('SHA-256', enc);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function looksHashed(str) { return typeof str === 'string' && /^[a-f0-9]{64}$/i.test(str); }
+
+// Delete/write more than 500 docs safely by splitting into multiple batches (Firestore limit).
+async function commitRefsInChunks(refs, action, chunkSize = 450) {
+  for (let i = 0; i < refs.length; i += chunkSize) {
+    const batch = db.batch();
+    refs.slice(i, i + chunkSize).forEach(ref => action(batch, ref));
+    await batch.commit();
+  }
+}
+
 let currentUser = null;
 let allUsers = [];
 let allExpenses = [];
@@ -479,16 +497,42 @@ let unsubscribers = [];
 // ==================== INIT ====================
 async function init() {
   try {
-    // Check if any users exist, if not create default admin
+    // Check if any users exist, if not create default admin with a random password
     const usersSnap = await db.collection(COL_USERS).limit(1).get();
     if (usersSnap.empty) {
-      await db.collection(COL_USERS).add({ name:'admin', password:'1234', role:'admin', createdAt: Date.now() });
+      const randPass = String(Math.floor(100000 + Math.random() * 900000)); // random 6-digit
+      const hash = await sha256Hex(randPass);
+      await db.collection(COL_USERS).add({ name: 'admin', nameLower: 'admin', password: hash, role: 'admin', createdAt: Date.now() });
+      alert('Đã tạo tài khoản admin đầu tiên.\n\nTên đăng nhập: admin\nMật khẩu: ' + randPass + '\n\n⚠️ Hãy đăng nhập và đổi mật khẩu ngay trong mục Cài đặt!');
+    } else {
+      // One-time migration for existing accounts: add nameLower + hash any plaintext passwords.
+      // This only updates the users collection — never touches expenses/meals/quyettoan data.
+      await migrateUsers();
     }
   } catch(e) {
     console.error('Init error:', e);
   }
   document.getElementById('loadingOverlay').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
+}
+
+async function migrateUsers() {
+  try {
+    const snap = await db.collection(COL_USERS).get();
+    const updates = [];
+    for (const doc of snap.docs) {
+      const data = doc.data();
+      const patch = {};
+      if (!data.nameLower && data.name) patch.nameLower = data.name.toLowerCase();
+      if (data.password && !looksHashed(data.password)) patch.password = await sha256Hex(data.password);
+      if (Object.keys(patch).length > 0) updates.push({ ref: doc.ref, patch });
+    }
+    if (updates.length > 0) {
+      const batch = db.batch();
+      updates.forEach(u => batch.update(u.ref, u.patch));
+      await batch.commit();
+    }
+  } catch(e) { console.error('User migration error:', e); }
 }
 
 // ==================== AUTH ====================
@@ -498,13 +542,14 @@ async function doLogin() {
   if (!nameInput || !pass) { document.getElementById('loginError').textContent = 'Vui lòng điền đầy đủ!'; return; }
 
   try {
-    // Get all users and filter in JS to avoid needing Firestore index
-    const snap = await db.collection(COL_USERS).get();
-    const matched = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-      .find(u => u.name.toLowerCase() === nameInput.toLowerCase());
+    // Query only the single matching user — never pull the whole user list (with passwords) to the client
+    const nameLower = nameInput.toLowerCase();
+    const snap = await db.collection(COL_USERS).where('nameLower', '==', nameLower).limit(1).get();
 
-    if (!matched) { document.getElementById('loginError').textContent = 'Tên không tồn tại!'; return; }
-    if (matched.password !== pass) { document.getElementById('loginError').textContent = 'Mật khẩu không đúng!'; return; }
+    if (snap.empty) { document.getElementById('loginError').textContent = 'Tên không tồn tại!'; return; }
+    const matched = { id: snap.docs[0].id, ...snap.docs[0].data() };
+    const passHash = await sha256Hex(pass);
+    if (matched.password !== passHash) { document.getElementById('loginError').textContent = 'Mật khẩu không đúng!'; return; }
 
     const u = matched;
     currentUser = u;
@@ -576,7 +621,8 @@ async function addMember() {
   if (pass.length < 4) { showToast('Mật khẩu tối thiểu 4 ký tự!', 'error'); return; }
   if (allUsers.find(u => u.name.toLowerCase() === name.toLowerCase())) { showToast('Tên đã tồn tại!', 'error'); return; }
   try {
-    await db.collection(COL_USERS).add({ name, password: pass, role, createdAt: Date.now() });
+    const hash = await sha256Hex(pass);
+    await db.collection(COL_USERS).add({ name, nameLower: name.toLowerCase(), password: hash, role, createdAt: Date.now() });
     document.getElementById('newMemberName').value = '';
     document.getElementById('newMemberPass').value = '';
     showToast('Đã thêm ' + name, 'success');
@@ -618,12 +664,14 @@ async function changePassword() {
   const cf  = document.getElementById('confirmPass').value;
   if (!cur||!nw||!cf) { showToast('Điền đầy đủ 3 ô!', 'error'); return; }
   const u = allUsers.find(u => u.id === currentUser.id);
-  if (!u || u.password !== cur) { showToast('Mật khẩu hiện tại không đúng!', 'error'); return; }
+  const curHash = await sha256Hex(cur);
+  if (!u || u.password !== curHash) { showToast('Mật khẩu hiện tại không đúng!', 'error'); return; }
   if (nw.length < 4) { showToast('Mật khẩu mới tối thiểu 4 ký tự!', 'error'); return; }
   if (nw !== cf) { showToast('Xác nhận mật khẩu không khớp!', 'error'); return; }
   try {
-    await db.collection(COL_USERS).doc(currentUser.id).update({ password: nw });
-    currentUser.password = nw;
+    const newHash = await sha256Hex(nw);
+    await db.collection(COL_USERS).doc(currentUser.id).update({ password: newHash });
+    currentUser.password = newHash;
     document.getElementById('curPass').value = '';
     document.getElementById('newPass').value = '';
     document.getElementById('confirmPass').value = '';
@@ -811,14 +859,12 @@ async function clearAllData() {
   if (currentUser.role !== 'admin') return;
   if (!confirm('Xóa toàn bộ chi tiêu và bữa ăn? Không khôi phục được!')) return;
   try {
-    const batch = db.batch();
     const [eSnap, mSnap] = await Promise.all([
       db.collection(COL_EXPENSES).get(),
       db.collection(COL_MEALS).get()
     ]);
-    eSnap.docs.forEach(d => batch.delete(d.ref));
-    mSnap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    const refs = [...eSnap.docs.map(d => d.ref), ...mSnap.docs.map(d => d.ref)];
+    await commitRefsInChunks(refs, (batch, ref) => batch.delete(ref));
     showToast('Đã xóa tất cả dữ liệu!', 'success');
   } catch(e) { showToast('Lỗi!', 'error'); }
 }
@@ -857,12 +903,15 @@ function calcBalances() {
   allMeals.forEach(m => {
     if (!bal.hasOwnProperty(m.payer)) bal[m.payer] = 0;
     const costUSD = toUSD(m.cost, m.currency || 'VND');
-    const perHeadUSD = toUSD(m.perHead, m.currency || 'VND');
-    const quyAmtUSD = toUSD(m.quyAmt || 0, m.currency || 'VND');
-    bal[m.payer] += (costUSD - quyAmtUSD);
+    // Recompute the exact (unrounded) per-person share from cost/diners so debts always settle
+    // to the cent, instead of relying on the rounded perHead value saved on the document.
+    const totalPeople = m.diners.length + (m.quyPays ? 1 : 0);
+    const exactShareUSD = totalPeople > 0 ? costUSD / totalPeople : 0;
+    const quyShareUSD = m.quyPays ? exactShareUSD : 0;
+    bal[m.payer] += (costUSD - quyShareUSD);
     m.diners.forEach(d => {
       if (!bal.hasOwnProperty(d)) bal[d] = 0;
-      bal[d] -= perHeadUSD;
+      bal[d] -= exactShareUSD;
     });
   });
 
@@ -1108,15 +1157,13 @@ async function doQuyetToan() {
     // Save snapshot
     await db.collection(COL_QT).add(snapshot);
 
-    // Delete all expenses & meals
-    const batch = db.batch();
+    // Delete all expenses & meals (chunked to stay under Firestore's 500-op batch limit)
     const [eSnap, mSnap] = await Promise.all([
       db.collection(COL_EXPENSES).get(),
       db.collection(COL_MEALS).get()
     ]);
-    eSnap.docs.forEach(d => batch.delete(d.ref));
-    mSnap.docs.forEach(d => batch.delete(d.ref));
-    await batch.commit();
+    const refs = [...eSnap.docs.map(d => d.ref), ...mSnap.docs.map(d => d.ref)];
+    await commitRefsInChunks(refs, (batch, ref) => batch.delete(ref));
 
     showToast('Đã chốt sổ & reset thành công! 🎉', 'success');
     goPage('qt');
