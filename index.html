@@ -285,6 +285,32 @@ main{padding:16px;max-width:600px;margin:0 auto;}
         <button class="btn btn-forest btn-block" onclick="addExpense()">+ Thêm khoản</button>
       </div>
       <div class="divider">Lịch sử</div>
+
+      <!-- FILTER: expense list -->
+      <div class="card" style="margin-bottom:14px">
+        <h3>🔍 Lọc danh sách</h3>
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Thành viên</label>
+            <select id="expFilterMember" onchange="renderExpenses()"><option value="all">Tất cả</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Thời gian</label>
+            <select id="expFilterMode" onchange="onExpFilterModeChange()">
+              <option value="all">Tất cả</option>
+              <option value="month">Theo tháng</option>
+              <option value="range">Khoảng ngày tự chọn</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group hidden" id="expFilterMonthRow">
+          <label>Chọn tháng</label><input type="month" id="expFilterMonth" onchange="renderExpenses()">
+        </div>
+        <div class="form-row2 hidden" id="expFilterRangeRow">
+          <div class="form-group" style="margin:0"><label>Từ ngày</label><input type="date" id="expFilterFrom" onchange="renderExpenses()"></div>
+          <div class="form-group" style="margin:0"><label>Đến ngày</label><input type="date" id="expFilterTo" onchange="renderExpenses()"></div>
+        </div>
+        <div id="expFilterSummary" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+
       <div class="card"><div id="expenseList"><div class="empty-state"><div class="ico">📭</div><p>Chưa có khoản nào</p></div></div></div>
     </div>
 
@@ -371,6 +397,32 @@ main{padding:16px;max-width:600px;margin:0 auto;}
       </div>
 
       <div class="divider">Bữa đã nhập</div>
+
+      <!-- FILTER: meal list -->
+      <div class="card" style="margin-bottom:14px">
+        <h3>🔍 Lọc danh sách</h3>
+        <div class="form-row2" style="margin-bottom:12px">
+          <div class="form-group" style="margin:0"><label>Thành viên</label>
+            <select id="mealFilterMember" onchange="renderMeals()"><option value="all">Tất cả</option></select>
+          </div>
+          <div class="form-group" style="margin:0"><label>Thời gian</label>
+            <select id="mealFilterMode" onchange="onMealFilterModeChange()">
+              <option value="all">Tất cả</option>
+              <option value="month">Theo tháng</option>
+              <option value="range">Khoảng ngày tự chọn</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group hidden" id="mealFilterMonthRow">
+          <label>Chọn tháng</label><input type="month" id="mealFilterMonth" onchange="renderMeals()">
+        </div>
+        <div class="form-row2 hidden" id="mealFilterRangeRow">
+          <div class="form-group" style="margin:0"><label>Từ ngày</label><input type="date" id="mealFilterFrom" onchange="renderMeals()"></div>
+          <div class="form-group" style="margin:0"><label>Đến ngày</label><input type="date" id="mealFilterTo" onchange="renderMeals()"></div>
+        </div>
+        <div id="mealFilterSummary" style="font-size:12px;color:var(--muted);margin-top:2px"></div>
+      </div>
+
       <div id="mealList"><div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div></div>
     </div>
 
@@ -769,7 +821,7 @@ async function addSplitMeals() {
       const diners = allChips.filter(d => d !== '🏦 Quỹ');
       const quyPays = allChips.includes('🏦 Quỹ');
       const totalPeople = allChips.length;
-      const perHead = Math.round(perMeal / totalPeople);
+      const perHead = roundByCurrency(perMeal / totalPeople, currency);
       const quyAmt = quyPays ? perHead : 0;
       const ref = db.collection(COL_MEALS).doc();
       batch.set(ref, { meal: labels[k], payer, cost: perMeal, currency, diners, quyPays, quyAmt, perHead, date, time, ts: Date.now() + keys.indexOf(k), addedBy: currentUser.name, fromSplit: true });
@@ -837,7 +889,7 @@ async function addMeal() {
   const diners = allChips.filter(d => d !== '🏦 Quỹ');
   const quyPays = allChips.includes('🏦 Quỹ');
   const totalPeople = allChips.length;
-  const perHead = Math.round(cost / totalPeople);
+  const perHead = roundByCurrency(cost / totalPeople, currency);
   const quyAmt = quyPays ? perHead : 0;
 
   const time = new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});
@@ -885,6 +937,12 @@ function fmtAmt(amt, currency) {
   const sym = SYMBOLS[currency] || '';
   if (currency === 'USD') return '$' + Number(amt).toFixed(2);
   return new Intl.NumberFormat('vi-VN').format(Math.round(amt)) + sym;
+}
+
+// Round a per-person share to the smallest usable unit of the currency:
+// USD has cents (2 decimals), KHR/VND are whole-number currencies.
+function roundByCurrency(amt, currency) {
+  return currency === 'USD' ? Math.round(amt * 100) / 100 : Math.round(amt);
 }
 
 // ==================== CALC ====================
@@ -1021,10 +1079,70 @@ function renderDash() {
     ).join('');
 }
 
+// ==================== FILTERS (expense & meal lists) ====================
+function matchesDateFilter(dateStr, prefix) {
+  const modeEl = document.getElementById(prefix + 'FilterMode');
+  const mode = modeEl ? modeEl.value : 'all';
+  if (mode === 'month') {
+    const month = document.getElementById(prefix + 'FilterMonth')?.value;
+    if (!month) return true;
+    return (dateStr || '').slice(0, 7) === month;
+  }
+  if (mode === 'range') {
+    const from = document.getElementById(prefix + 'FilterFrom')?.value;
+    const to = document.getElementById(prefix + 'FilterTo')?.value;
+    if (from && dateStr < from) return false;
+    if (to && dateStr > to) return false;
+    return true;
+  }
+  return true;
+}
+
+function onExpFilterModeChange() {
+  const mode = document.getElementById('expFilterMode').value;
+  document.getElementById('expFilterMonthRow').classList.toggle('hidden', mode !== 'month');
+  document.getElementById('expFilterRangeRow').classList.toggle('hidden', mode !== 'range');
+  renderExpenses();
+}
+
+function onMealFilterModeChange() {
+  const mode = document.getElementById('mealFilterMode').value;
+  document.getElementById('mealFilterMonthRow').classList.toggle('hidden', mode !== 'month');
+  document.getElementById('mealFilterRangeRow').classList.toggle('hidden', mode !== 'range');
+  renderMeals();
+}
+
+// Refresh the member dropdowns used by the filters whenever the user list changes
+function initFilterSelects() {
+  ['expFilterMember', 'mealFilterMember'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const cur = el.value;
+    el.innerHTML = '<option value="all">Tất cả</option>' + allUsers.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+    if (cur && [...el.options].some(o => o.value === cur)) el.value = cur;
+  });
+}
+
 function renderExpenses() {
   const el = document.getElementById('expenseList');
+  const memberEl = document.getElementById('expFilterMember');
+  const member = memberEl ? memberEl.value : 'all';
+  const list = allExpenses.filter(e => (member === 'all' || e.payer === member) && matchesDateFilter(e.date, 'exp'));
+
+  const summaryEl = document.getElementById('expFilterSummary');
+  if (summaryEl) {
+    if (list.length === 0) {
+      summaryEl.textContent = '';
+    } else {
+      const totChi = list.filter(e => e.type === 'chi').reduce((s, e) => s + toUSD(e.amt, e.currency || 'VND'), 0);
+      const totThu = list.filter(e => e.type === 'thu').reduce((s, e) => s + toUSD(e.amt, e.currency || 'VND'), 0);
+      summaryEl.textContent = `${list.length} khoản · Chi ${fmtUSD(totChi)} · Thu ${fmtUSD(totThu)}`;
+    }
+  }
+
   if (allExpenses.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">📭</div><p>Chưa có khoản nào</p></div>'; return; }
-  el.innerHTML = allExpenses.map(e => {
+  if (list.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">🔍</div><p>Không có khoản nào khớp bộ lọc</p></div>'; return; }
+  el.innerHTML = list.map(e => {
     const cur = e.currency || 'VND';
     const usd = toUSD(e.amt, cur);
     return `<div class="tx-item">
@@ -1042,9 +1160,29 @@ function renderExpenses() {
 
 function renderMeals() {
   const el = document.getElementById('mealList');
+  const memberEl = document.getElementById('mealFilterMember');
+  const member = memberEl ? memberEl.value : 'all';
+  const list = allMeals.filter(m => (member === 'all' || m.payer === member || m.diners.includes(member)) && matchesDateFilter(m.date, 'meal'));
+
+  const summaryEl = document.getElementById('mealFilterSummary');
+  if (summaryEl) {
+    if (list.length === 0) {
+      summaryEl.textContent = '';
+    } else {
+      const totUSD = list.reduce((s, m) => s + toUSD(m.cost, m.currency || 'VND'), 0);
+      summaryEl.textContent = `${list.length} bữa · Tổng ${fmtUSD(totUSD)}`;
+    }
+  }
+
   if (allMeals.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">🍽️</div><p>Chưa có bữa nào</p></div>'; return; }
-  el.innerHTML = allMeals.map(m => {
+  if (list.length === 0) { el.innerHTML = '<div class="empty-state"><div class="ico">🔍</div><p>Không có bữa nào khớp bộ lọc</p></div>'; return; }
+  el.innerHTML = list.map(m => {
     const cur = m.currency || 'VND';
+    // Recompute per-person share live (currency-aware) instead of trusting the stored field,
+    // so older records saved with the old integer-only rounding still display correctly.
+    const totalPeople = m.diners.length + (m.quyPays ? 1 : 0);
+    const perHead = totalPeople > 0 ? roundByCurrency(m.cost / totalPeople, cur) : 0;
+    const quyAmt = m.quyPays ? perHead : 0;
     return `<div class="meal-card">
       <div class="mh">
         <div>
@@ -1054,8 +1192,8 @@ function renderMeals() {
         <button class="del-btn" onclick="deleteMeal('${m.id}')">✕</button>
       </div>
       <div class="diner-chips">
-        ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmtAmt(m.perHead,cur)}</span>`).join('')}
-        ${m.quyPays ? `<span class="diner-chip" style="background:var(--gold-soft);color:var(--warn);">🏦 Quỹ · ${fmtAmt(m.quyAmt||m.perHead,cur)}</span>` : ''}
+        ${m.diners.map(d=>`<span class="diner-chip">${d} · ${fmtAmt(perHead,cur)}</span>`).join('')}
+        ${m.quyPays ? `<span class="diner-chip" style="background:var(--gold-soft);color:var(--warn);">🏦 Quỹ · ${fmtAmt(quyAmt,cur)}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -1085,6 +1223,7 @@ function initSelects() {
   setDefaultDates();
   if (document.getElementById('mChips')) initMealChips();
   if (document.getElementById('sc-sang')) initSplitChips();
+  initFilterSelects();
 }
 
 function initMealChips() {
@@ -1106,14 +1245,15 @@ function setDefaultDates() {
 function toggleChip(el) { el.classList.toggle('on'); updatePerHead(); }
 
 function updatePerHead() {
-  const cost = parseInt(document.getElementById('mCost').value) || 0;
+  const cost = parseFloat(document.getElementById('mCost').value) || 0;
+  const currency = document.getElementById('mCurrency').value;
   const chips = getCheckedChips();
   const el = document.getElementById('perHeadPreview');
   if (cost > 0 && chips.length > 0) {
-    const perHead = Math.round(cost / chips.length);
+    const perHead = roundByCurrency(cost / chips.length, currency);
     const quyIn = chips.includes('🏦 Quỹ');
-    const info = quyIn ? ` · Quỹ trả ${fmt(perHead)}` : '';
-    el.textContent = `Mỗi người: ${fmt(perHead)} (${chips.length} suất${info})`;
+    const info = quyIn ? ` · Quỹ trả ${fmtAmt(perHead, currency)}` : '';
+    el.textContent = `Mỗi người: ${fmtAmt(perHead, currency)} (${chips.length} suất${info})`;
   } else {
     el.textContent = '';
   }
@@ -1121,6 +1261,7 @@ function updatePerHead() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mCost').addEventListener('input', updatePerHead);
+  document.getElementById('mCurrency').addEventListener('change', updatePerHead);
 });
 
 // ==================== QUYẾT TOÁN ====================
