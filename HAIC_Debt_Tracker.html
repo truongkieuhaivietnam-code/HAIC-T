@@ -362,9 +362,9 @@
         <select id="contractCurrency"><option value="USD">USD ($)</option><option value="VND">VNĐ (₫)</option><option value="LAK">Kip Lào (₭)</option></select>
       </div>
     </div>
-    <div class="form-row2">
-      <div class="form-group"><label>Giá trị hợp đồng</label><input type="number" step="0.01" id="contractValue" placeholder="0.00"></div>
-      <div class="form-group"><label>Giá trị hoàn thành thực tế <span class="small-muted">(để trống nếu = giá trị HĐ)</span></label><input type="number" step="0.01" id="contractActualValue" placeholder="0.00"></div>
+    <div class="form-group">
+      <label>Giá trị hợp đồng <span class="small-muted">(tùy chọn — để trống nếu hợp đồng tính theo khối lượng từng đợt, không có giá trị cố định)</span></label>
+      <input type="number" step="0.01" id="contractValue" placeholder="0.00">
     </div>
     <div class="form-group">
       <label>Ghi chú</label>
@@ -423,6 +423,40 @@
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="openContractForm(CURRENT_ENTITY_ID, CURRENT_CONTRACT_ID)">✏️ Sửa hợp đồng</button>
       <button class="btn btn-danger" onclick="deleteContract()">Xóa hợp đồng</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: INVOICE DETAIL (Thanh toán cho hóa đơn) ===================== -->
+<div class="modal-bg" id="modalInvoiceDetail">
+  <div class="modal" style="max-width:580px;">
+    <button class="modal-close" onclick="closeModal('modalInvoiceDetail')">✕</button>
+    <h3 id="invDetailTitle">—</h3>
+    <div class="contract-meta" id="invDetailMeta"></div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="small-muted">Còn phải thu (hóa đơn này)</span>
+        <span id="invDetailBalance" style="font-weight:700;font-size:18px;">$0</span>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px;">
+      <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:8px;">💰 Ghi nhận thanh toán</label>
+      <div class="form-row2">
+        <div class="form-group"><label>Ngày nhận tiền</label><input type="date" id="paymentDate"></div>
+        <div class="form-group"><label>Số tiền</label><input type="number" step="0.01" id="paymentAmount" placeholder="0.00"></div>
+      </div>
+      <div class="form-group"><label>Ghi chú</label><input type="text" id="paymentNote" placeholder="VD: Chuyển khoản qua ACLEDA"></div>
+      <button class="btn btn-primary" style="width:100%;" onclick="savePayment()">Lưu thanh toán</button>
+    </div>
+    <div class="card" style="padding:14px;margin-top:12px;">
+      <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">Lịch sử thanh toán</label>
+      <div id="paymentsListWrap"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-danger" onclick="deleteInvoice()">Xóa hóa đơn này</button>
     </div>
   </div>
 </div>
@@ -509,18 +543,20 @@ const col = {
   customers:        () => db.collection('debt_customers'),
   customerEntries:  () => db.collection('debt_customer_entries'),      // khoản lẻ, không gắn hợp đồng cụ thể (VD công nợ đầu kỳ)
   customerContracts:() => db.collection('debt_customer_contracts'),    // mỗi hợp đồng/dự án của khách hàng
-  customerInvoices: () => db.collection('debt_customer_invoices'),     // mỗi hóa đơn đã xuất trong 1 hợp đồng
+  customerInvoices: () => db.collection('debt_customer_invoices'),     // mỗi hóa đơn đã xuất trong 1 hợp đồng (= tiền CẦN thu, chưa chắc đã thu)
+  customerInvoicePayments: () => db.collection('debt_customer_invoice_payments'), // mỗi lần khách THỰC SỰ trả tiền cho 1 hóa đơn cụ thể
   subs:             () => db.collection('debt_subcontractors'),
   subEntries:       () => db.collection('debt_subcontractor_entries'),
 };
 
 let currentUser = null;
-let CUSTOMERS = [], CUSTOMER_ENTRIES = [], CUSTOMER_CONTRACTS = [], CUSTOMER_INVOICES = [];
+let CUSTOMERS = [], CUSTOMER_ENTRIES = [], CUSTOMER_CONTRACTS = [], CUSTOMER_INVOICES = [], CUSTOMER_INVOICE_PAYMENTS = [];
 let SUBS = [], SUB_ENTRIES = [];
 let CURRENT_PAGE = 'customers';
 let CURRENT_TYPE = null;      // 'customers' | 'subs' — đang mở ledger của loại nào
 let CURRENT_ENTITY_ID = null; // id đang mở trong modal Ledger
 let CURRENT_CONTRACT_ID = null; // hợp đồng đang mở trong modalContractDetail
+let CURRENT_INVOICE_ID = null; // hóa đơn đang mở trong modalInvoiceDetail (để ghi nhận thanh toán)
 let EDITING_CONTRACT_ID = null;
 let MISC_TYPE = 'incurred'; // toggle của form "Khoản lẻ khác"
 let LEDGER_TYPE = 'incurred'; // toggle đang chọn trong form thêm dòng
@@ -656,6 +692,15 @@ function attachListeners(){
     if(CURRENT_PAGE==='dashboard') renderDashboard();
     if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
     if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
+    if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
+  }));
+  unsubs.push(col.customerInvoicePayments().onSnapshot(snap=>{
+    CUSTOMER_INVOICE_PAYMENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='customers') renderCustomerList();
+    if(CURRENT_PAGE==='dashboard') renderDashboard();
+    if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
+    if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
+    if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
   }));
   unsubs.push(col.subs().onSnapshot(snap=>{
     SUBS = snap.docs.map(d=>({id:d.id, ...d.data()}));
@@ -726,15 +771,31 @@ function balanceIsSettled(balObj){
 }
 
 /* ---------------- KHÁCH HÀNG: theo Hợp đồng/Dự án (không dùng sổ cái phẳng) ---------------- */
-// Công nợ 1 hợp đồng = Giá trị thực tế (hoặc giá trị HĐ nếu chưa có giá
-// trị thực tế) TRỪ tổng các hóa đơn đã xuất trong hợp đồng đó.
+// SỬA QUAN TRỌNG: "Xuất hóa đơn" và "Khách đã thanh toán" là 2 VIỆC KHÁC
+// NHAU, xảy ra ở 2 THỜI ĐIỂM khác nhau — xuất hóa đơn KHÔNG có nghĩa là đã
+// thu được tiền. Giờ mỗi Hóa đơn = số tiền CẦN thu (phát sinh); mỗi Thanh
+// toán = tiền THỰC SỰ nhận được, gắn với ĐÚNG 1 hóa đơn cụ thể (có thể
+// thanh toán nhiều lần / từng phần cho cùng 1 hóa đơn). "Giá trị hợp đồng"
+// giờ chỉ là thông tin THAM KHẢO (không bắt buộc) — nhiều hợp đồng không
+// có giá trị cố định ban đầu, chỉ chốt khối lượng và xuất hóa đơn theo
+// từng tháng.
+function calcInvoicePaid(invoice){
+  return CUSTOMER_INVOICE_PAYMENTS.filter(p=>p.invoiceId===invoice.id).reduce((s,p)=> s + (p.amount||0), 0);
+}
+function calcInvoiceBalance(invoice){
+  return (invoice.amount||0) - calcInvoicePaid(invoice);
+}
+// Công nợ 1 hợp đồng = tổng (số tiền từng hóa đơn − đã thu của hóa đơn đó)
+// — KHÔNG còn dựa vào "giá trị hợp đồng" nữa (giá trị đó giờ chỉ để xem).
 function calcContractBalance(contract){
-  const amount = (contract.actualValue != null ? contract.actualValue : contract.contractValue) || 0;
-  const invoiced = CUSTOMER_INVOICES.filter(i=>i.contractId===contract.id).reduce((s,i)=> s + (i.amount||0), 0);
-  return amount - invoiced;
+  return CUSTOMER_INVOICES.filter(i=>i.contractId===contract.id)
+    .reduce((s,i)=> s + calcInvoiceBalance(i), 0);
 }
 function calcContractInvoiced(contract){
   return CUSTOMER_INVOICES.filter(i=>i.contractId===contract.id).reduce((s,i)=> s + (i.amount||0), 0);
+}
+function calcContractPaid(contract){
+  return CUSTOMER_INVOICES.filter(i=>i.contractId===contract.id).reduce((s,i)=> s + calcInvoicePaid(i), 0);
 }
 // Tổng công nợ 1 khách hàng = cộng dồn công nợ TẤT CẢ hợp đồng/dự án của
 // khách đó + các khoản lẻ không gắn hợp đồng cụ thể (VD công nợ đầu kỳ).
@@ -792,14 +853,14 @@ function renderDashboard(){
   document.getElementById('dashCustTotal').textContent = fmtBalanceMulti(custTotal);
   document.getElementById('dashSubTotal').textContent = fmtBalanceMulti(subTotal);
 
-  // ── Biểu đồ xu hướng: Phát sinh & Đã thanh toán theo kỳ — gộp cả 4
-  // nguồn (khoản lẻ khách hàng, hợp đồng mới ký = phát sinh, hóa đơn đã
-  // xuất = đã thu, và sổ cái đội/thầu phụ), quy đổi tạm sang USD chỉ để
-  // vẽ biểu đồ (không hiển thị số tiền thật ở đây).
+  // ── Biểu đồ xu hướng: Phát sinh & Đã thanh toán theo kỳ — gộp: khoản lẻ
+  // khách hàng, hóa đơn đã xuất = Phát sinh (tiền CẦN thu), thanh toán
+  // thực nhận = Đã thu, và sổ cái đội/thầu phụ. Quy đổi tạm sang USD chỉ
+  // để vẽ biểu đồ (không hiển thị số tiền thật ở đây).
   const allEntries = [
     ...CUSTOMER_ENTRIES.map(e=>({...e})),
-    ...CUSTOMER_CONTRACTS.map(c=>({ date:c.date, currency:c.currency, incurred:(c.actualValue!=null?c.actualValue:c.contractValue)||0, paid:0 })),
-    ...CUSTOMER_INVOICES.map(i=>({ date:i.date, currency:(CUSTOMER_CONTRACTS.find(c=>c.id===i.contractId)||{}).currency, incurred:0, paid:i.amount||0 })),
+    ...CUSTOMER_INVOICES.map(i=>({ date:i.date, currency:(CUSTOMER_CONTRACTS.find(c=>c.id===i.contractId)||{}).currency, incurred:i.amount||0, paid:0 })),
+    ...CUSTOMER_INVOICE_PAYMENTS.map(p=>({ date:p.date, currency:(CUSTOMER_CONTRACTS.find(c=>c.id===p.contractId)||{}).currency, incurred:0, paid:p.amount||0 })),
     ...SUB_ENTRIES.map(e=>({...e})),
   ].filter(e => e.date && inRange(e.date));
 
@@ -865,25 +926,24 @@ function exportDashboardExcel(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(custRows), 'Công nợ khách hàng');
 
-  // Sheet 2: Hợp đồng / Dự án (giá trị HĐ, giá trị thực tế, đã xuất bao nhiêu, còn lại)
+  // Sheet 2: Hợp đồng / Dự án (giá trị HĐ tham khảo, đã xuất bao nhiêu, đã thu, còn lại)
   const contractRows = CUSTOMER_CONTRACTS.map(c => {
     const customer = CUSTOMERS.find(x=>x.id===c.customerId);
-    const invoiced = calcContractInvoiced(c);
     return {
       'Khách hàng': customer?customer.name:'(đã xóa)',
       'Hợp đồng / Dự án': c.projectName||'',
       'Ngày ký': c.date||'',
       'Loại tiền': c.currency||'USD',
-      'Giá trị hợp đồng': c.contractValue||0,
-      'Giá trị thực tế': c.actualValue!=null ? c.actualValue : (c.contractValue||0),
-      'Đã xuất hóa đơn': invoiced,
+      'Giá trị hợp đồng (tham khảo)': c.contractValue||'',
+      'Đã xuất hóa đơn': calcContractInvoiced(c),
+      'Đã thu': calcContractPaid(c),
       'Còn phải thu': calcContractBalance(c),
       'Ghi chú': c.note||'',
     };
   }).sort((a,b)=>(a['Khách hàng']||'').localeCompare(b['Khách hàng']||''));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(contractRows), 'Hợp đồng-Dự án');
 
-  // Sheet 3: Hóa đơn đã xuất (số VAT, số thương mại, từng đợt)
+  // Sheet 3: Hóa đơn đã xuất (số VAT, số thương mại, từng đợt, đã thu/còn lại)
   const typeLabelsXl = { advance:'Tạm ứng', installment1:'Đợt 1', installment2:'Đợt 2', installment3:'Đợt 3', final:'Cuối cùng', other:'Khác' };
   const invoiceRows = CUSTOMER_INVOICES.map(i => {
     const contract = CUSTOMER_CONTRACTS.find(x=>x.id===i.contractId);
@@ -891,16 +951,35 @@ function exportDashboardExcel(){
     return {
       'Khách hàng': customer?customer.name:'(đã xóa)',
       'Hợp đồng / Dự án': contract?contract.projectName:'(đã xóa)',
-      'Ngày': i.date||'',
+      'Ngày xuất': i.date||'',
       'Loại': i.customType || typeLabelsXl[i.type] || '',
       'Số hóa đơn VAT': i.vatNo||'',
       'Số hóa đơn thương mại': i.commNo||'',
       'Loại tiền': contract?(contract.currency||'USD'):'USD',
-      'Số tiền': i.amount||0,
+      'Số tiền hóa đơn': i.amount||0,
+      'Đã thu': calcInvoicePaid(i),
+      'Còn phải thu': calcInvoiceBalance(i),
       'Ghi chú': i.note||'',
     };
-  }).sort((a,b)=>(a['Ngày']||'').localeCompare(b['Ngày']||''));
+  }).sort((a,b)=>(a['Ngày xuất']||'').localeCompare(b['Ngày xuất']||''));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoiceRows), 'Hóa đơn đã xuất');
+
+  // Sheet 3b: Lịch sử thanh toán từng hóa đơn
+  const paymentRows = CUSTOMER_INVOICE_PAYMENTS.map(p => {
+    const invoice = CUSTOMER_INVOICES.find(x=>x.id===p.invoiceId);
+    const contract = invoice ? CUSTOMER_CONTRACTS.find(x=>x.id===invoice.contractId) : null;
+    const customer = contract ? CUSTOMERS.find(x=>x.id===contract.customerId) : null;
+    return {
+      'Khách hàng': customer?customer.name:'(đã xóa)',
+      'Hợp đồng / Dự án': contract?contract.projectName:'(đã xóa)',
+      'Hóa đơn': invoice ? (invoice.customType || typeLabelsXl[invoice.type] || '') : '(đã xóa)',
+      'Ngày thanh toán': p.date||'',
+      'Loại tiền': contract?(contract.currency||'USD'):'USD',
+      'Số tiền': p.amount||0,
+      'Ghi chú': p.note||'',
+    };
+  }).sort((a,b)=>(a['Ngày thanh toán']||'').localeCompare(b['Ngày thanh toán']||''));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(paymentRows), 'Lịch sử thanh toán');
 
   // Sheet 4: Khoản lẻ khác của khách hàng (không gắn hợp đồng cụ thể)
   const custEntryRows = CUSTOMER_ENTRIES.map(e => {
@@ -1129,13 +1208,13 @@ function renderCustomerDetailModal(){
     contractsWrap.innerHTML = contracts.map(c => {
       const bal = calcContractBalance(c);
       const invoiced = calcContractInvoiced(c);
+      const paid = calcContractPaid(c);
       const cur = c.currency || 'USD';
-      const amount = c.actualValue != null ? c.actualValue : c.contractValue;
       return `
         <div class="entity-row" style="padding:12px 4px;" onclick="openContractDetail('${c.id}')">
           <div class="entity-info">
             <div class="nm" style="font-size:13.5px;">${escapeHtml(c.projectName||'(chưa đặt tên)')}</div>
-            <div class="sub">GT: ${fmtCurrencyAmt(amount||0,cur)} · Đã xuất HĐ: ${fmtCurrencyAmt(invoiced,cur)}${c.date?' · '+fmtDate(c.date):''}</div>
+            <div class="sub">${c.contractValue?`GT HĐ: ${fmtCurrencyAmt(c.contractValue,cur)} · `:''}Đã xuất HĐ: ${fmtCurrencyAmt(invoiced,cur)} · Đã thu: ${fmtCurrencyAmt(paid,cur)}${c.date?' · '+fmtDate(c.date):''}</div>
           </div>
           <div class="entity-bal">
             <div class="amt ${bal>0.01?'positive':'zero'}" style="font-size:14px;">${fmtCurrencyAmt(bal,cur)}</div>
@@ -1213,7 +1292,6 @@ function openContractForm(customerId, contractId){
   document.getElementById('contractDate').value = c ? (c.date||'') : todayStr();
   document.getElementById('contractCurrency').value = c ? (c.currency||'USD') : 'USD';
   document.getElementById('contractValue').value = c ? (c.contractValue ?? '') : '';
-  document.getElementById('contractActualValue').value = c ? (c.actualValue ?? '') : '';
   document.getElementById('contractNote').value = c ? (c.note||'') : '';
   document.getElementById('modalContractForm').dataset.customerId = customerId;
   openModal('modalContractForm');
@@ -1222,16 +1300,18 @@ function openContractForm(customerId, contractId){
 async function saveContract(){
   const customerId = document.getElementById('modalContractForm').dataset.customerId;
   const projectName = document.getElementById('contractProjectName').value.trim();
-  const contractValue = parseFloat(document.getElementById('contractValue').value) || 0;
-  if(!projectName || !contractValue){ showToast('Vui lòng nhập tên hợp đồng và giá trị hợp đồng.', 'error'); return; }
+  // Giá trị hợp đồng giờ CHỈ LÀ THAM KHẢO, không bắt buộc — nhiều hợp
+  // đồng không có giá trị cố định, chỉ chốt khối lượng và xuất hóa đơn
+  // theo từng đợt/tháng.
+  if(!projectName){ showToast('Vui lòng nhập tên hợp đồng / dự án.', 'error'); return; }
+  const contractValueRaw = document.getElementById('contractValue').value;
 
   const data = {
     customerId,
     projectName,
     date: document.getElementById('contractDate').value,
     currency: document.getElementById('contractCurrency').value || 'USD',
-    contractValue,
-    actualValue: parseFloat(document.getElementById('contractActualValue').value) || null,
+    contractValue: contractValueRaw ? parseFloat(contractValueRaw) : null,
     note: document.getElementById('contractNote').value.trim(),
     updatedAt: new Date().toISOString(), updatedBy: currentUser.email,
   };
@@ -1289,10 +1369,10 @@ function renderContractDetailModal(){
   const cur = c.currency || 'USD';
   document.getElementById('contractDetailTitle').textContent = `${customer?customer.name+' — ':''}${c.projectName}`;
 
-  const amount = c.actualValue != null ? c.actualValue : c.contractValue;
   document.getElementById('contractDetailMeta').innerHTML = `
-    Giá trị hợp đồng: <strong>${fmtCurrencyAmt(c.contractValue||0,cur)}</strong>
-    ${c.actualValue!=null ? ` &nbsp;·&nbsp; Giá trị thực tế: <strong>${fmtCurrencyAmt(c.actualValue,cur)}</strong>` : ''}
+    ${c.contractValue ? `Giá trị hợp đồng (tham khảo): <strong>${fmtCurrencyAmt(c.contractValue,cur)}</strong><br>` : `<em>Hợp đồng không có giá trị cố định — tính theo từng hóa đơn xuất theo đợt/tháng.</em><br>`}
+    Tổng đã xuất hóa đơn: <strong>${fmtCurrencyAmt(calcContractInvoiced(c),cur)}</strong>
+    &nbsp;·&nbsp; Đã thu: <strong>${fmtCurrencyAmt(calcContractPaid(c),cur)}</strong>
     ${c.date ? `<br>Ngày ký: <strong>${fmtDate(c.date)}</strong>` : ''}
     ${c.note ? `<br>${escapeHtml(c.note)}` : ''}
   `;
@@ -1308,19 +1388,24 @@ function renderContractDetailModal(){
   if(invoices.length===0){
     wrap.innerHTML = `<div class="small-muted">Chưa có hóa đơn nào.</div>`;
   } else {
-    wrap.innerHTML = invoices.map(i => `
-      <div class="ledger-item">
+    wrap.innerHTML = invoices.map(i => {
+      const invPaid = calcInvoicePaid(i);
+      const invBal = calcInvoiceBalance(i);
+      const statusLabel = Math.abs(invBal)<0.01 ? '✅ Đã thu đủ' : (invPaid>0 ? '🟡 Đã thu 1 phần' : '🔴 Chưa thu');
+      return `
+      <div class="ledger-item" style="cursor:pointer;" onclick="openInvoiceDetail('${i.id}')">
         <div style="flex:1;min-width:0;">
           <div class="note"><strong>${escapeHtml(i.customType || typeLabels[i.type] || 'Hóa đơn')}</strong>${i.vatNo?` · VAT: ${escapeHtml(i.vatNo)}`:''}${i.commNo?` · TM: ${escapeHtml(i.commNo)}`:''}</div>
           ${i.note?`<div class="note">${escapeHtml(i.note)}</div>`:''}
-          <div class="date">${fmtDate(i.date)}</div>
+          <div class="date">${fmtDate(i.date)} · ${statusLabel}</div>
         </div>
         <div style="text-align:right;flex-shrink:0;">
-          <div class="amt" style="color:var(--good);">+${fmtCurrencyAmt(i.amount||0, cur)}</div>
-          <button class="btn btn-sm btn-outline" style="margin-top:4px;padding:3px 8px;font-size:11px;" onclick="deleteInvoice('${i.id}')">Xóa</button>
+          <div class="amt" style="color:var(--navy);">${fmtCurrencyAmt(i.amount||0, cur)}</div>
+          <div class="small-muted" style="font-size:11px;">còn ${fmtCurrencyAmt(invBal, cur)}</div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 }
 
@@ -1350,9 +1435,98 @@ async function saveInvoice(){
     showToast('Đã lưu hóa đơn.');
   }catch(e){ showToast('Lỗi khi lưu: ' + e.message, 'error'); }
 }
-async function deleteInvoice(id){
-  if(!confirm('Xóa hóa đơn này?')) return;
-  try{ await col.customerInvoices().doc(id).delete(); showToast('Đã xóa.'); }
+async function deleteInvoice(){
+  if(!confirm('Xóa hóa đơn này và TOÀN BỘ lịch sử thanh toán của nó? Không thể hoàn tác.')) return;
+  try{
+    const payments = CUSTOMER_INVOICE_PAYMENTS.filter(p=>p.invoiceId===CURRENT_INVOICE_ID);
+    const batch = db.batch();
+    payments.forEach(p => batch.delete(col.customerInvoicePayments().doc(p.id)));
+    batch.delete(col.customerInvoices().doc(CURRENT_INVOICE_ID));
+    await batch.commit();
+    showToast('Đã xóa.');
+    closeModal('modalInvoiceDetail');
+    openModal('modalContractDetail');
+  }
+  catch(e){ showToast('Lỗi: ' + e.message, 'error'); }
+}
+
+/* ---------------- CHI TIẾT HÓA ĐƠN + THANH TOÁN ---------------- */
+function openInvoiceDetail(invoiceId){
+  CURRENT_INVOICE_ID = invoiceId;
+  document.getElementById('paymentDate').value = todayStr();
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentNote').value = '';
+  closeModal('modalContractDetail');
+  renderInvoiceDetailModal();
+  openModal('modalInvoiceDetail');
+}
+
+function renderInvoiceDetailModal(){
+  const i = CUSTOMER_INVOICES.find(x=>x.id===CURRENT_INVOICE_ID);
+  if(!i) return;
+  const contract = CUSTOMER_CONTRACTS.find(x=>x.id===i.contractId);
+  const cur = contract ? (contract.currency||'USD') : 'USD';
+  const typeLabels = { advance:'Tạm ứng', installment1:'Đợt 1', installment2:'Đợt 2', installment3:'Đợt 3', final:'Cuối cùng', other:'Khác' };
+
+  document.getElementById('invDetailTitle').textContent = i.customType || typeLabels[i.type] || 'Hóa đơn';
+  document.getElementById('invDetailMeta').innerHTML = `
+    ${contract ? `Hợp đồng: <strong>${escapeHtml(contract.projectName)}</strong><br>` : ''}
+    Số tiền hóa đơn: <strong>${fmtCurrencyAmt(i.amount||0, cur)}</strong>
+    ${i.vatNo ? ` &nbsp;·&nbsp; VAT: <strong>${escapeHtml(i.vatNo)}</strong>` : ''}
+    ${i.commNo ? ` &nbsp;·&nbsp; TM: <strong>${escapeHtml(i.commNo)}</strong>` : ''}
+    <br>Ngày xuất: <strong>${fmtDate(i.date)}</strong>
+    ${i.note ? `<br>${escapeHtml(i.note)}` : ''}
+  `;
+
+  const bal = calcInvoiceBalance(i);
+  const balEl = document.getElementById('invDetailBalance');
+  balEl.textContent = fmtCurrencyAmt(bal, cur);
+  balEl.style.color = Math.abs(bal)<0.01 ? 'var(--good)' : 'var(--bad)';
+
+  const payments = CUSTOMER_INVOICE_PAYMENTS.filter(p=>p.invoiceId===CURRENT_INVOICE_ID).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const wrap = document.getElementById('paymentsListWrap');
+  if(payments.length===0){
+    wrap.innerHTML = `<div class="small-muted">Chưa có lần thanh toán nào.</div>`;
+  } else {
+    wrap.innerHTML = payments.map(p => `
+      <div class="ledger-item">
+        <div style="flex:1;min-width:0;">
+          <div class="note">${escapeHtml(p.note||'Thanh toán')}</div>
+          <div class="date">${fmtDate(p.date)}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="amt" style="color:var(--good);">+${fmtCurrencyAmt(p.amount||0, cur)}</div>
+          <button class="btn btn-sm btn-outline" style="margin-top:4px;padding:3px 8px;font-size:11px;" onclick="deletePayment('${p.id}')">Xóa</button>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+async function savePayment(){
+  const date = document.getElementById('paymentDate').value;
+  const amount = parseFloat(document.getElementById('paymentAmount').value);
+  if(!date || !amount || amount<=0){ showToast('Vui lòng nhập đúng ngày và số tiền.', 'error'); return; }
+  const i = CUSTOMER_INVOICES.find(x=>x.id===CURRENT_INVOICE_ID);
+  try{
+    await col.customerInvoicePayments().add({
+      invoiceId: CURRENT_INVOICE_ID,
+      contractId: i ? i.contractId : null,
+      customerId: i ? i.customerId : null,
+      date,
+      amount,
+      note: document.getElementById('paymentNote').value.trim(),
+      createdBy: currentUser.email, createdByName: currentUser.email,
+      createdAt: new Date().toISOString(),
+    });
+    document.getElementById('paymentAmount').value = '';
+    document.getElementById('paymentNote').value = '';
+    showToast('Đã ghi nhận thanh toán.');
+  }catch(e){ showToast('Lỗi khi lưu: ' + e.message, 'error'); }
+}
+async function deletePayment(id){
+  if(!confirm('Xóa lần thanh toán này?')) return;
+  try{ await col.customerInvoicePayments().doc(id).delete(); showToast('Đã xóa.'); }
   catch(e){ showToast('Lỗi: ' + e.message, 'error'); }
 }
 
