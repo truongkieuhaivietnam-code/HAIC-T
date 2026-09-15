@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HAIC Debt Tracker — Công nợ</title>
+<style>
+  :root{
+    --navy:#1a2f4a; --navy-light:#2c4a70; --gold:#c9a15a; --gold-light:#e0c088;
+    --bg:#f4f5f7; --card:#ffffff; --line:#e2e5ea; --text:#1f2937; --muted:#6b7280;
+    --good:#1a7d4a; --bad:#c0392b; --amber:#b7791f;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:'Segoe UI',Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);}
+  .hidden{display:none !important;}
+  /* ---- Login ---- */
+  #loginScreen{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,var(--navy),var(--navy-light));}
+  .login-box{background:#fff;border-radius:10px;padding:36px 32px;width:340px;box-shadow:0 10px 40px rgba(0,0,0,.25);}
+  .login-box h1{font-size:19px;margin:0 0 4px;color:var(--navy);}
+  .login-box p{font-size:13px;color:var(--muted);margin:0 0 20px;}
+  .login-box input{width:100%;padding:10px 12px;margin-bottom:10px;border:1px solid var(--line);border-radius:6px;font-size:14px;}
+  .login-box button{width:100%;padding:11px;background:var(--navy);color:#fff;border:none;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;}
+  .login-box button:hover{background:var(--navy-light);}
+  #loginError{color:var(--bad);font-size:12.5px;margin-top:8px;min-height:16px;}
+  /* ---- App shell ---- */
+  #app{display:none;min-height:100vh;}
+  header{background:var(--navy);color:#fff;padding:0 20px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:50;}
+  header .brand{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;}
+  header .brand span.sub{font-weight:400;color:var(--gold-light);font-size:12px;}
+  header .who{font-size:12.5px;color:#cbd5e1;display:flex;align-items:center;gap:10px;}
+  header button.signout{background:none;border:1px solid #45607f;color:#cbd5e1;padding:5px 10px;border-radius:5px;font-size:12px;cursor:pointer;}
+  nav.tabs{display:flex;gap:4px;background:#fff;border-bottom:1px solid var(--line);padding:0 16px;position:sticky;top:56px;z-index:40;overflow-x:auto;}
+  nav.tabs button{background:none;border:none;padding:13px 16px;font-size:13.5px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;}
+  nav.tabs button.active{color:var(--navy);border-bottom-color:var(--gold);}
+  main{max-width:1100px;margin:0 auto;padding:20px 16px 60px;}
+  .page-head{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px;}
+  .page-head h2{margin:0 0 2px;font-size:19px;color:var(--navy);}
+  .page-head p{margin:0;font-size:12.5px;color:var(--muted);}
+  .btn{padding:9px 16px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;border:1px solid transparent;}
+  .btn-primary{background:var(--navy);color:#fff;}
+  .btn-primary:hover{background:var(--navy-light);}
+  .btn-gold{background:var(--gold);color:#3a2c0f;}
+  .btn-outline{background:#fff;border-color:var(--line);color:var(--text);}
+  .btn-outline:hover{background:#f5f6f8;}
+  .btn-danger{background:#fff;border-color:var(--bad);color:var(--bad);}
+  .btn-sm{padding:6px 11px;font-size:12.5px;}
+  .search-input,select.select-input{padding:8px 12px;border:1px solid var(--line);border-radius:6px;font-size:13.5px;min-width:200px;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:14px;}
+  .empty-state{text-align:center;padding:40px 20px;color:var(--muted);}
+  .empty-state .ico{font-size:36px;margin-bottom:8px;}
+  .entity-row{display:flex;align-items:center;gap:14px;padding:13px 6px;border-bottom:1px solid var(--line);cursor:pointer;}
+  .entity-row:last-child{border-bottom:none;}
+  .entity-row:hover{background:#f9fafb;}
+  .entity-avatar{width:38px;height:38px;border-radius:8px;background:var(--navy);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px;flex-shrink:0;}
+  .entity-info{flex:1;min-width:0;}
+  .entity-info .nm{font-weight:600;font-size:14px;}
+  .entity-info .sub{font-size:12px;color:var(--muted);margin-top:1px;}
+  .entity-bal{text-align:right;}
+  .entity-bal .amt{font-weight:700;font-size:15px;}
+  .entity-bal .lbl{font-size:11px;color:var(--muted);}
+  .positive{color:var(--bad);} .zero{color:var(--good);}
+  .hero-card{background:linear-gradient(135deg,var(--navy),var(--navy-light));color:#fff;border-radius:10px;padding:20px 22px;margin-bottom:16px;}
+  .hero-card .lbl{font-size:12.5px;color:#cbd5e1;}
+  .hero-card .amt{font-size:30px;font-weight:700;margin-top:2px;}
+  /* modal */
+  .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:flex-start;justify-content:center;overflow-y:auto;padding:30px 14px;}
+  .modal-bg.active{display:flex;}
+  .modal{background:#fff;border-radius:10px;width:100%;max-width:560px;padding:22px 22px 18px;position:relative;}
+  .modal h3{margin:0 0 4px;color:var(--navy);font-size:17px;}
+  .modal .modal-close{position:absolute;top:14px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);}
+  .form-group{margin-bottom:12px;}
+  .form-group label{display:block;font-size:12.5px;font-weight:600;color:var(--text);margin-bottom:4px;}
+  .form-group input,.form-group textarea,.form-group select{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:6px;font-size:13.5px;font-family:inherit;}
+  .form-row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;}
+  .toggle-group{display:flex;gap:8px;margin-bottom:12px;}
+  .toggle-group button{flex:1;padding:10px;border:1.5px solid var(--line);background:#fff;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);}
+  .toggle-group button.active.incurred{border-color:var(--bad);color:var(--bad);background:#fdf1f0;}
+  .toggle-group button.active.paid{border-color:var(--good);color:var(--good);background:#f0f9f2;}
+  .ledger-item{display:flex;justify-content:space-between;gap:10px;padding:11px 4px;border-bottom:1px solid var(--line);}
+  .ledger-item:last-child{border-bottom:none;}
+  .ledger-item .note{font-size:13.5px;white-space:pre-wrap;}
+  .ledger-item .date{font-size:11.5px;color:var(--muted);margin-top:2px;}
+  .ledger-item .amt{font-weight:700;font-size:14px;white-space:nowrap;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 18px;border-radius:7px;font-size:13px;z-index:200;box-shadow:0 4px 14px rgba(0,0,0,.25);}
+  .toast.error{background:var(--bad);}
+  .small-muted{font-size:12px;color:var(--muted);}
+  .contract-meta{font-size:12px;color:var(--muted);background:#f9fafb;border-radius:6px;padding:10px 12px;margin-bottom:12px;line-height:1.6;}
+  /* ---- Filter panel (bảng lọc trượt bên phải) ---- */
+  .btn-filter{background:#fff;border:1px solid var(--line);color:var(--navy);padding:9px 14px;border-radius:6px;font-size:13.5px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;}
+  .btn-filter.has-active{border-color:var(--gold);background:#fdf8ef;}
+  .filter-badge{background:var(--gold);color:#3a2c0f;border-radius:10px;font-size:10.5px;font-weight:700;padding:1px 6px;}
+  .filter-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:90;}
+  .filter-overlay.active{display:block;}
+  .filter-panel{position:fixed;top:0;right:-320px;width:300px;height:100vh;background:#fff;box-shadow:-4px 0 20px rgba(0,0,0,.15);z-index:95;transition:right .25s ease;display:flex;flex-direction:column;}
+  .filter-panel.active{right:0;}
+  .filter-panel-head{padding:16px 18px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;}
+  .filter-panel-head h3{margin:0;font-size:15px;color:var(--navy);}
+  .filter-panel-head button{background:none;border:none;font-size:19px;cursor:pointer;color:var(--muted);}
+  .filter-panel-body{flex:1;overflow-y:auto;padding:16px 18px;}
+  .filter-section{margin-bottom:22px;}
+  .filter-section-title{font-size:12px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.03em;margin-bottom:10px;}
+  .filter-check-row{display:flex;align-items:center;gap:9px;padding:6px 2px;font-size:13.5px;cursor:pointer;}
+  .filter-check-row input{width:16px;height:16px;cursor:pointer;}
+  .filter-panel-foot{padding:14px 18px;border-top:1px solid var(--line);display:flex;gap:8px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>HAIC Debt Tracker</h1>
+    <p>Công nợ khách hàng &amp; đội khoan / thầu phụ</p>
+    <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
+    <input type="password" id="loginPassword" placeholder="Mật khẩu" autocomplete="current-password">
+    <button onclick="doLogin()">Đăng nhập</button>
+    <div id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app">
+  <header>
+    <div class="brand">💰 HAIC Debt Tracker <span class="sub">Công nợ</span></div>
+    <div class="who">
+      <span id="whoName"></span>
+      <button class="signout" onclick="doLogout()">Đăng xuất</button>
+    </div>
+  </header>
+  <nav class="tabs">
+    <button data-page="customers" onclick="goPage('customers')">👥 Công nợ khách hàng</button>
+    <button data-page="subs" onclick="goPage('subs')">⛏️ Đội khoan / Thầu phụ</button>
+  </nav>
+  <main>
+    <!-- PAGE: CUSTOMERS -->
+    <section id="page-customers" class="page">
+      <div class="page-head">
+        <div>
+          <h2>Công nợ khách hàng</h2>
+          <p>Sổ cái linh hoạt — mỗi dòng ghi Phát sinh (khách nợ thêm) hoặc Đã thu (khách trả), số dư tự cộng dồn.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="search-input" id="custSearch" placeholder="🔍 Tìm khách hàng..." oninput="renderCustomerList()">
+          <button class="btn-filter" id="btnFilterCustomers" onclick="openFilterPanel('customers')">☰ Lọc <span class="filter-badge hidden" id="custFilterBadge">0</span></button>
+          <button class="btn btn-gold" onclick="openEntityModal('customers')">+ Thêm khách hàng</button>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="lbl">Tổng công nợ khách hàng còn phải thu</div>
+        <div class="amt" id="custTotalOwed">$0</div>
+      </div>
+      <div class="card" id="customersListWrap"></div>
+    </section>
+
+    <!-- PAGE: SUBCONTRACTORS -->
+    <section id="page-subs" class="page hidden">
+      <div class="page-head">
+        <div>
+          <h2>Đội khoan / Thầu phụ</h2>
+          <p>Sổ cái linh hoạt — mỗi dòng ghi Phát sinh (khối lượng/công nợ tăng) hoặc Đã tạm ứng (đã trả), số dư tự cộng dồn.</p>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <input type="text" class="search-input" id="subSearch" placeholder="🔍 Tìm đội/thầu phụ..." oninput="renderSubList()">
+          <button class="btn-filter" id="btnFilterSubs" onclick="openFilterPanel('subs')">☰ Lọc <span class="filter-badge hidden" id="subFilterBadge">0</span></button>
+          <button class="btn btn-gold" onclick="openEntityModal('subs')">+ Thêm đội / thầu phụ</button>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="lbl">Tổng công nợ phải trả cho đội khoan / thầu phụ</div>
+        <div class="amt" id="subTotalOwed">$0</div>
+      </div>
+      <div class="card" id="subsListWrap"></div>
+    </section>
+  </main>
+</div>
+
+<!-- ===================== FILTER PANEL (bảng lọc trượt) ===================== -->
+<div class="filter-overlay" id="filterOverlay" onclick="closeFilterPanel()"></div>
+<div class="filter-panel" id="filterPanel">
+  <div class="filter-panel-head">
+    <h3>Điều kiện lọc</h3>
+    <button onclick="closeFilterPanel()">✕</button>
+  </div>
+  <div class="filter-panel-body">
+    <div class="filter-section">
+      <div class="filter-section-title">Quốc gia</div>
+      <label class="filter-check-row"><input type="checkbox" value="Cambodia" class="filterCountryChk"> 🇰🇭 Cambodia</label>
+      <label class="filter-check-row"><input type="checkbox" value="Laos" class="filterCountryChk"> 🇱🇦 Laos</label>
+      <label class="filter-check-row"><input type="checkbox" value="Vietnam" class="filterCountryChk"> 🇻🇳 Vietnam</label>
+    </div>
+    <div class="filter-section">
+      <div class="filter-section-title">Trạng thái công nợ</div>
+      <label class="filter-check-row"><input type="checkbox" value="owed" class="filterStatusChk"> Còn công nợ</label>
+      <label class="filter-check-row"><input type="checkbox" value="settled" class="filterStatusChk"> Đã tất toán ($0)</label>
+    </div>
+  </div>
+  <div class="filter-panel-foot">
+    <button class="btn btn-outline" style="flex:1;" onclick="clearFilterPanel()">Xóa lọc</button>
+    <button class="btn btn-primary" style="flex:1;" onclick="applyFilterPanel()">Áp dụng</button>
+  </div>
+</div>
+
+<!-- ===================== MODAL: ADD/EDIT ENTITY ===================== -->
+<div class="modal-bg" id="modalEntity">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modalEntity')">✕</button>
+    <h3 id="entityModalTitle">Thêm</h3>
+    <div class="form-group">
+      <label>Tên</label>
+      <input type="text" id="entityName" placeholder="Tên khách hàng / đội / thầu phụ">
+    </div>
+    <div class="form-group">
+      <label>Quốc gia</label>
+      <select id="entityCountry">
+        <option value="Cambodia">🇰🇭 Cambodia</option>
+        <option value="Laos">🇱🇦 Laos</option>
+        <option value="Vietnam">🇻🇳 Vietnam</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Ghi chú (tùy chọn)</label>
+      <textarea id="entityNote" rows="2" placeholder="VD: số điện thoại, công trình chính, loại hợp đồng..."></textarea>
+    </div>
+    <div id="entityContractFields" class="hidden">
+      <div class="form-row2">
+        <div class="form-group"><label>Số hợp đồng</label><input type="text" id="entityContractNo"></div>
+        <div class="form-group"><label>Ngày hợp đồng</label><input type="date" id="entityContractDate"></div>
+      </div>
+      <div class="form-row2">
+        <div class="form-group"><label>Giá trị hợp đồng ($)</label><input type="number" step="0.01" id="entityContractValue"></div>
+        <div class="form-group"><label>Giá trị thanh lý ($)</label><input type="number" step="0.01" id="entityLiquidationValue"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modalEntity')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveEntity()">Lưu</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: LEDGER DETAIL ===================== -->
+<div class="modal-bg" id="modalLedger">
+  <div class="modal" style="max-width:640px;">
+    <button class="modal-close" onclick="closeModal('modalLedger')">✕</button>
+    <h3 id="ledgerTitle">—</h3>
+    <div id="ledgerContractMeta" class="contract-meta hidden"></div>
+    <div class="card" style="margin-bottom:12px;padding:14px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="small-muted">Số dư hiện tại</span>
+        <span id="ledgerBalance" style="font-weight:700;font-size:18px;">$0</span>
+      </div>
+    </div>
+
+    <div class="card" style="padding:14px;">
+      <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:8px;">Thêm dòng mới</label>
+      <div class="toggle-group">
+        <button type="button" id="btnTypeIncurred" class="active incurred" onclick="setLedgerType('incurred')">＋ Phát sinh</button>
+        <button type="button" id="btnTypePaid" class="paid" onclick="setLedgerType('paid')">－ Đã <span id="paidLabelWord">thu</span></button>
+      </div>
+      <div class="form-row2">
+        <div class="form-group"><label>Ngày</label><input type="date" id="ledgerDate"></div>
+        <div class="form-group"><label>Số tiền ($)</label><input type="number" step="0.01" id="ledgerAmount" placeholder="0.00"></div>
+      </div>
+      <div class="form-group">
+        <label>Nội dung</label>
+        <textarea id="ledgerNote" rows="2" placeholder="VD: Ứng Trường 300$, hoặc Khối lượng công trình PPWSA 5 hố khoan..."></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="saveLedgerEntry()">Lưu dòng này</button>
+    </div>
+
+    <div class="card" style="padding:14px;margin-top:12px;">
+      <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:6px;">Lịch sử</label>
+      <div id="ledgerHistoryList"></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="openEntityModal(CURRENT_TYPE, CURRENT_ENTITY_ID)">✏️ Sửa thông tin</button>
+      <button class="btn btn-danger" onclick="deleteEntity()">Xóa</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<script>
+// ── Firebase — dùng chung project haic-finance (để nhân viên đăng nhập
+// bằng đúng tài khoản đã có), NHƯNG dùng COLLECTION HOÀN TOÀN RIÊNG, không
+// đụng gì tới document "main" cũ (nơi đang xảy ra lỗi ghi đè mất dữ liệu).
+const firebaseConfig = {
+  apiKey: "AIzaSyDCBGEtqxjekr8Lmdkhckx3OX8SAwO4cJg",
+  authDomain: "haic-finance.firebaseapp.com",
+  projectId: "haic-finance",
+  storageBucket: "haic-finance.firebasestorage.app",
+  messagingSenderId: "505858041699",
+  appId: "1:505858041699:web:7a603c4c76acc45e1c1556",
+  measurementId: "G-SLM6RD250Z"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ── AN TOÀN CHỐNG MẤT DỮ LIỆU KHI NHIỀU NGƯỜI DÙNG CÙNG LÚC ────────────
+// Mỗi Khách hàng/Đội là 1 DOCUMENT RIÊNG trong collection debt_customers /
+// debt_subcontractors. Mỗi DÒNG SỔ CÁI là 1 DOCUMENT RIÊNG trong
+// debt_customer_entries / debt_subcontractor_entries — KHÔNG bao giờ gộp
+// nhiều dòng vào 1 document rồi ghi đè cả cục như app Finance cũ. Nhiều
+// người thêm dòng cùng lúc sẽ không bao giờ đụng/ghi đè nhau, vì mỗi
+// người chỉ tạo/sửa ĐÚNG 1 document của riêng thao tác đó.
+const col = {
+  customers:      () => db.collection('debt_customers'),
+  customerEntries:() => db.collection('debt_customer_entries'),
+  subs:           () => db.collection('debt_subcontractors'),
+  subEntries:     () => db.collection('debt_subcontractor_entries'),
+};
+
+let currentUser = null;
+let CUSTOMERS = [], CUSTOMER_ENTRIES = [];
+let SUBS = [], SUB_ENTRIES = [];
+let CURRENT_PAGE = 'customers';
+let CURRENT_TYPE = null;      // 'customers' | 'subs' — đang mở ledger của loại nào
+let CURRENT_ENTITY_ID = null; // id đang mở trong modal Ledger
+let LEDGER_TYPE = 'incurred'; // toggle đang chọn trong form thêm dòng
+let EDITING_ENTITY_ID = null;
+let FILTER_PANEL_TYPE = null; // loại đang mở bảng lọc: 'customers' | 'subs'
+let FILTERS = {
+  customers: { countries: [], status: [] },
+  subs:      { countries: [], status: [] },
+};
+let unsubs = [];
+
+function genId(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
+function todayStr(){ return new Date().toISOString().slice(0,10); }
+function fmtDate(iso){ if(!iso) return '—'; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function fmtMoney(n){ n = parseFloat(n)||0; const sign = n<0 ? '-' : ''; return sign + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function showToast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast' + (type==='error' ? ' error' : '');
+  el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(), 2600);
+}
+function openModal(id){ document.getElementById(id).classList.add('active'); }
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+/* ---------------- FILTER PANEL ---------------- */
+function openFilterPanel(type){
+  FILTER_PANEL_TYPE = type;
+  const f = FILTERS[type];
+  document.querySelectorAll('.filterCountryChk').forEach(cb => cb.checked = f.countries.includes(cb.value));
+  document.querySelectorAll('.filterStatusChk').forEach(cb => cb.checked = f.status.includes(cb.value));
+  document.getElementById('filterPanel').classList.add('active');
+  document.getElementById('filterOverlay').classList.add('active');
+}
+function closeFilterPanel(){
+  document.getElementById('filterPanel').classList.remove('active');
+  document.getElementById('filterOverlay').classList.remove('active');
+}
+function applyFilterPanel(){
+  const type = FILTER_PANEL_TYPE;
+  FILTERS[type].countries = Array.from(document.querySelectorAll('.filterCountryChk:checked')).map(cb=>cb.value);
+  FILTERS[type].status = Array.from(document.querySelectorAll('.filterStatusChk:checked')).map(cb=>cb.value);
+  updateFilterBadge(type);
+  closeFilterPanel();
+  if(type==='customers') renderCustomerList(); else renderSubList();
+}
+function clearFilterPanel(){
+  document.querySelectorAll('.filterCountryChk, .filterStatusChk').forEach(cb => cb.checked = false);
+}
+function updateFilterBadge(type){
+  const count = FILTERS[type].countries.length + FILTERS[type].status.length;
+  const badgeId = type==='customers' ? 'custFilterBadge' : 'subFilterBadge';
+  const btnId = type==='customers' ? 'btnFilterCustomers' : 'btnFilterSubs';
+  const badge = document.getElementById(badgeId);
+  badge.textContent = count;
+  badge.classList.toggle('hidden', count===0);
+  document.getElementById(btnId).classList.toggle('has-active', count>0);
+}
+function countryFlag(c){
+  return c==='Laos' ? '🇱🇦' : (c==='Vietnam' ? '🇻🇳' : '🇰🇭');
+}
+function applyEntityFilters(list, type, balances){
+  const f = FILTERS[type];
+  return list.filter(e => {
+    if(f.countries.length && !f.countries.includes(e.country || 'Cambodia')) return false;
+    if(f.status.length){
+      const bal = balances[e.id] || 0;
+      const isSettled = Math.abs(bal) < 0.01;
+      if(f.status.includes('owed') && !f.status.includes('settled') && isSettled) return false;
+      if(f.status.includes('settled') && !f.status.includes('owed') && !isSettled) return false;
+    }
+    return true;
+  });
+}
+
+/* ---------------- AUTH ---------------- */
+async function doLogin(){
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Vui lòng nhập email và mật khẩu.'; return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  }catch(e){
+    errEl.textContent = 'Đăng nhập thất bại: ' + (e.message || e.code);
+  }
+}
+function doLogout(){ auth.signOut(); }
+
+auth.onAuthStateChanged(user => {
+  if(user){
+    currentUser = user;
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('whoName').textContent = user.email || '';
+    attachListeners();
+    goPage('customers');
+  } else {
+    currentUser = null;
+    detachListeners();
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+  }
+});
+
+function detachListeners(){ unsubs.forEach(u=>u()); unsubs = []; }
+function attachListeners(){
+  detachListeners();
+  unsubs.push(col.customers().onSnapshot(snap=>{
+    CUSTOMERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='customers') renderCustomerList();
+    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
+  }));
+  unsubs.push(col.customerEntries().onSnapshot(snap=>{
+    CUSTOMER_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='customers') renderCustomerList();
+    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
+  }));
+  unsubs.push(col.subs().onSnapshot(snap=>{
+    SUBS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='subs') renderSubList();
+    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
+  }));
+  unsubs.push(col.subEntries().onSnapshot(snap=>{
+    SUB_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='subs') renderSubList();
+    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
+  }));
+}
+
+/* ---------------- NAV ---------------- */
+function goPage(page){
+  CURRENT_PAGE = page;
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  document.getElementById('page-customers').classList.toggle('hidden', page!=='customers');
+  document.getElementById('page-subs').classList.toggle('hidden', page!=='subs');
+  if(page==='customers') renderCustomerList();
+  else renderSubList();
+}
+
+/* ---------------- BALANCE HELPERS ---------------- */
+function calcBalance(entries, entityId){
+  return entries.filter(e=>e.entityId===entityId)
+    .reduce((s,e)=> s + (e.incurred||0) - (e.paid||0), 0);
+}
+
+/* ---------------- CUSTOMERS LIST ---------------- */
+function renderCustomerList(){
+  const search = (document.getElementById('custSearch').value||'').toLowerCase();
+  let list = CUSTOMERS.filter(c => (c.name||'').toLowerCase().includes(search));
+  const balances = {};
+  CUSTOMERS.forEach(c => balances[c.id] = calcBalance(CUSTOMER_ENTRIES, c.id));
+  list = applyEntityFilters(list, 'customers', balances);
+  list = list.map(c => ({...c, balance: balances[c.id]}));
+  list.sort((a,b)=> b.balance - a.balance);
+
+  const total = CUSTOMERS.reduce((s,c)=> s + calcBalance(CUSTOMER_ENTRIES, c.id), 0);
+  document.getElementById('custTotalOwed').textContent = fmtMoney(total);
+
+  const wrap = document.getElementById('customersListWrap');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="ico">👥</div><p>Chưa có khách hàng nào${search?' khớp tìm kiếm':''}.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(c => `
+    <div class="entity-row" onclick="openLedger('customers','${c.id}')">
+      <div class="entity-avatar">${(c.name||'?').charAt(0).toUpperCase()}</div>
+      <div class="entity-info">
+        <div class="nm">${countryFlag(c.country)} ${escapeHtml(c.name)}</div>
+        <div class="sub">${escapeHtml(c.note||'')}</div>
+      </div>
+      <div class="entity-bal">
+        <div class="amt ${c.balance>0?'positive':'zero'}">${fmtMoney(c.balance)}</div>
+        <div class="lbl">${c.balance>0?'còn phải thu':(c.balance<0?'dư (khách ứng trước)':'đã tất toán')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------------- SUBCONTRACTORS LIST ---------------- */
+function renderSubList(){
+  const search = (document.getElementById('subSearch').value||'').toLowerCase();
+  let list = SUBS.filter(s => (s.name||'').toLowerCase().includes(search));
+  const balances = {};
+  SUBS.forEach(s => balances[s.id] = calcBalance(SUB_ENTRIES, s.id));
+  list = applyEntityFilters(list, 'subs', balances);
+  list = list.map(s => ({...s, balance: balances[s.id]}));
+  list.sort((a,b)=> b.balance - a.balance);
+
+  const total = SUBS.reduce((s,x)=> s + calcBalance(SUB_ENTRIES, x.id), 0);
+  document.getElementById('subTotalOwed').textContent = fmtMoney(total);
+
+  const wrap = document.getElementById('subsListWrap');
+  if(list.length===0){
+    wrap.innerHTML = `<div class="empty-state"><div class="ico">⛏️</div><p>Chưa có đội khoan / thầu phụ nào${search?' khớp tìm kiếm':''}.</p></div>`;
+    return;
+  }
+  wrap.innerHTML = list.map(s => `
+    <div class="entity-row" onclick="openLedger('subs','${s.id}')">
+      <div class="entity-avatar" style="background:var(--gold);color:#3a2c0f;">${(s.name||'?').charAt(0).toUpperCase()}</div>
+      <div class="entity-info">
+        <div class="nm">${countryFlag(s.country)} ${escapeHtml(s.name)}</div>
+        <div class="sub">${escapeHtml(s.note||'')}${s.contractNo?` · HĐ ${escapeHtml(s.contractNo)}`:''}</div>
+      </div>
+      <div class="entity-bal">
+        <div class="amt ${s.balance>0?'positive':'zero'}">${fmtMoney(s.balance)}</div>
+        <div class="lbl">${s.balance>0?'còn phải trả':(s.balance<0?'dư (đã ứng thừa)':'đã tất toán')}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+/* ---------------- ADD / EDIT ENTITY ---------------- */
+function openEntityModal(type, entityId){
+  EDITING_ENTITY_ID = entityId || null;
+  const list = type==='customers' ? CUSTOMERS : SUBS;
+  const e = entityId ? list.find(x=>x.id===entityId) : null;
+
+  document.getElementById('entityModalTitle').textContent = e
+    ? (type==='customers' ? 'Sửa khách hàng' : 'Sửa đội / thầu phụ')
+    : (type==='customers' ? 'Thêm khách hàng' : 'Thêm đội / thầu phụ');
+  document.getElementById('entityName').value = e ? (e.name||'') : '';
+  document.getElementById('entityCountry').value = e ? (e.country||'Cambodia') : 'Cambodia';
+  document.getElementById('entityNote').value  = e ? (e.note||'') : '';
+
+  const contractWrap = document.getElementById('entityContractFields');
+  contractWrap.classList.toggle('hidden', type!=='subs');
+  if(type==='subs'){
+    document.getElementById('entityContractNo').value = e ? (e.contractNo||'') : '';
+    document.getElementById('entityContractDate').value = e ? (e.contractDate||'') : '';
+    document.getElementById('entityContractValue').value = e ? (e.contractValue ?? '') : '';
+    document.getElementById('entityLiquidationValue').value = e ? (e.liquidationValue ?? '') : '';
+  }
+
+  document.getElementById('modalEntity').dataset.type = type;
+  closeModal('modalLedger');
+  openModal('modalEntity');
+}
+
+async function saveEntity(){
+  const type = document.getElementById('modalEntity').dataset.type;
+  const name = document.getElementById('entityName').value.trim();
+  const note = document.getElementById('entityNote').value.trim();
+  if(!name){ showToast('Vui lòng nhập tên.', 'error'); return; }
+
+  const data = { name, note, country: document.getElementById('entityCountry').value, updatedAt: new Date().toISOString(), updatedBy: currentUser.email };
+  if(type==='subs'){
+    data.contractNo = document.getElementById('entityContractNo').value.trim();
+    data.contractDate = document.getElementById('entityContractDate').value;
+    data.contractValue = parseFloat(document.getElementById('entityContractValue').value) || null;
+    data.liquidationValue = parseFloat(document.getElementById('entityLiquidationValue').value) || null;
+  }
+
+  const collection = type==='customers' ? col.customers() : col.subs();
+  try{
+    if(EDITING_ENTITY_ID){
+      await collection.doc(EDITING_ENTITY_ID).set(data, { merge: true });
+    } else {
+      data.createdAt = new Date().toISOString();
+      data.createdBy = currentUser.email;
+      const ref = await collection.add(data);
+      EDITING_ENTITY_ID = ref.id;
+    }
+    showToast('Đã lưu.');
+    closeModal('modalEntity');
+    openLedger(type, EDITING_ENTITY_ID);
+  }catch(e){
+    showToast('Lỗi khi lưu: ' + e.message, 'error');
+  }
+}
+
+async function deleteEntity(){
+  if(!confirm('Xóa hoàn toàn khách hàng/đội này và TOÀN BỘ lịch sử sổ cái của họ? Không thể hoàn tác.')) return;
+  const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
+  try{
+    const entryCol = type==='customers' ? col.customerEntries() : col.subEntries();
+    const entryList = (type==='customers' ? CUSTOMER_ENTRIES : SUB_ENTRIES).filter(e=>e.entityId===id);
+    const batch = db.batch();
+    entryList.forEach(e => batch.delete(entryCol.doc(e.id)));
+    const entityCol = type==='customers' ? col.customers() : col.subs();
+    batch.delete(entityCol.doc(id));
+    await batch.commit();
+    showToast('Đã xóa.');
+    closeModal('modalLedger');
+  }catch(e){
+    showToast('Lỗi khi xóa: ' + e.message, 'error');
+  }
+}
+
+/* ---------------- LEDGER MODAL ---------------- */
+function openLedger(type, entityId){
+  CURRENT_TYPE = type;
+  CURRENT_ENTITY_ID = entityId;
+  LEDGER_TYPE = 'incurred';
+  document.getElementById('paidLabelWord').textContent = type==='customers' ? 'thu' : 'tạm ứng';
+  document.getElementById('ledgerDate').value = todayStr();
+  document.getElementById('ledgerAmount').value = '';
+  document.getElementById('ledgerNote').value = '';
+  setLedgerType('incurred');
+  renderLedgerModal();
+  openModal('modalLedger');
+}
+
+function setLedgerType(t){
+  LEDGER_TYPE = t;
+  document.getElementById('btnTypeIncurred').classList.toggle('active', t==='incurred');
+  document.getElementById('btnTypePaid').classList.toggle('active', t==='paid');
+}
+
+function renderLedgerModal(){
+  const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
+  const list = type==='customers' ? CUSTOMERS : SUBS;
+  const entries = (type==='customers' ? CUSTOMER_ENTRIES : SUB_ENTRIES).filter(e=>e.entityId===id);
+  const entity = list.find(x=>x.id===id);
+  if(!entity) return;
+
+  document.getElementById('ledgerTitle').textContent = entity.name;
+
+  const metaEl = document.getElementById('ledgerContractMeta');
+  if(type==='subs' && (entity.contractNo || entity.contractValue || entity.liquidationValue)){
+    metaEl.classList.remove('hidden');
+    metaEl.innerHTML = `
+      ${entity.contractNo?`Số HĐ: <strong>${escapeHtml(entity.contractNo)}</strong> &nbsp;·&nbsp; `:''}
+      ${entity.contractDate?`Ngày HĐ: <strong>${fmtDate(entity.contractDate)}</strong> &nbsp;·&nbsp; `:''}
+      ${entity.contractValue?`GT hợp đồng: <strong>${fmtMoney(entity.contractValue)}</strong>`:''}
+      ${entity.liquidationValue?`<br>GT thanh lý: <strong>${fmtMoney(entity.liquidationValue)}</strong>`:''}
+    `;
+  } else {
+    metaEl.classList.add('hidden');
+  }
+
+  const balance = calcBalance(type==='customers'?CUSTOMER_ENTRIES:SUB_ENTRIES, id);
+  const balEl = document.getElementById('ledgerBalance');
+  balEl.textContent = fmtMoney(balance);
+  balEl.style.color = balance > 0 ? 'var(--bad)' : (balance < 0 ? 'var(--amber)' : 'var(--good)');
+
+  const sorted = entries.slice().sort((a,b)=> (b.date||'').localeCompare(a.date||'') || (b.createdAt||'').localeCompare(a.createdAt||''));
+  const historyEl = document.getElementById('ledgerHistoryList');
+  if(sorted.length===0){
+    historyEl.innerHTML = `<div class="small-muted">Chưa có dòng nào.</div>`;
+    return;
+  }
+  historyEl.innerHTML = sorted.map(e => {
+    const isIncurred = (e.incurred||0) > 0;
+    const amt = isIncurred ? e.incurred : e.paid;
+    return `
+      <div class="ledger-item">
+        <div style="flex:1;min-width:0;">
+          <div class="note">${escapeHtml(e.note||(isIncurred?'Phát sinh':'Đã trả'))}</div>
+          <div class="date">${fmtDate(e.date)} · ${escapeHtml(e.createdByName||e.createdBy||'')}</div>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+          <div class="amt" style="color:${isIncurred?'var(--bad)':'var(--good)'};">${isIncurred?'+':'-'}${fmtMoney(amt)}</div>
+          <button class="btn btn-sm btn-outline" style="margin-top:4px;padding:3px 8px;font-size:11px;" onclick="deleteLedgerEntry('${e.id}')">Xóa</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function saveLedgerEntry(){
+  const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
+  const date = document.getElementById('ledgerDate').value;
+  const amount = parseFloat(document.getElementById('ledgerAmount').value);
+  const note = document.getElementById('ledgerNote').value.trim();
+
+  if(!date || !amount || amount <= 0){
+    showToast('Vui lòng nhập đúng ngày và số tiền lớn hơn 0.', 'error');
+    return;
+  }
+
+  const data = {
+    entityId: id,
+    date,
+    note,
+    incurred: LEDGER_TYPE==='incurred' ? amount : 0,
+    paid: LEDGER_TYPE==='paid' ? amount : 0,
+    createdBy: currentUser.email,
+    createdByName: currentUser.email,
+    createdAt: new Date().toISOString(),
+  };
+
+  const entryCol = type==='customers' ? col.customerEntries() : col.subEntries();
+  try{
+    // MỖI DÒNG SỔ CÁI LÀ 1 DOCUMENT RIÊNG — .add() tạo document mới hoàn
+    // toàn độc lập, không đụng/ghi đè bất kỳ dòng nào người khác vừa thêm,
+    // dù họ bấm lưu đúng cùng lúc với anh.
+    await entryCol.add(data);
+    document.getElementById('ledgerAmount').value = '';
+    document.getElementById('ledgerNote').value = '';
+    showToast('Đã lưu dòng mới.');
+  }catch(e){
+    showToast('Lỗi khi lưu: ' + e.message, 'error');
+  }
+}
+
+async function deleteLedgerEntry(entryId){
+  if(!confirm('Xóa dòng này?')) return;
+  const entryCol = CURRENT_TYPE==='customers' ? col.customerEntries() : col.subEntries();
+  try{
+    await entryCol.doc(entryId).delete();
+    showToast('Đã xóa.');
+  }catch(e){
+    showToast('Lỗi khi xóa: ' + e.message, 'error');
+  }
+}
+</script>
+</body>
+</html>
