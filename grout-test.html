@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
+<title>Cường Độ Kháng Nén Vữa (Grout) | HAIC</title>
+<meta name="theme-color" content="#1a5276">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Grout Test">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --primary:#1a5276; --primary-dark:#0e3b53; --accent:#1e8449;
+    --danger:#c0392b; --bg:#f4f6f7; --card:#ffffff; --border:#d5dbdb;
+    --text:#212f3c; --muted:#6b7280; --input-bg:#ffffff; --amber:#b8860b;
+  }
+  [data-theme="dark"]{
+    --bg:#0d1517; --card:#1c2628; --border:#2a3638;
+    --text:#ecefef; --muted:#93a3a7; --input-bg:#172022;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text);padding-bottom:90px;transition:background .15s,color .15s;}
+
+  header{background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:#fff;padding:14px 16px;position:sticky;top:0;z-index:50;box-shadow:0 2px 6px rgba(0,0,0,.2);}
+  header h1{margin:0;font-size:15px;line-height:1.4;font-weight:700;}
+  .userbar{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px;font-size:12px;background:rgba(255,255,255,.12);border-radius:8px;padding:6px 10px;}
+  .userbar .who{font-weight:700;}
+  .userbar .actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .theme-toggle{background:rgba(255,255,255,.18);border:none;color:#fff;width:30px;height:30px;border-radius:8px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+
+  .std-note{background:rgba(184,134,11,.1);border:1px solid var(--amber);border-radius:8px;padding:8px 12px;font-size:11.5px;color:var(--amber);margin:12px 0;}
+
+  .wrap{max-width:1100px;margin:0 auto;padding:10px;}
+  .card{background:var(--card);border-radius:10px;padding:14px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);border:1px solid var(--border);}
+  .card h2{font-size:13px;color:var(--primary);margin:0 0 10px;padding-bottom:6px;border-bottom:2px solid var(--border);text-transform:uppercase;letter-spacing:.3px;}
+  [data-theme="dark"] .card h2{color:#5fb3d9;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+  .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+  .grid4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;}
+  @media(max-width:640px){.grid2,.grid3,.grid4{grid-template-columns:1fr;}}
+  label{display:block;font-size:11.5px;color:var(--muted);margin-bottom:3px;font-weight:600;}
+  input,textarea,select{width:100%;padding:8px 9px;border:1px solid var(--border);border-radius:6px;font-size:14px;background:var(--input-bg);color:var(--text);font-family:inherit;}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--primary);}
+  .field{margin-bottom:10px;}
+  .row-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+  button{border:none;border-radius:7px;padding:9px 14px;font-size:13px;font-weight:600;cursor:pointer;color:#fff;background:var(--primary);transition:.15s;}
+  button:hover{filter:brightness(1.08);}
+  button.secondary{background:#5d6d7e;}
+  button.accent{background:var(--accent);}
+  button.danger{background:var(--danger);}
+  button.small{padding:5px 9px;font-size:12px;border-radius:6px;}
+  button.ghost{background:#eef1f3;color:var(--primary);}
+  [data-theme="dark"] button.ghost{background:#23302f;color:#5fb3d9;}
+
+  .group-card{background:var(--card);border:1.5px solid var(--border);border-radius:10px;margin-bottom:12px;overflow:hidden;}
+  .group-header{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(26,82,118,.07);flex-wrap:wrap;}
+  .group-num{font-weight:700;font-size:15px;color:var(--primary);min-width:28px;}
+  .group-dates{display:flex;gap:10px;flex:1;flex-wrap:wrap;}
+  .group-dates .field{margin:0;flex:1;min-width:130px;}
+  .age-badge{background:rgba(26,82,118,.13);color:var(--primary);border-radius:20px;padding:3px 10px;font-size:11.5px;font-weight:700;white-space:nowrap;align-self:flex-end;margin-bottom:4px;}
+  .del-group-btn{margin-left:auto;}
+  .group-body{padding:10px 12px;}
+
+  .spec-table-wrap{overflow-x:auto;}
+  table.spec-table{border-collapse:collapse;width:100%;font-size:12.5px;}
+  table.spec-table th,table.spec-table td{border:1px solid var(--border);padding:6px 8px;text-align:center;vertical-align:middle;}
+  table.spec-table thead th{background:var(--primary);color:#fff;font-size:11.5px;font-weight:600;}
+  table.spec-table tbody td.calc{background:#f6fbf8;font-weight:700;color:var(--accent);}
+  [data-theme="dark"] table.spec-table tbody td.calc{background:#16291a;}
+  table.spec-table tbody tr.avg-row td{border-top:2px solid var(--border);background:#fdf3e3;font-weight:700;}
+  [data-theme="dark"] table.spec-table tbody tr.avg-row td{background:#2c220f;}
+  table.spec-table tbody td input{padding:5px 4px;font-size:12.5px;min-width:70px;text-align:center;border:1px solid var(--border);border-radius:4px;background:var(--input-bg);color:var(--text);}
+  .spec-sym{font-weight:700;color:var(--muted);width:28px;}
+
+  .signoff{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media(max-width:640px){.signoff{grid-template-columns:1fr;}}
+  .signoff .box{text-align:center;}
+  .signoff .box .ttl{font-weight:700;font-size:12px;margin-bottom:32px;}
+  .companyfoot{font-size:11px;color:var(--muted);text-align:center;line-height:1.5;margin-top:8px;}
+
+  .footer-bar{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:10px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:40;box-shadow:0 -2px 6px rgba(0,0,0,.08);}
+  #editingIndicator{display:none;width:100%;text-align:center;font-size:11.5px;color:#7a5c00;background:#fdf3e3;border:1px solid #f0d8a0;border-radius:6px;padding:4px 8px;margin-bottom:4px;}
+
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:100;padding:16px;}
+  .modal{background:var(--card);border-radius:10px;max-width:480px;width:100%;max-height:85vh;overflow:auto;padding:16px;}
+  .modal h3{margin-top:0;color:var(--primary);font-size:15px;}
+  [data-theme="dark"] .modal h3{color:#5fb3d9;}
+  .saved-item{display:flex;justify-content:space-between;align-items:center;padding:8px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;font-size:12.5px;}
+  .saved-item .info{flex:1;cursor:pointer;}
+  .toast{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);background:var(--accent);color:#fff;padding:9px 16px;border-radius:20px;font-size:13px;z-index:200;opacity:0;transition:opacity .25s;pointer-events:none;}
+  .toast.show{opacity:1;}
+
+  #loginScreen{position:fixed;inset:0;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;z-index:500;padding:16px;overflow-y:auto;}
+  .login-box{background:var(--card);border-radius:14px;padding:30px 26px;max-width:400px;width:100%;box-shadow:0 10px 30px rgba(0,0,0,.25);margin:auto;}
+  .login-box h2{color:var(--primary);font-size:17px;margin:0 0 4px;text-align:center;}
+  [data-theme="dark"] .login-box h2{color:#5fb3d9;}
+  .login-box .sub{font-size:11.5px;color:var(--muted);margin-bottom:20px;text-align:center;}
+  .login-error{color:var(--danger);font-size:12.5px;margin-top:10px;min-height:16px;text-align:center;}
+  .login-box button.primary-btn{width:100%;padding:11px;font-size:14px;margin-top:6px;}
+  .firstrun-box{margin-top:18px;padding-top:14px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);line-height:1.5;}
+  .firstrun-box strong{color:var(--text);}
+  #appShell{display:none;}
+
+  .accounts-table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  .accounts-table th,.accounts-table td{border:1px solid var(--border);padding:7px 8px;text-align:left;}
+  .accounts-table th{background:#eef1f3;}
+  [data-theme="dark"] .accounts-table th{background:#23302f;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:10px;font-size:10.5px;font-weight:700;}
+  .badge.superadmin{background:#f1e8fa;color:#6c3483;}
+  .badge.admin{background:#eaf2e8;color:var(--accent);}
+  .badge.user{background:#eaf0f6;color:var(--primary);}
+  .form-code{font-size:10.5px;color:var(--muted);font-style:italic;margin-left:8px;}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>HAIC Lab — Đăng nhập / Login</h2>
+    <div class="sub">Cường Độ Kháng Nén Vữa / Compressive Strength of Grout</div>
+    <div class="field"><label>Email</label><input id="loginEmail" type="email" autocomplete="username" placeholder="ten@gmail.com"></div>
+    <div class="field"><label>Mật khẩu / Password</label><input id="loginPassword" type="password" autocomplete="current-password"></div>
+    <button class="primary-btn" onclick="login()">Đăng nhập / Sign In</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="firstrun-box">
+      <strong>Lần đầu sử dụng:</strong> Đăng nhập bằng email Super Admin (<span id="superAdminEmailDisplay"></span>) với mật khẩu tùy chọn (≥6 ký tự). Các tài khoản khác do Admin tạo trong mục "Quản Lý Tài Khoản".<br><br>
+      <strong>Lưu ý:</strong> App này dùng chung tài khoản đăng nhập với Concrete Test / Sand Cone Test / Lab Management (Firebase project <code>haic-lab-system</code>).
+    </div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="appShell">
+
+<header>
+  <h1>CƯỜNG ĐỘ KHÁNG NÉN CỦA VỮA<br>
+    <span style="font-weight:400;font-size:13px;">COMPRESSIVE STRENGTH OF GROUT</span>
+    <span class="form-code" id="formCodeDisplay">F-71.HAIC-LAB-15MAT / F-12.2.HAIC-LAB-15MAT</span>
+  </h1>
+  <div class="userbar">
+    <div class="who" id="whoami">—</div>
+    <div class="actions">
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeBtn" title="Dark mode">🌙</button>
+      <button class="danger" onclick="logout()">Đăng xuất</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="std-note">
+    ℹ️ Tiêu chuẩn áp dụng: <strong>ASTM C109 / C109M, ASTM C1019, BS EN 445 &amp; 447-1997</strong>.
+    Mẫu thử cố định: khối lập phương <strong>50 × 50 × 50 mm</strong> (diện tích chịu lực = 2500 mm²).
+  </div>
+
+  <!-- ADMIN -->
+  <div class="card" id="adminCard" style="display:none;">
+    <h2>Quản Lý Tài Khoản / Account Management</h2>
+    <div class="row-actions" style="margin-bottom:10px;">
+      <button class="accent" onclick="openAddStaffModal()">+ Thêm nhân viên / Add Staff</button>
+    </div>
+    <div style="overflow-x:auto;">
+      <table class="accounts-table">
+        <thead><tr><th>Tên</th><th>Email</th><th>Vai trò</th><th>Hành động</th></tr></thead>
+        <tbody id="staffBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- SAVED RECORDS -->
+  <div class="card">
+    <h2>Hồ Sơ Đã Lưu / Saved Records</h2>
+    <div class="row-actions">
+      <button class="ghost" onclick="openLoadModal()">📂 Mở hồ sơ / Load record</button>
+      <button class="ghost" onclick="newRecord()">🆕 Hồ sơ mới / New record</button>
+    </div>
+  </div>
+
+  <!-- PROJECT -->
+  <div class="card">
+    <h2>I. Thông Tin Liên Quan / Project Information</h2>
+    <div class="grid2">
+      <div class="field"><label>Chủ đầu tư / Client - Owner</label><input id="fInvestor" type="text"></div>
+      <div class="field"><label>ĐV Tư vấn GS / Supervision consultants</label><input id="fSupervisor" type="text"></div>
+      <div class="field"><label>Nhà thầu chính / Main Contractor</label><input id="fContractor" type="text"></div>
+      <div class="field"><label>Nhà cung cấp / Supplier</label><input id="fSupplier" type="text"></div>
+      <div class="field"><label>Công trình / Project</label><input id="fProject" type="text"></div>
+      <div class="field"><label>Địa điểm XD / Location</label><input id="fLocation" type="text"></div>
+      <div class="field"><label>Hạng mục / Item</label><input id="fItem" type="text"></div>
+      <div class="field"><label>Tên mẫu / Type of sample</label><input id="fSampleType" type="text" placeholder="vd: Trial mix for Grouting"></div>
+    </div>
+  </div>
+
+  <!-- TEST INFO -->
+  <div class="card">
+    <h2>II. Thông Tin Thí Nghiệm / Test Information</h2>
+    <div class="grid3">
+      <div class="field"><label>Tỉ lệ trộn — Water / Cement</label><input id="fWaterCement" type="text" placeholder="vd: 0.35"></div>
+      <div class="field"><label>Cường độ yêu cầu / Strength Request</label><input id="fReqStrength" type="text" placeholder="vd: 30 Mpa - R28"></div>
+      <div class="field"><label>Thiết bị TN / Testing Equipment</label><input id="fEquipment" type="text" value="Phoenix Pisces - 300 kN"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Người kiểm tra / Checked by</label><input id="fCheckedBy" type="text" placeholder="Eng. Trần Văn Quyết"></div>
+      <div class="field"><label>Thí nghiệm viên / Lab Technician</label><input id="fLabTech" type="text"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="card" id="resultsCard">
+    <h2>III. Kết Quả Thí Nghiệm / Testing Result</h2>
+    <div id="groupsContainer"></div>
+    <div class="row-actions">
+      <button class="accent" onclick="addGroup()">+ Thêm tổ mẫu / Add Group</button>
+    </div>
+  </div>
+
+  <!-- SIGNOFF -->
+  <div class="card">
+    <h2>Ghi Chú &amp; Chữ Ký / Notes &amp; Signatures</h2>
+    <div class="field"><label>Ghi chú / Remarks</label>
+      <textarea id="fRemarks" rows="2">1. Kết quả thí nghiệm chỉ có giá trị trên mẫu thử - Test results are valid only for tested specimens.
+2. Mẫu do khách hàng cung cấp - The specimens are supplied by Client.
+3. Phòng thí nghiệm không lưu mẫu - No remaining sample kept by the laboratory.</textarea>
+    </div>
+    <div class="signoff">
+      <div class="box"><div class="ttl">Thí nghiệm viên<br>Lab Technician</div></div>
+      <div class="box"><div class="ttl">Người kiểm tra<br>Checked by</div></div>
+    </div>
+    <div class="companyfoot">
+      HAI (CAMBODIA) SURVEY &amp; CONSTRUCTION CO., LTD<br>
+      Address: No.06, Street D, Krang Tnorng Sangkat, Sen Sok Khan, Phnom Penh, Cambodia<br>
+      Telephone: +855 977 855 953 — Website: haicam.com — Email: anhnguyen@haicam.com
+    </div>
+  </div>
+
+</div>
+
+<!-- ===================== FOOTER BAR ===================== -->
+<div class="footer-bar">
+  <div id="editingIndicator">✏️ Đang chỉnh sửa hồ sơ đã lưu / Editing saved record</div>
+  <button class="accent" onclick="saveRecord()">💾 Lưu / Save</button>
+  <button onclick="exportPdfBienBan()">📄 Xuất PDF Biên Bản (F-71)</button>
+  <button onclick="exportPdfBaoCao()">📋 Xuất PDF Báo Cáo (F-12.2)</button>
+  <button class="secondary" onclick="newRecord()">🆕 Mới</button>
+</div>
+
+</div><!-- /appShell -->
+
+<!-- ===================== MODALS ===================== -->
+<div class="modal-bg" id="modalLoad">
+  <div class="modal">
+    <h3>Mở Hồ Sơ Đã Lưu / Load Saved Record</h3>
+    <div id="savedList"></div>
+    <div class="row-actions"><button class="secondary" onclick="closeModal('modalLoad')">Đóng</button></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modalAddStaff">
+  <div class="modal">
+    <h3>Thêm Nhân Viên / Add Staff</h3>
+    <div class="field"><label>Họ tên</label><input id="newStaffName" type="text"></div>
+    <div class="field"><label>Email</label><input id="newStaffEmail" type="email"></div>
+    <div class="field"><label>Mật khẩu tạm / Temp password</label><input id="newStaffPass" type="text" value="haic123456"></div>
+    <div class="field"><label>Vai trò</label>
+      <select id="newStaffRole"><option value="user">Nhân viên</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="addStaff()">Thêm</button>
+      <button class="secondary" onclick="closeModal('modalAddStaff')">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* =============================================================
+   FIREBASE CONFIG — dùng chung project với Lab System / Concrete
+   Test / Sand Cone Test (haic-lab-system). Đăng nhập bằng tài
+   khoản Lab System hiện có.
+   ============================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
+};
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+
+firebase.initializeApp(firebaseConfig);
+const secondaryApp = firebase.initializeApp(firebaseConfig, "SecondaryG");
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// Grout Test có "ngăn" riêng trong project chung, không đụng dữ liệu
+// của Concrete Test / Sand Cone Test.
+function groutReportsCol(){
+  return db.collection('apps').doc('grout-test').collection('grout_reports');
+}
+// QUAN TRỌNG: users lưu ở collection GỐC "users", khóa theo UID — giống
+// hệt Concrete Test / Sand Cone Test / Lab Management (dùng chung tài
+// khoản). KHÔNG được đổi sang đường dẫn khác (vd apps/lab-system/users)
+// vì Firestore Security Rules chỉ cấp quyền đúng đường dẫn "users" này.
+function usersCol(){
+  return db.collection('users');
+}
+
+document.getElementById('superAdminEmailDisplay').textContent = SUPER_ADMIN_EMAIL;
+
+const AREA_MM2 = 50 * 50; // 2500 mm² — diện tích cố định khối 50x50x50mm
+let currentUserData = null;
+let currentReportId = null;
+let groupCount = 0;
+
+/* ---- THEME ---- */
+function applyStoredTheme(){
+  const t = localStorage.getItem('grout_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  const btn = document.getElementById('themeBtn');
+  if(btn) btn.textContent = t === 'dark' ? '☀️' : '🌙';
+}
+function toggleTheme(){
+  const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('grout_theme', next);
+  document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️' : '🌙';
+}
+applyStoredTheme();
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+function openModal(id){ document.getElementById(id).style.display='flex'; }
+function closeModal(id){ document.getElementById(id).style.display='none'; }
+
+/* ---- AUTH ---- */
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPassword').value;
+  const errEl = document.getElementById('loginError');
+  errEl.textContent = '';
+  if(!email || !pass){ errEl.textContent = 'Vui lòng nhập email và mật khẩu.'; return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e){
+    if(email === SUPER_ADMIN_EMAIL.toLowerCase() && (e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential')){
+      try{
+        if(pass.length < 6){ errEl.textContent = 'Mật khẩu Super Admin lần đầu cần ≥6 ký tự.'; return; }
+        const cred = await auth.createUserWithEmailAndPassword(email, pass);
+        await usersCol().doc(cred.user.uid).set({ email, displayName:'Super Admin', role:'superadmin', active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy:'system-bootstrap' });
+      } catch(e2){ errEl.textContent = 'Lỗi tạo tài khoản: ' + e2.message; }
+      return;
+    }
+    errEl.textContent = 'Sai email hoặc mật khẩu.';
+  }
+}
+function logout(){ auth.signOut(); }
+
+auth.onAuthStateChanged(async (user) => {
+  if(!user){
+    document.getElementById('loginScreen').style.display = 'flex';
+    document.getElementById('appShell').style.display = 'none';
+    return;
+  }
+  const email = (user.email || '').toLowerCase();
+  const errEl = document.getElementById('loginError');
+  try{
+    // Users lưu theo UID (khớp Concrete Test/Sand Cone Test/Lab Management)
+    const docRef = usersCol().doc(user.uid);
+    let snap = await docRef.get();
+    if(!snap.exists){
+      if(email === SUPER_ADMIN_EMAIL.toLowerCase()){
+        await docRef.set({ email, displayName:'Super Admin', role:'superadmin', active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy:'system-bootstrap' });
+        snap = await docRef.get();
+      } else {
+        errEl.textContent = 'Tài khoản chưa được cấp quyền cho Grout Test. Liên hệ Admin.';
+        await auth.signOut(); return;
+      }
+    }
+    const d = snap.data();
+    if(d.active === false){ errEl.textContent = 'Tài khoản đã bị khóa.'; await auth.signOut(); return; }
+    currentUserData = { uid: user.uid, email, name: d.displayName || d.name || email, role: d.role };
+  } catch(e){
+    console.warn('[Grout] profile load error', e);
+    errEl.textContent = 'Lỗi tải hồ sơ tài khoản: ' + e.message;
+    await auth.signOut(); return;
+  }
+  document.getElementById('whoami').textContent = `${currentUserData.name} (${currentUserData.role})`;
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  document.getElementById('adminCard').style.display = (currentUserData.role === 'admin' || currentUserData.role === 'superadmin') ? 'block' : 'none';
+  if(currentUserData.role === 'admin' || currentUserData.role === 'superadmin') loadStaff();
+  if(groupCount === 0) addGroup();
+});
+
+/* ---- ACCOUNT MANAGEMENT (Admin) ---- */
+async function loadStaff(){
+  const snap = await usersCol().orderBy('createdAt','desc').get();
+  const rows = [];
+  snap.forEach(d => {
+    const u = d.data();
+    rows.push(`<tr>
+      <td>${u.displayName||u.name||''}</td><td>${u.email||''}</td>
+      <td><span class="badge ${u.role}">${u.role}</span></td>
+      <td>${u.role!=='superadmin' ? `<button class="small danger" onclick="removeStaff('${d.id}')">Xóa</button>` : ''}</td>
+    </tr>`);
+  });
+  document.getElementById('staffBody').innerHTML = rows.join('');
+}
+function openAddStaffModal(){ openModal('modalAddStaff'); }
+async function addStaff(){
+  const name = document.getElementById('newStaffName').value.trim();
+  const email = document.getElementById('newStaffEmail').value.trim().toLowerCase();
+  const pass = document.getElementById('newStaffPass').value;
+  const role = document.getElementById('newStaffRole').value;
+  if(!name || !email || pass.length < 6){ toast('Vui lòng nhập đủ thông tin (mật khẩu ≥6 ký tự).'); return; }
+  try{
+    const cred = await secondaryApp.auth().createUserWithEmailAndPassword(email, pass);
+    await usersCol().doc(cred.user.uid).set({ email, displayName:name, role, active:true, createdAt: firebase.firestore.FieldValue.serverTimestamp(), createdBy: currentUserData.email });
+    await secondaryApp.auth().signOut();
+    toast('✅ Đã thêm nhân viên.');
+    closeModal('modalAddStaff');
+    loadStaff();
+  } catch(e){ toast('Lỗi: ' + e.message); }
+}
+async function removeStaff(uid){
+  if(!confirm('Xóa quyền truy cập tài khoản này khỏi hệ thống?')) return;
+  await usersCol().doc(uid).delete();
+  toast('Đã xóa khỏi danh sách (tài khoản Auth vẫn còn, cần xóa thủ công trên Firebase Console nếu cần).');
+  loadStaff();
+}
+
+/* ---- SPECIMEN GROUPS ---- */
+function addGroup(prefill){
+  groupCount++;
+  const gid = groupCount;
+  const wrap = document.createElement('div');
+  wrap.className = 'group-card';
+  wrap.id = `group-${gid}`;
+  wrap.innerHTML = `
+    <div class="group-header">
+      <div class="group-num">${gid}</div>
+      <div class="group-dates">
+        <div class="field"><label>Ngày đúc / Date of Cast</label><input type="date" id="g${gid}-cast" onchange="recalcGroup(${gid})"></div>
+        <div class="field"><label>Ngày nén / Date of Test</label><input type="date" id="g${gid}-test" onchange="recalcGroup(${gid})"></div>
+      </div>
+      <div class="age-badge" id="g${gid}-age">Tuổi: — ngày</div>
+      <button class="small danger del-group-btn" onclick="deleteGroup(${gid})">Xóa tổ</button>
+    </div>
+    <div class="group-body">
+      <div class="spec-table-wrap">
+        <table class="spec-table" id="g${gid}-table">
+          <thead><tr>
+            <th class="spec-sym">Stt</th>
+            <th>Ký hiệu<br>Symbol</th>
+            <th>Tải trọng phá hủy<br>Load (kN)</th>
+            <th>Khối lượng mẫu<br>Mass (g)</th>
+            <th>Cường độ<br>Strength (MPa)</th>
+            <th>Ghi chú<br>Remark</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="g${gid}-tbody"></tbody>
+          <tfoot><tr class="avg-row">
+            <td colspan="4">Cường độ trung bình / Average Strength (MPa)</td>
+            <td class="calc" id="g${gid}-avg">—</td>
+            <td colspan="2"></td>
+          </tr></tfoot>
+        </table>
+      </div>
+      <div class="row-actions">
+        <button class="small ghost" onclick="addSpecimen(${gid})">+ Thêm mẫu / Add specimen</button>
+      </div>
+    </div>`;
+  document.getElementById('groupsContainer').appendChild(wrap);
+  // Mặc định 3 mẫu / tổ (S1, S2, S3) — theo quy ước ASTM C109
+  addSpecimen(gid); addSpecimen(gid); addSpecimen(gid);
+  if(prefill) applyGroupPrefill(gid, prefill);
+}
+function deleteGroup(gid){
+  if(!confirm('Xóa tổ mẫu này?')) return;
+  const el = document.getElementById(`group-${gid}`);
+  if(el) el.remove();
+}
+function addSpecimen(gid){
+  const tbody = document.getElementById(`g${gid}-tbody`);
+  const n = tbody.children.length + 1;
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td>${n}</td>
+    <td>S${n}</td>
+    <td><input type="number" step="0.01" oninput="recalcGroup(${gid})"></td>
+    <td><input type="number" step="1"></td>
+    <td class="calc">—</td>
+    <td><input type="text" placeholder="—"></td>
+    <td><button class="small danger" onclick="this.closest('tr').remove(); recalcGroup(${gid})">✕</button></td>`;
+  tbody.appendChild(row);
+}
+function recalcGroup(gid){
+  const castEl = document.getElementById(`g${gid}-cast`);
+  const testEl = document.getElementById(`g${gid}-test`);
+  const ageEl = document.getElementById(`g${gid}-age`);
+  if(castEl && testEl && castEl.value && testEl.value){
+    const d1 = new Date(castEl.value), d2 = new Date(testEl.value);
+    const days = Math.round((d2 - d1) / 86400000);
+    ageEl.textContent = `Tuổi: ${days >= 0 ? days : '—'} ngày`;
+  } else {
+    ageEl.textContent = 'Tuổi: — ngày';
+  }
+  const tbody = document.getElementById(`g${gid}-tbody`);
+  let sum = 0, count = 0;
+  Array.from(tbody.children).forEach(row => {
+    const loadInput = row.children[2].querySelector('input');
+    const strengthCell = row.children[4];
+    const load = parseFloat(loadInput.value);
+    if(isFinite(load) && load > 0){
+      const strength = (load * 1000) / AREA_MM2; // kN -> N / mm² = MPa
+      strengthCell.textContent = strength.toFixed(3);
+      sum += strength; count++;
+    } else {
+      strengthCell.textContent = '—';
+    }
+  });
+  document.getElementById(`g${gid}-avg`).textContent = count > 0 ? (sum / count).toFixed(3) : '—';
+}
+function applyGroupPrefill(gid, g){
+  if(g.dateCast) document.getElementById(`g${gid}-cast`).value = g.dateCast;
+  if(g.dateTest) document.getElementById(`g${gid}-test`).value = g.dateTest;
+  const tbody = document.getElementById(`g${gid}-tbody`);
+  (g.specimens||[]).forEach((s, i) => {
+    if(!tbody.children[i]) addSpecimen(gid);
+    const row = tbody.children[i];
+    if(row){
+      row.children[1].textContent = s.symbol || `S${i+1}`;
+      row.children[2].querySelector('input').value = s.load ?? '';
+      row.children[3].querySelector('input').value = s.mass ?? '';
+      row.children[5].querySelector('input').value = s.remark ?? '';
+    }
+  });
+  recalcGroup(gid);
+}
+function collectGroups(){
+  const groups = [];
+  document.querySelectorAll('.group-card').forEach(card => {
+    const gid = card.id.replace('group-','');
+    const cast = document.getElementById(`g${gid}-cast`).value;
+    const test = document.getElementById(`g${gid}-test`).value;
+    const tbody = document.getElementById(`g${gid}-tbody`);
+    const specimens = Array.from(tbody.children).map((row, i) => ({
+      symbol: row.children[1].textContent || `S${i+1}`,
+      load: parseFloat(row.children[2].querySelector('input').value) || null,
+      mass: parseFloat(row.children[3].querySelector('input').value) || null,
+      remark: row.children[5].querySelector('input').value || '',
+      strength: (() => { const v = row.children[4].textContent; return v === '—' ? null : parseFloat(v); })(),
+    }));
+    const avgText = document.getElementById(`g${gid}-avg`).textContent;
+    groups.push({
+      dateCast: cast, dateTest: test,
+      ageDays: (cast && test) ? Math.round((new Date(test)-new Date(cast))/86400000) : null,
+      specimens,
+      avgStrength: avgText === '—' ? null : parseFloat(avgText),
+    });
+  });
+  return groups;
+}
+
+/* ---- FORM DATA ---- */
+function collectFormData(){
+  return {
+    investor: val('fInvestor'), supervisor: val('fSupervisor'), contractor: val('fContractor'),
+    supplier: val('fSupplier'), project: val('fProject'), location: val('fLocation'),
+    item: val('fItem'), sampleType: val('fSampleType'),
+    waterCement: val('fWaterCement'), reqStrength: val('fReqStrength'), equipment: val('fEquipment'),
+    checkedBy: val('fCheckedBy'), labTech: val('fLabTech'), remarks: val('fRemarks'),
+    groups: collectGroups(),
+  };
+}
+function val(id){ const el = document.getElementById(id); return el ? el.value.trim() : ''; }
+function setVal(id, v){ const el = document.getElementById(id); if(el) el.value = v || ''; }
+
+function fillForm(data){
+  setVal('fInvestor', data.investor); setVal('fSupervisor', data.supervisor);
+  setVal('fContractor', data.contractor); setVal('fSupplier', data.supplier);
+  setVal('fProject', data.project); setVal('fLocation', data.location);
+  setVal('fItem', data.item); setVal('fSampleType', data.sampleType);
+  setVal('fWaterCement', data.waterCement); setVal('fReqStrength', data.reqStrength);
+  setVal('fEquipment', data.equipment || 'Phoenix Pisces - 300 kN');
+  setVal('fCheckedBy', data.checkedBy); setVal('fLabTech', data.labTech);
+  if(data.remarks) setVal('fRemarks', data.remarks);
+  document.getElementById('groupsContainer').innerHTML = '';
+  groupCount = 0;
+  (data.groups||[]).forEach(g => addGroup(g));
+  if(groupCount === 0) addGroup();
+}
+
+function newRecord(){
+  if(!confirm('Tạo hồ sơ mới? Dữ liệu chưa lưu sẽ mất.')) return;
+  currentReportId = null;
+  document.getElementById('editingIndicator').style.display = 'none';
+  fillForm({});
+  toast('Đã tạo hồ sơ mới.');
+}
+
+/* ---- SAVE / LOAD ---- */
+async function saveRecord(){
+  const data = collectFormData();
+  if(!data.project){ toast('Vui lòng nhập tên Công trình / Project trước khi lưu.'); return; }
+  try{
+    const payload = {
+      ...data,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      updatedBy: currentUserData ? currentUserData.email : null,
+    };
+    if(currentReportId){
+      await groutReportsCol().doc(currentReportId).update(payload);
+      toast('✅ Đã cập nhật hồ sơ.');
+    } else {
+      payload.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+      const ref = await groutReportsCol().add(payload);
+      currentReportId = ref.id;
+      document.getElementById('editingIndicator').style.display = 'block';
+      toast('✅ Đã lưu hồ sơ mới.');
+    }
+  } catch(e){ toast('Lỗi khi lưu: ' + e.message); }
+}
+async function openLoadModal(){
+  openModal('modalLoad');
+  const listEl = document.getElementById('savedList');
+  listEl.innerHTML = 'Đang tải...';
+  try{
+    const snap = await groutReportsCol().orderBy('updatedAt','desc').limit(200).get();
+    if(snap.empty){ listEl.innerHTML = '<div style="font-size:12.5px;color:var(--muted);">Chưa có hồ sơ nào.</div>'; return; }
+    const rows = [];
+    snap.forEach(d => {
+      const r = d.data();
+      const dateStr = r.updatedAt && r.updatedAt.toDate ? r.updatedAt.toDate().toLocaleString('vi-VN') : '';
+      rows.push(`<div class="saved-item">
+        <div class="info" onclick="loadRecord('${d.id}')">
+          <strong>${r.project || '(chưa đặt tên)'}</strong><br>
+          <span style="color:var(--muted);">${dateStr}</span>
+        </div>
+        <button class="small danger" onclick="deleteRecord('${d.id}')">Xóa</button>
+      </div>`);
+    });
+    listEl.innerHTML = rows.join('');
+  } catch(e){ listEl.innerHTML = 'Lỗi tải danh sách: ' + e.message; }
+}
+async function loadRecord(id){
+  try{
+    const doc = await groutReportsCol().doc(id).get();
+    if(!doc.exists){ toast('Không tìm thấy hồ sơ.'); return; }
+    currentReportId = id;
+    fillForm(doc.data());
+    document.getElementById('editingIndicator').style.display = 'block';
+    closeModal('modalLoad');
+    toast('Đã tải hồ sơ.');
+  } catch(e){ toast('Lỗi tải hồ sơ: ' + e.message); }
+}
+async function deleteRecord(id){
+  if(!confirm('Xóa vĩnh viễn hồ sơ này?')) return;
+  await groutReportsCol().doc(id).delete();
+  toast('Đã xóa.');
+  openLoadModal();
+}
+
+/* =============================================================
+   PDF EXPORT
+   ============================================================= */
+function pdfHeader(doc, titleVi, titleEn, formCode){
+  doc.setFont('helvetica','bold'); doc.setFontSize(13);
+  doc.text(titleVi, 105, 16, { align:'center' });
+  doc.setFontSize(10); doc.setFont('helvetica','normal');
+  doc.text(titleEn, 105, 22, { align:'center' });
+  doc.setFontSize(8); doc.setFont('helvetica','italic');
+  doc.text(formCode, 200, 10, { align:'right' });
+  doc.setFont('helvetica','normal');
+}
+function pdfProjectInfoBlock(doc, data, y){
+  doc.setFontSize(10); doc.setFont('helvetica','bold');
+  doc.text('I. CÁC THÔNG TIN LIÊN QUAN / PROJECT INFORMATION', 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  let yy = y + 6;
+  const rows = [
+    ['Chủ đầu tư / Investor', data.investor],
+    ['ĐV Tư vấn GS / Supervision consultants', data.supervisor],
+    ['Nhà thầu chính / Main Contractor', data.contractor],
+    ['Nhà cung cấp / Supplier', data.supplier],
+    ['Công trình / Project', data.project],
+    ['Địa điểm XD / Location', data.location],
+    ['Hạng mục / Item', data.item],
+    ['Tên mẫu / Type of sample', data.sampleType],
+  ];
+  rows.forEach(r => {
+    doc.text(`- ${r[0]}`, 14, yy);
+    doc.text(`: ${r[1] || ''}`, 90, yy);
+    yy += 5.5;
+  });
+  return yy + 2;
+}
+function pdfSignoffBlock(doc, data, y){
+  if(y > 260) { doc.addPage(); y = 20; }
+  doc.setFontSize(9); doc.setFont('helvetica','normal');
+  const notes = (data.remarks || '').split('\n');
+  doc.text('Ghi chú / Remarks:', 14, y);
+  notes.forEach((n, i) => doc.text(n, 14, y + 5 + i*5));
+  y += 5 + notes.length*5 + 12;
+  doc.setFont('helvetica','bold');
+  doc.text('Thí nghiệm viên / Lab Technician', 40, y, { align:'center' });
+  doc.text('Người kiểm tra / Checked by', 150, y, { align:'center' });
+  y += 20;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text(data.labTech || '', 40, y, { align:'center' });
+  doc.text(data.checkedBy || '', 150, y, { align:'center' });
+  y += 14;
+  doc.setFontSize(8); doc.setTextColor(100);
+  doc.text('HAI (CAMBODIA) SURVEY & CONSTRUCTION CO., LTD', 105, y, { align:'center' }); y += 4;
+  doc.text('Address: No.06, Street D, Krang Tnorng Sangkat, Sen Sok Khan, Phnom Penh, Cambodia', 105, y, { align:'center' }); y += 4;
+  doc.text('Telephone: +855 977 855 953 - Website: haicam.com - Email: anhnguyen@haicam.com', 105, y, { align:'center' });
+  doc.setTextColor(0);
+}
+
+// F-71 — Biên bản thí nghiệm (field record: load + mass + remark, không kèm diễn giải cường độ trên từng dòng bắt buộc)
+function exportPdfBienBan(){
+  const data = collectFormData();
+  if(!data.groups.length){ toast('Chưa có tổ mẫu nào để xuất.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  pdfHeader(doc, 'BIÊN BẢN THÍ NGHIỆM CƯỜNG ĐỘ KHÁNG NÉN CỦA VỮA GROUT', 'COMPRESSIVE STRENGTH OF GROUT (ASTM C109/C109M, ASTM C1019; BS EN 445, 447-1997)', 'F-71.HAIC-LAB-15MAT');
+  let y = pdfProjectInfoBlock(doc, data, 32);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT', 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 5;
+  doc.text(`Tỉ lệ trộn / Water-Cement: ${data.waterCement || '-'}    Thiết bị TN / Equipment: ${data.equipment || '-'}`, 14, y);
+  y += 6;
+
+  data.groups.forEach((g, gi) => {
+    if(y > 250){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+    doc.text(`Tổ mẫu ${gi+1} — Ngày đúc: ${g.dateCast||'-'}   Ngày nén: ${g.dateTest||'-'}   Tuổi: ${g.ageDays ?? '-'} ngày`, 14, y);
+    y += 3;
+    const body = g.specimens.map(s => [s.symbol, '50x50x50', s.load ?? '', s.mass ?? '', s.remark || '']);
+    doc.autoTable({
+      startY: y,
+      head: [['Ký hiệu\nSymbol','Kích thước (mm)\nDimension','Tải trọng (kN)\nLoad','Khối lượng (g)\nMass','Ghi chú\nRemark']],
+      body,
+      theme: 'grid',
+      styles: { fontSize: 8.5, halign:'center', cellPadding: 1.5 },
+      headStyles: { fillColor: [26,82,118], textColor: 255 },
+      margin: { left: 14, right: 14 },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  });
+  pdfSignoffBlock(doc, data, y);
+  doc.save(`F-71_Grout_${(data.project||'record').replace(/[^\w-]+/g,'_')}.pdf`);
+}
+
+// F-12.2 — Báo cáo kết quả (client report: cường độ từng mẫu + trung bình)
+function exportPdfBaoCao(){
+  const data = collectFormData();
+  if(!data.groups.length){ toast('Chưa có tổ mẫu nào để xuất.'); return; }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  pdfHeader(doc, 'CƯỜNG ĐỘ KHÁNG NÉN CỦA VỮA', 'COMPRESSIVE STRENGTH OF GROUT', 'F-12.2.HAIC-LAB-15MAT');
+  let y = pdfProjectInfoBlock(doc, data, 32);
+  doc.setFont('helvetica','bold'); doc.setFontSize(10);
+  doc.text('II. KẾT QUẢ THÍ NGHIỆM / TESTING RESULT', 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 5;
+  doc.text(`Cường độ yêu cầu / Strength Request: ${data.reqStrength || '-'}    Thiết bị TN / Equipment: ${data.equipment || '-'}`, 14, y);
+  y += 4;
+  doc.setFontSize(8); doc.setFont('helvetica','italic');
+  doc.text('Testing method: ASTM C109 / C109M, BS EN 445, 447-1997   |   Diện tích mẫu / Area: 2500 mm² (50x50mm)', 14, y);
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  y += 6;
+
+  data.groups.forEach((g, gi) => {
+    if(y > 245){ doc.addPage(); y = 20; }
+    doc.setFont('helvetica','bold'); doc.setFontSize(9.5);
+    doc.text(`Tổ mẫu ${gi+1} — Ngày đúc: ${g.dateCast||'-'}   Ngày nén: ${g.dateTest||'-'}   Tuổi: ${g.ageDays ?? '-'} ngày`, 14, y);
+    y += 3;
+    const body = g.specimens.map(s => [s.symbol, '50x50x50', s.load ?? '', s.strength != null ? s.strength.toFixed(2) : '']);
+    body.push(['', '', 'Trung bình / Average', g.avgStrength != null ? g.avgStrength.toFixed(2) : '']);
+    doc.autoTable({
+      startY: y,
+      head: [['Ký hiệu\nSymbol','Kích thước (mm)\nDimension','Tải trọng (kN)\nLoad','Cường độ (MPa)\nStrength']],
+      body,
+      theme: 'grid',
+      styles: { fontSize: 8.5, halign:'center', cellPadding: 1.5 },
+      headStyles: { fillColor: [26,82,118], textColor: 255 },
+      didParseCell: (h) => {
+        if(h.row.index === body.length - 1) { h.cell.styles.fontStyle = 'bold'; h.cell.styles.fillColor = [253,243,227]; }
+      },
+      margin: { left: 14, right: 14 },
+    });
+    y = doc.lastAutoTable.finalY + 6;
+  });
+  pdfSignoffBlock(doc, data, y);
+  doc.save(`F-12.2_Grout_${(data.project||'report').replace(/[^\w-]+/g,'_')}.pdf`);
+}
+</script>
+</body>
+</html>
