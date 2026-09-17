@@ -480,24 +480,68 @@
 
     <div class="card" style="padding:14px;">
       <label style="font-size:12.5px;font-weight:600;display:block;margin-bottom:8px;">Thêm dòng mới</label>
-      <div class="toggle-group">
+
+      <div class="form-group" id="ledgerModeWrap">
+        <label>Chế độ nhập</label>
+        <select id="ledgerMode" onchange="setLedgerMode(this.value)">
+          <option value="quick">Nhập nhanh (tạm ứng, hỗ trợ, khoản khác...)</option>
+          <option value="meter">Khoan theo mét (Hố khoan — Đất/Đá riêng)</option>
+          <option value="daily">Ngày công (Thợ/Phụ riêng)</option>
+        </select>
+      </div>
+
+      <div class="toggle-group" id="ledgerTypeToggleWrap">
         <button type="button" id="btnTypeIncurred" class="active incurred" onclick="setLedgerType('incurred')">＋ Phát sinh</button>
         <button type="button" id="btnTypePaid" class="paid" onclick="setLedgerType('paid')">－ Đã <span id="paidLabelWord">thu</span></button>
       </div>
+
+      <!-- Chế độ: Nhập nhanh -->
+      <div id="ledgerQuickFields">
+        <div class="form-group"><label>Số tiền</label><input type="number" step="0.01" id="ledgerAmount" placeholder="0.00" oninput="updateLedgerAmountPreview()"></div>
+        <div class="form-group">
+          <label>Nội dung</label>
+          <textarea id="ledgerNote" rows="2" placeholder="VD: Ứng Trường 300$, Hỗ trợ xăng xe..."></textarea>
+        </div>
+      </div>
+
+      <!-- Chế độ: Khoan theo mét -->
+      <div id="ledgerMeterFields" class="hidden">
+        <div class="form-group"><label>Hố khoan</label><input type="text" id="meterBorehole" placeholder="VD: BH1" oninput="updateLedgerAmountPreview()"></div>
+        <div class="form-row2">
+          <div class="form-group"><label>Số mét — Đất</label><input type="number" step="0.1" id="meterSoilM" placeholder="0" oninput="updateLedgerAmountPreview()"></div>
+          <div class="form-group"><label>Số mét — Đá</label><input type="number" step="0.1" id="meterRockM" placeholder="0" oninput="updateLedgerAmountPreview()"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Đơn giá — Đất ($/m)</label><input type="number" step="0.01" id="meterSoilRate" placeholder="0.00" oninput="updateLedgerAmountPreview()"></div>
+          <div class="form-group"><label>Đơn giá — Đá ($/m)</label><input type="number" step="0.01" id="meterRockRate" placeholder="0.00" oninput="updateLedgerAmountPreview()"></div>
+        </div>
+        <div class="form-group"><label>Ghi chú thêm (tùy chọn)</label><input type="text" id="meterNote"></div>
+      </div>
+
+      <!-- Chế độ: Ngày công -->
+      <div id="ledgerDailyFields" class="hidden">
+        <div class="form-row2">
+          <div class="form-group"><label>Số ngày công — Thợ</label><input type="number" step="0.5" id="dailyWorkerDays" placeholder="0" oninput="updateLedgerAmountPreview()"></div>
+          <div class="form-group"><label>Số ngày công — Phụ</label><input type="number" step="0.5" id="dailyAssistDays" placeholder="0" oninput="updateLedgerAmountPreview()"></div>
+        </div>
+        <div class="form-row2">
+          <div class="form-group"><label>Đơn giá — Thợ ($/ngày)</label><input type="number" step="0.01" id="dailyWorkerRate" placeholder="0.00" oninput="updateLedgerAmountPreview()"></div>
+          <div class="form-group"><label>Đơn giá — Phụ ($/ngày)</label><input type="number" step="0.01" id="dailyAssistRate" placeholder="0.00" oninput="updateLedgerAmountPreview()"></div>
+        </div>
+        <div class="form-group"><label>Ghi chú thêm (tùy chọn)</label><input type="text" id="dailyNote"></div>
+      </div>
+
+      <div id="ledgerAmountPreview" class="small-muted hidden" style="margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:6px;"></div>
+
       <div class="form-row2">
         <div class="form-group"><label>Ngày</label><input type="date" id="ledgerDate"></div>
         <div class="form-group"><label>Loại tiền tệ</label>
-          <select id="ledgerCurrency">
+          <select id="ledgerCurrency" onchange="updateLedgerAmountPreview()">
             <option value="USD">USD ($)</option>
             <option value="VND">VNĐ (₫)</option>
             <option value="LAK">Kip Lào (₭)</option>
           </select>
         </div>
-      </div>
-      <div class="form-group"><label>Số tiền</label><input type="number" step="0.01" id="ledgerAmount" placeholder="0.00"></div>
-      <div class="form-group">
-        <label>Nội dung</label>
-        <textarea id="ledgerNote" rows="2" placeholder="VD: Ứng Trường 300$, hoặc Khối lượng công trình PPWSA 5 hố khoan..."></textarea>
       </div>
       <button class="btn btn-primary" style="width:100%;" onclick="saveLedgerEntry()">Lưu dòng này</button>
     </div>
@@ -1558,6 +1602,8 @@ async function deletePayment(id){
 }
 
 /* ---------------- LEDGER MODAL (chỉ còn dùng cho Đội khoan/Thầu phụ) ---------------- */
+let LEDGER_MODE = 'quick'; // 'quick' | 'meter' | 'daily' — chế độ nhập dòng mới trong sổ cái Đội/Thầu phụ
+
 function openLedger(type, entityId){
   CURRENT_TYPE = type;
   CURRENT_ENTITY_ID = entityId;
@@ -1567,6 +1613,19 @@ function openLedger(type, entityId){
   document.getElementById('ledgerCurrency').value = 'USD';
   document.getElementById('ledgerAmount').value = '';
   document.getElementById('ledgerNote').value = '';
+  document.getElementById('ledgerMode').value = 'quick';
+  document.getElementById('meterBorehole').value = '';
+  document.getElementById('meterSoilM').value = '';
+  document.getElementById('meterRockM').value = '';
+  document.getElementById('meterSoilRate').value = '';
+  document.getElementById('meterRockRate').value = '';
+  document.getElementById('meterNote').value = '';
+  document.getElementById('dailyWorkerDays').value = '';
+  document.getElementById('dailyAssistDays').value = '';
+  document.getElementById('dailyWorkerRate').value = '';
+  document.getElementById('dailyAssistRate').value = '';
+  document.getElementById('dailyNote').value = '';
+  setLedgerMode('quick');
   setLedgerType('incurred');
   renderLedgerModal();
   openModal('modalLedger');
@@ -1576,6 +1635,44 @@ function setLedgerType(t){
   LEDGER_TYPE = t;
   document.getElementById('btnTypeIncurred').classList.toggle('active', t==='incurred');
   document.getElementById('btnTypePaid').classList.toggle('active', t==='paid');
+}
+
+// Đổi chế độ nhập — "Khoan theo mét" và "Ngày công" LUÔN là Phát sinh
+// (đội khoan làm việc thì công ty nợ thêm), nên tự khóa toggle và ẩn đi để
+// khỏi gây nhầm lẫn; chỉ "Nhập nhanh" mới chọn được Phát sinh/Đã trả.
+function setLedgerMode(mode){
+  LEDGER_MODE = mode;
+  document.getElementById('ledgerQuickFields').classList.toggle('hidden', mode!=='quick');
+  document.getElementById('ledgerMeterFields').classList.toggle('hidden', mode!=='meter');
+  document.getElementById('ledgerDailyFields').classList.toggle('hidden', mode!=='daily');
+  document.getElementById('ledgerTypeToggleWrap').classList.toggle('hidden', mode!=='quick');
+  if(mode!=='quick') setLedgerType('incurred');
+  updateLedgerAmountPreview();
+}
+
+// Tự tính và hiện trước số tiền cho 2 chế độ chi tiết (Khoan theo mét /
+// Ngày công) — người dùng thấy ngay số tiền trước khi bấm Lưu.
+function updateLedgerAmountPreview(){
+  const el = document.getElementById('ledgerAmountPreview');
+  if(LEDGER_MODE==='meter'){
+    const soilM = parseFloat(document.getElementById('meterSoilM').value)||0;
+    const rockM = parseFloat(document.getElementById('meterRockM').value)||0;
+    const soilRate = parseFloat(document.getElementById('meterSoilRate').value)||0;
+    const rockRate = parseFloat(document.getElementById('meterRockRate').value)||0;
+    const total = soilM*soilRate + rockM*rockRate;
+    el.classList.remove('hidden');
+    el.innerHTML = `Thành tiền: <strong>${fmtCurrencyAmt(total, document.getElementById('ledgerCurrency').value)}</strong> (${soilM}m đất × ${soilRate} + ${rockM}m đá × ${rockRate})`;
+  } else if(LEDGER_MODE==='daily'){
+    const wd = parseFloat(document.getElementById('dailyWorkerDays').value)||0;
+    const ad = parseFloat(document.getElementById('dailyAssistDays').value)||0;
+    const wr = parseFloat(document.getElementById('dailyWorkerRate').value)||0;
+    const ar = parseFloat(document.getElementById('dailyAssistRate').value)||0;
+    const total = wd*wr + ad*ar;
+    el.classList.remove('hidden');
+    el.innerHTML = `Thành tiền: <strong>${fmtCurrencyAmt(total, document.getElementById('ledgerCurrency').value)}</strong> (${wd} ngày thợ × ${wr} + ${ad} ngày phụ × ${ar})`;
+  } else {
+    el.classList.add('hidden');
+  }
 }
 
 function renderLedgerModal(){
@@ -1639,21 +1736,44 @@ function renderLedgerModal(){
 async function saveLedgerEntry(){
   const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
   const date = document.getElementById('ledgerDate').value;
-  const amount = parseFloat(document.getElementById('ledgerAmount').value);
-  const note = document.getElementById('ledgerNote').value.trim();
+  const currency = document.getElementById('ledgerCurrency').value || 'USD';
+  if(!date){ showToast('Vui lòng chọn ngày.', 'error'); return; }
 
-  if(!date || !amount || amount <= 0){
-    showToast('Vui lòng nhập đúng ngày và số tiền lớn hơn 0.', 'error');
-    return;
+  let amount, note, extra = {};
+
+  if(LEDGER_MODE==='meter'){
+    const borehole = document.getElementById('meterBorehole').value.trim();
+    const soilM = parseFloat(document.getElementById('meterSoilM').value)||0;
+    const rockM = parseFloat(document.getElementById('meterRockM').value)||0;
+    const soilRate = parseFloat(document.getElementById('meterSoilRate').value)||0;
+    const rockRate = parseFloat(document.getElementById('meterRockRate').value)||0;
+    amount = soilM*soilRate + rockM*rockRate;
+    if(!borehole || amount<=0){ showToast('Vui lòng nhập hố khoan và ít nhất 1 loại mét + đơn giá.', 'error'); return; }
+    note = `Khoan ${borehole} — ${soilM}m đất×${soilRate} + ${rockM}m đá×${rockRate}` + (document.getElementById('meterNote').value.trim() ? ' — ' + document.getElementById('meterNote').value.trim() : '');
+    extra = { entryType:'meter', borehole, soilM, rockM, soilRate, rockRate };
+  } else if(LEDGER_MODE==='daily'){
+    const wd = parseFloat(document.getElementById('dailyWorkerDays').value)||0;
+    const ad = parseFloat(document.getElementById('dailyAssistDays').value)||0;
+    const wr = parseFloat(document.getElementById('dailyWorkerRate').value)||0;
+    const ar = parseFloat(document.getElementById('dailyAssistRate').value)||0;
+    amount = wd*wr + ad*ar;
+    if(amount<=0){ showToast('Vui lòng nhập ít nhất 1 loại ngày công + đơn giá.', 'error'); return; }
+    note = `Ngày công — ${wd} ngày thợ×${wr} + ${ad} ngày phụ×${ar}` + (document.getElementById('dailyNote').value.trim() ? ' — ' + document.getElementById('dailyNote').value.trim() : '');
+    extra = { entryType:'daily', workerDays:wd, assistDays:ad, workerRate:wr, assistRate:ar };
+  } else {
+    amount = parseFloat(document.getElementById('ledgerAmount').value);
+    note = document.getElementById('ledgerNote').value.trim();
+    if(!amount || amount <= 0){ showToast('Vui lòng nhập số tiền lớn hơn 0.', 'error'); return; }
   }
 
   const data = {
     entityId: id,
     date,
     note,
-    currency: document.getElementById('ledgerCurrency').value || 'USD',
+    currency,
     incurred: LEDGER_TYPE==='incurred' ? amount : 0,
     paid: LEDGER_TYPE==='paid' ? amount : 0,
+    ...extra,
     createdBy: currentUser.email,
     createdByName: currentUser.email,
     createdAt: new Date().toISOString(),
@@ -1667,6 +1787,14 @@ async function saveLedgerEntry(){
     await entryCol.add(data);
     document.getElementById('ledgerAmount').value = '';
     document.getElementById('ledgerNote').value = '';
+    document.getElementById('meterBorehole').value = '';
+    document.getElementById('meterSoilM').value = '';
+    document.getElementById('meterRockM').value = '';
+    document.getElementById('meterNote').value = '';
+    document.getElementById('dailyWorkerDays').value = '';
+    document.getElementById('dailyAssistDays').value = '';
+    document.getElementById('dailyNote').value = '';
+    updateLedgerAmountPreview();
     showToast('Đã lưu dòng mới.');
   }catch(e){
     showToast('Lỗi khi lưu: ' + e.message, 'error');
