@@ -284,14 +284,18 @@
       <textarea id="entityNote" rows="2" placeholder="VD: số điện thoại, công trình chính, loại hợp đồng..."></textarea>
     </div>
     <div id="entityContractFields" class="hidden">
+      <div class="form-group"><label>Loại công việc</label><input type="text" id="entityWorkType" placeholder="VD: Khoan, Vận chuyển, Ben..."></div>
       <div class="form-row2">
         <div class="form-group"><label>Số hợp đồng</label><input type="text" id="entityContractNo"></div>
         <div class="form-group"><label>Ngày hợp đồng</label><input type="date" id="entityContractDate"></div>
       </div>
+      <div class="form-group"><label>Giá trị hợp đồng ($)</label><input type="number" step="0.01" id="entityContractValue"></div>
       <div class="form-row2">
-        <div class="form-group"><label>Giá trị hợp đồng ($)</label><input type="number" step="0.01" id="entityContractValue"></div>
-        <div class="form-group"><label>Giá trị thanh lý ($)</label><input type="number" step="0.01" id="entityLiquidationValue"></div>
+        <div class="form-group"><label>Số thanh lý</label><input type="text" id="entityLiquidationNo"></div>
+        <div class="form-group"><label>Ngày thanh lý</label><input type="date" id="entityLiquidationDate"></div>
       </div>
+      <div class="form-group"><label>Giá trị thanh lý ($)</label><input type="number" step="0.01" id="entityLiquidationValue"></div>
+      <div class="form-group"><label>Kế hoạch tạm ứng kỳ này ($) <span class="small-muted">(tùy chọn — dự kiến sẽ ứng thêm bao nhiêu)</span></label><input type="number" step="0.01" id="entityPlannedAdvance"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModal('modalEntity')">Hủy</button>
@@ -989,11 +993,26 @@ function exportDashboardExcel(){
   }).sort((a,b)=>(a.Ngày||'').localeCompare(b.Ngày||''));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(custEntryRows), 'Khoản lẻ khách hàng');
 
-  // Sheet 5: Tổng hợp đội khoan / thầu phụ
-  const subRows = SUBS.map(s => {
+  // Sheet 5: Tổng hợp đội khoan / thầu phụ — đúng cột như "BẢNG TỔNG HỢP" gốc
+  const subRows = SUBS.map((s, idx) => {
     const b = calcBalanceMulti(SUB_ENTRIES, s.id);
-    return { 'Tên đội / thầu phụ': s.name, 'Quốc gia': s.country||'Cambodia', 'Ghi chú': s.note||'',
-      'Số HĐ': s.contractNo||'', 'Số dư USD': b.USD||0, 'Số dư VNĐ': b.VND||0, 'Số dư Kip Lào': b.LAK||0 };
+    return {
+      'STT': idx+1,
+      'Nội dung': s.name,
+      'Quốc gia': s.country||'Cambodia',
+      'Loại công việc': s.workType||'',
+      'Số HĐ': s.contractNo||'',
+      'Ngày HĐ': s.contractDate||'',
+      'GT Hợp đồng': s.contractValue||'',
+      'Số TL': s.liquidationNo||'',
+      'Ngày TL': s.liquidationDate||'',
+      'GT TL': s.liquidationValue||'',
+      'Số dư USD (còn phải trả)': b.USD||0,
+      'Số dư VNĐ': b.VND||0,
+      'Số dư Kip Lào': b.LAK||0,
+      'Kế hoạch tạm ứng kỳ này': s.plannedAdvance||'',
+      'Ghi chú': s.note||'',
+    };
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subRows), 'Đội khoan-Thầu phụ');
 
@@ -1075,7 +1094,7 @@ function renderSubList(){
       <div class="entity-avatar" style="background:var(--gold);color:#3a2c0f;">${(s.name||'?').charAt(0).toUpperCase()}</div>
       <div class="entity-info">
         <div class="nm">${countryFlag(s.country)} ${escapeHtml(s.name)}</div>
-        <div class="sub">${escapeHtml(s.note||'')}${s.contractNo?` · HĐ ${escapeHtml(s.contractNo)}`:''}</div>
+        <div class="sub">${s.workType?escapeHtml(s.workType)+' · ':''}${escapeHtml(s.note||'')}${s.contractNo?` · HĐ ${escapeHtml(s.contractNo)}`:''}</div>
       </div>
       <div class="entity-bal">
         <div class="amt ${!settled && owedUSD>0 ?'positive':'zero'}">${fmtBalanceMulti(s.balance)}</div>
@@ -1102,10 +1121,14 @@ function openEntityModal(type, entityId){
   const contractWrap = document.getElementById('entityContractFields');
   contractWrap.classList.toggle('hidden', type!=='subs');
   if(type==='subs'){
+    document.getElementById('entityWorkType').value = e ? (e.workType||'') : '';
     document.getElementById('entityContractNo').value = e ? (e.contractNo||'') : '';
     document.getElementById('entityContractDate').value = e ? (e.contractDate||'') : '';
     document.getElementById('entityContractValue').value = e ? (e.contractValue ?? '') : '';
+    document.getElementById('entityLiquidationNo').value = e ? (e.liquidationNo||'') : '';
+    document.getElementById('entityLiquidationDate').value = e ? (e.liquidationDate||'') : '';
     document.getElementById('entityLiquidationValue').value = e ? (e.liquidationValue ?? '') : '';
+    document.getElementById('entityPlannedAdvance').value = e ? (e.plannedAdvance ?? '') : '';
   }
 
   document.getElementById('modalEntity').dataset.type = type;
@@ -1122,10 +1145,14 @@ async function saveEntity(){
 
   const data = { name, note, country: document.getElementById('entityCountry').value, updatedAt: new Date().toISOString(), updatedBy: currentUser.email };
   if(type==='subs'){
+    data.workType = document.getElementById('entityWorkType').value.trim();
     data.contractNo = document.getElementById('entityContractNo').value.trim();
     data.contractDate = document.getElementById('entityContractDate').value;
     data.contractValue = parseFloat(document.getElementById('entityContractValue').value) || null;
+    data.liquidationNo = document.getElementById('entityLiquidationNo').value.trim();
+    data.liquidationDate = document.getElementById('entityLiquidationDate').value;
     data.liquidationValue = parseFloat(document.getElementById('entityLiquidationValue').value) || null;
+    data.plannedAdvance = parseFloat(document.getElementById('entityPlannedAdvance').value) || null;
   }
 
   const collection = type==='customers' ? col.customers() : col.subs();
@@ -1561,13 +1588,18 @@ function renderLedgerModal(){
   document.getElementById('ledgerTitle').textContent = entity.name;
 
   const metaEl = document.getElementById('ledgerContractMeta');
-  if(type==='subs' && (entity.contractNo || entity.contractValue || entity.liquidationValue)){
+  if(type==='subs' && (entity.workType || entity.contractNo || entity.contractValue || entity.liquidationNo || entity.liquidationValue || entity.plannedAdvance)){
     metaEl.classList.remove('hidden');
     metaEl.innerHTML = `
+      ${entity.workType?`Loại công việc: <strong>${escapeHtml(entity.workType)}</strong><br>`:''}
       ${entity.contractNo?`Số HĐ: <strong>${escapeHtml(entity.contractNo)}</strong> &nbsp;·&nbsp; `:''}
       ${entity.contractDate?`Ngày HĐ: <strong>${fmtDate(entity.contractDate)}</strong> &nbsp;·&nbsp; `:''}
       ${entity.contractValue?`GT hợp đồng: <strong>${fmtMoney(entity.contractValue)}</strong>`:''}
-      ${entity.liquidationValue?`<br>GT thanh lý: <strong>${fmtMoney(entity.liquidationValue)}</strong>`:''}
+      ${(entity.liquidationNo || entity.liquidationDate || entity.liquidationValue) ? '<br>' : ''}
+      ${entity.liquidationNo?`Số TL: <strong>${escapeHtml(entity.liquidationNo)}</strong> &nbsp;·&nbsp; `:''}
+      ${entity.liquidationDate?`Ngày TL: <strong>${fmtDate(entity.liquidationDate)}</strong> &nbsp;·&nbsp; `:''}
+      ${entity.liquidationValue?`GT thanh lý: <strong>${fmtMoney(entity.liquidationValue)}</strong>`:''}
+      ${entity.plannedAdvance?`<br>📌 Kế hoạch tạm ứng kỳ này: <strong>${fmtMoney(entity.plannedAdvance)}</strong>`:''}
     `;
   } else {
     metaEl.classList.add('hidden');
