@@ -465,6 +465,59 @@
   </div>
 </div>
 
+<!-- ===================== MODAL: SUB DETAIL (theo Công trình) ===================== -->
+<div class="modal-bg" id="modalSubDetail">
+  <div class="modal" style="max-width:680px;">
+    <button class="modal-close" onclick="closeModal('modalSubDetail')">✕</button>
+    <h3 id="subDetailTitle">—</h3>
+    <div class="contract-meta hidden" id="subDetailMeta"></div>
+
+    <div class="card" style="padding:14px;margin-bottom:12px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span class="small-muted">Tổng công nợ (tất cả công trình)</span>
+        <span id="subDetailTotalBalance" style="font-weight:700;font-size:18px;">$0</span>
+      </div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <label style="font-size:12.5px;font-weight:700;color:var(--navy);">Công trình</label>
+      <button class="btn btn-sm btn-gold" onclick="openSubProjectForm(CURRENT_SUB_ID)">+ Thêm công trình</button>
+    </div>
+    <div class="card" style="padding:6px 14px;margin-bottom:12px;" id="subProjectsListWrap"></div>
+
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+      <label style="font-size:12.5px;font-weight:700;color:var(--navy);">Khoản lẻ khác <span class="small-muted" style="font-weight:400;">(không gắn công trình cụ thể)</span></label>
+      <button class="btn btn-sm btn-outline" onclick="openLedger('subs', CURRENT_SUB_ID, null)">+ Ghi khoản lẻ</button>
+    </div>
+    <div class="card" style="padding:6px 14px;margin-bottom:12px;" id="subMiscSummaryWrap"></div>
+
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="openEntityModal('subs', CURRENT_SUB_ID)">✏️ Sửa thông tin đội</button>
+      <button class="btn btn-danger" onclick="deleteSub()">Xóa đội</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL: ADD/EDIT SUB PROJECT ===================== -->
+<div class="modal-bg" id="modalSubProjectForm">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('modalSubProjectForm')">✕</button>
+    <h3 id="subProjectFormTitle">Thêm công trình</h3>
+    <div class="form-group">
+      <label>Tên công trình / dự án</label>
+      <input type="text" id="subProjectName" placeholder="VD: Fukken - Sihanoukville Port">
+    </div>
+    <div class="form-group">
+      <label>Ghi chú</label>
+      <textarea id="subProjectNote" rows="2"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('modalSubProjectForm')">Hủy</button>
+      <button class="btn btn-primary" onclick="saveSubProject()">Lưu</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===================== MODAL: LEDGER DETAIL ===================== -->
 <div class="modal-bg" id="modalLedger">
   <div class="modal" style="max-width:640px;">
@@ -594,17 +647,21 @@ const col = {
   customerInvoices: () => db.collection('debt_customer_invoices'),     // mỗi hóa đơn đã xuất trong 1 hợp đồng (= tiền CẦN thu, chưa chắc đã thu)
   customerInvoicePayments: () => db.collection('debt_customer_invoice_payments'), // mỗi lần khách THỰC SỰ trả tiền cho 1 hóa đơn cụ thể
   subs:             () => db.collection('debt_subcontractors'),
-  subEntries:       () => db.collection('debt_subcontractor_entries'),
+  subProjects:      () => db.collection('debt_subcontractor_projects'),// mỗi công trình mà đội khoan/thầu phụ này đang làm
+  subEntries:       () => db.collection('debt_subcontractor_entries'), // sổ cái, mỗi dòng gắn với 1 công trình cụ thể (projectId)
 };
 
 let currentUser = null;
 let CUSTOMERS = [], CUSTOMER_ENTRIES = [], CUSTOMER_CONTRACTS = [], CUSTOMER_INVOICES = [], CUSTOMER_INVOICE_PAYMENTS = [];
-let SUBS = [], SUB_ENTRIES = [];
+let SUBS = [], SUB_PROJECTS = [], SUB_ENTRIES = [];
 let CURRENT_PAGE = 'customers';
 let CURRENT_TYPE = null;      // 'customers' | 'subs' — đang mở ledger của loại nào
 let CURRENT_ENTITY_ID = null; // id đang mở trong modal Ledger
 let CURRENT_CONTRACT_ID = null; // hợp đồng đang mở trong modalContractDetail
 let CURRENT_INVOICE_ID = null; // hóa đơn đang mở trong modalInvoiceDetail (để ghi nhận thanh toán)
+let CURRENT_SUB_ID = null; // đội khoan/thầu phụ đang mở trong modalSubDetail
+let CURRENT_SUB_PROJECT_ID = null; // công trình đang mở trong modalLedger (null = khoản lẻ không gắn công trình)
+let EDITING_SUB_PROJECT_ID = null;
 let EDITING_CONTRACT_ID = null;
 let MISC_TYPE = 'incurred'; // toggle của form "Khoản lẻ khác"
 let LEDGER_TYPE = 'incurred'; // toggle đang chọn trong form thêm dòng
@@ -754,12 +811,19 @@ function attachListeners(){
     SUBS = snap.docs.map(d=>({id:d.id, ...d.data()}));
     if(CURRENT_PAGE==='subs') renderSubList();
     if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
+    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
+  }));
+  unsubs.push(col.subProjects().onSnapshot(snap=>{
+    SUB_PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(CURRENT_PAGE==='subs') renderSubList();
+    if(CURRENT_PAGE==='dashboard') renderDashboard();
+    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
   }));
   unsubs.push(col.subEntries().onSnapshot(snap=>{
     SUB_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
     if(CURRENT_PAGE==='subs') renderSubList();
     if(CURRENT_PAGE==='dashboard') renderDashboard();
+    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
     if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
   }));
 }
@@ -790,6 +854,26 @@ function fmtCurrencyAmt(amount, currency){
   const abs = Math.abs(amount);
   if(currency === 'USD') return sign + sym + abs.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   return sign + abs.toLocaleString('en-US',{maximumFractionDigits:0}) + sym;
+}
+
+/* ---------------- ĐỘI KHOAN/THẦU PHỤ: theo Công trình ---------------- */
+// entry.entityId luôn = ID của Đội (dùng để tính TỔNG công nợ cả đội).
+// entry.projectId (nếu có) = ID của công trình cụ thể trong đội đó — dòng
+// nào KHÔNG có projectId thì coi là "khoản lẻ" của đội, không gắn công
+// trình nào (y hệt cách Khách hàng có "khoản lẻ khác").
+function calcSubProjectBalance(project){
+  const bal = { USD:0, VND:0, LAK:0 };
+  SUB_ENTRIES.filter(e=>e.projectId===project.id).forEach(e=>{
+    const cur = e.currency || 'USD';
+    if(!(cur in bal)) bal[cur] = 0;
+    bal[cur] += (e.incurred||0) - (e.paid||0);
+  });
+  return bal;
+}
+// Tổng công nợ CẢ ĐỘI = cộng dồn mọi dòng sổ cái có entityId = đội đó,
+// bất kể có gắn công trình hay không (khoản lẻ vẫn tính vào tổng).
+function calcSubTotalBalanceMulti(subId){
+  return calcBalanceMulti(SUB_ENTRIES, subId);
 }
 
 /* ---------------- BALANCE HELPERS (đa tiền tệ) ---------------- */
@@ -943,7 +1027,7 @@ function renderDashboard(){
   // quốc gia — gộp cả khách hàng lẫn đội/thầu phụ, quy đổi tạm sang USD ──
   const byCountry = { Cambodia:0, Laos:0, Vietnam:0 };
   CUSTOMERS.forEach(c => { byCountry[c.country||'Cambodia'] = (byCountry[c.country||'Cambodia']||0) + Math.abs(balanceApproxUSD(calcCustomerTotalBalanceMulti(c.id))); });
-  SUBS.forEach(s => { byCountry[s.country||'Cambodia'] = (byCountry[s.country||'Cambodia']||0) + Math.abs(balanceApproxUSD(calcBalanceMulti(SUB_ENTRIES,s.id))); });
+  SUBS.forEach(s => { byCountry[s.country||'Cambodia'] = (byCountry[s.country||'Cambodia']||0) + Math.abs(balanceApproxUSD(calcSubTotalBalanceMulti(s.id))); });
 
   const ctxCountry = document.getElementById('chartCountry').getContext('2d');
   if(chartCountryInstance) chartCountryInstance.destroy();
@@ -1060,10 +1144,26 @@ function exportDashboardExcel(){
   });
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subRows), 'Đội khoan-Thầu phụ');
 
+  // Sheet 5b: Công trình của từng đội khoan / thầu phụ
+  const subProjectRows = SUB_PROJECTS.map(p => {
+    const sub = SUBS.find(x=>x.id===p.subId);
+    const bal = calcSubProjectBalance(p);
+    return {
+      'Đội / Thầu phụ': sub?sub.name:'(đã xóa)',
+      'Công trình': p.projectName||'',
+      'Còn phải trả USD': bal.USD||0,
+      'Còn phải trả VNĐ': bal.VND||0,
+      'Còn phải trả Kip Lào': bal.LAK||0,
+      'Ghi chú': p.note||'',
+    };
+  }).sort((a,b)=>(a['Đội / Thầu phụ']||'').localeCompare(b['Đội / Thầu phụ']||''));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subProjectRows), 'Công trình đội-thầu phụ');
+
   // Sheet 6: Chi tiết sổ cái đội khoan / thầu phụ
   const subEntryRows = SUB_ENTRIES.map(e => {
     const s = SUBS.find(x=>x.id===e.entityId);
-    return { 'Đội / Thầu phụ': s?s.name:'(đã xóa)', 'Ngày': e.date, 'Nội dung': e.note||'',
+    const proj = e.projectId ? SUB_PROJECTS.find(x=>x.id===e.projectId) : null;
+    return { 'Đội / Thầu phụ': s?s.name:'(đã xóa)', 'Công trình': proj?proj.projectName:'(khoản lẻ)', 'Ngày': e.date, 'Nội dung': e.note||'',
       'Loại tiền': e.currency||'USD', 'Phát sinh': e.incurred||0, 'Đã tạm ứng': e.paid||0 };
   }).sort((a,b)=>(a.Ngày||'').localeCompare(b.Ngày||''));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(subEntryRows), 'Sổ cái đội-thầu phụ');
@@ -1133,12 +1233,13 @@ function renderSubList(){
   wrap.innerHTML = list.map(s => {
     const settled = balanceIsSettled(s.balance);
     const owedUSD = balanceApproxUSD(s.balance);
+    const numProjects = SUB_PROJECTS.filter(p=>p.subId===s.id).length;
     return `
-    <div class="entity-row" onclick="openLedger('subs','${s.id}')">
+    <div class="entity-row" onclick="openSubDetail('${s.id}')">
       <div class="entity-avatar" style="background:var(--gold);color:#3a2c0f;">${(s.name||'?').charAt(0).toUpperCase()}</div>
       <div class="entity-info">
         <div class="nm">${countryFlag(s.country)} ${escapeHtml(s.name)}</div>
-        <div class="sub">${s.workType?escapeHtml(s.workType)+' · ':''}${escapeHtml(s.note||'')}${s.contractNo?` · HĐ ${escapeHtml(s.contractNo)}`:''}</div>
+        <div class="sub">${numProjects} công trình${s.workType?' · '+escapeHtml(s.workType):''}${s.contractNo?` · HĐ ${escapeHtml(s.contractNo)}`:''}</div>
       </div>
       <div class="entity-bal">
         <div class="amt ${!settled && owedUSD>0 ?'positive':'zero'}">${fmtBalanceMulti(s.balance)}</div>
@@ -1178,6 +1279,7 @@ function openEntityModal(type, entityId){
   document.getElementById('modalEntity').dataset.type = type;
   closeModal('modalLedger');
   closeModal('modalCustomerDetail');
+  closeModal('modalSubDetail');
   openModal('modalEntity');
 }
 
@@ -1212,33 +1314,43 @@ async function saveEntity(){
     showToast('Đã lưu.');
     closeModal('modalEntity');
     if(type==='customers') openCustomerDetail(EDITING_ENTITY_ID);
-    else openLedger(type, EDITING_ENTITY_ID);
+    else openSubDetail(EDITING_ENTITY_ID);
   }catch(e){
     showToast('Lỗi khi lưu: ' + e.message, 'error');
   }
 }
 
 async function deleteEntity(){
-  if(!confirm('Xóa hoàn toàn khách hàng/đội này và TOÀN BỘ lịch sử công nợ của họ? Không thể hoàn tác.')) return;
-  const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
+  if(!confirm('Xóa hoàn toàn khách hàng này và TOÀN BỘ lịch sử công nợ của họ? Không thể hoàn tác.')) return;
+  const id = CURRENT_ENTITY_ID;
   try{
     const batch = db.batch();
-    if(type==='customers'){
-      CUSTOMER_ENTRIES.filter(e=>e.entityId===id).forEach(e => batch.delete(col.customerEntries().doc(e.id)));
-      const contracts = CUSTOMER_CONTRACTS.filter(c=>c.customerId===id);
-      contracts.forEach(c => {
-        CUSTOMER_INVOICES.filter(i=>i.contractId===c.id).forEach(i => batch.delete(col.customerInvoices().doc(i.id)));
-        batch.delete(col.customerContracts().doc(c.id));
-      });
-      batch.delete(col.customers().doc(id));
-    } else {
-      SUB_ENTRIES.filter(e=>e.entityId===id).forEach(e => batch.delete(col.subEntries().doc(e.id)));
-      batch.delete(col.subs().doc(id));
-    }
+    CUSTOMER_ENTRIES.filter(e=>e.entityId===id).forEach(e => batch.delete(col.customerEntries().doc(e.id)));
+    const contracts = CUSTOMER_CONTRACTS.filter(c=>c.customerId===id);
+    contracts.forEach(c => {
+      CUSTOMER_INVOICES.filter(i=>i.contractId===c.id).forEach(i => batch.delete(col.customerInvoices().doc(i.id)));
+      batch.delete(col.customerContracts().doc(c.id));
+    });
+    batch.delete(col.customers().doc(id));
     await batch.commit();
     showToast('Đã xóa.');
-    closeModal('modalLedger');
     closeModal('modalCustomerDetail');
+  }catch(e){
+    showToast('Lỗi khi xóa: ' + e.message, 'error');
+  }
+}
+
+async function deleteSub(){
+  if(!confirm('Xóa hoàn toàn đội khoan/thầu phụ này và TOÀN BỘ công trình + lịch sử công nợ của họ? Không thể hoàn tác.')) return;
+  const id = CURRENT_SUB_ID;
+  try{
+    const batch = db.batch();
+    SUB_ENTRIES.filter(e=>e.entityId===id).forEach(e => batch.delete(col.subEntries().doc(e.id)));
+    SUB_PROJECTS.filter(p=>p.subId===id).forEach(p => batch.delete(col.subProjects().doc(p.id)));
+    batch.delete(col.subs().doc(id));
+    await batch.commit();
+    showToast('Đã xóa.');
+    closeModal('modalSubDetail');
   }catch(e){
     showToast('Lỗi khi xóa: ' + e.message, 'error');
   }
@@ -1604,9 +1716,134 @@ async function deletePayment(id){
 /* ---------------- LEDGER MODAL (chỉ còn dùng cho Đội khoan/Thầu phụ) ---------------- */
 let LEDGER_MODE = 'quick'; // 'quick' | 'meter' | 'daily' — chế độ nhập dòng mới trong sổ cái Đội/Thầu phụ
 
-function openLedger(type, entityId){
+/* ---------------- ĐỘI KHOAN/THẦU PHỤ: CHI TIẾT (Công trình + Khoản lẻ) ---------------- */
+function openSubDetail(subId){
+  CURRENT_SUB_ID = subId;
+  renderSubDetailModal();
+  openModal('modalSubDetail');
+}
+
+function renderSubDetailModal(){
+  const sub = SUBS.find(s=>s.id===CURRENT_SUB_ID);
+  if(!sub) return;
+  document.getElementById('subDetailTitle').textContent = sub.name;
+
+  const metaEl = document.getElementById('subDetailMeta');
+  if(sub.workType || sub.contractNo || sub.contractValue || sub.liquidationNo || sub.liquidationValue || sub.plannedAdvance){
+    metaEl.classList.remove('hidden');
+    metaEl.innerHTML = `
+      ${sub.workType?`Loại công việc: <strong>${escapeHtml(sub.workType)}</strong><br>`:''}
+      ${sub.contractNo?`Số HĐ: <strong>${escapeHtml(sub.contractNo)}</strong> &nbsp;·&nbsp; `:''}
+      ${sub.contractDate?`Ngày HĐ: <strong>${fmtDate(sub.contractDate)}</strong> &nbsp;·&nbsp; `:''}
+      ${sub.contractValue?`GT hợp đồng: <strong>${fmtMoney(sub.contractValue)}</strong>`:''}
+      ${sub.plannedAdvance?`<br>📌 Kế hoạch tạm ứng kỳ này: <strong>${fmtMoney(sub.plannedAdvance)}</strong>`:''}
+    `;
+  } else {
+    metaEl.classList.add('hidden');
+  }
+
+  const totalBal = calcSubTotalBalanceMulti(CURRENT_SUB_ID);
+  const totalEl = document.getElementById('subDetailTotalBalance');
+  totalEl.textContent = fmtBalanceMulti(totalBal);
+  totalEl.style.color = balanceIsSettled(totalBal) ? 'var(--good)' : (balanceApproxUSD(totalBal)>0 ? 'var(--bad)' : 'var(--amber)');
+
+  // Danh sách công trình
+  const projects = SUB_PROJECTS.filter(p=>p.subId===CURRENT_SUB_ID).sort((a,b)=>(a.projectName||'').localeCompare(b.projectName||''));
+  const projWrap = document.getElementById('subProjectsListWrap');
+  if(projects.length===0){
+    projWrap.innerHTML = `<div class="small-muted" style="padding:12px 4px;">Chưa có công trình nào.</div>`;
+  } else {
+    projWrap.innerHTML = projects.map(p => {
+      const bal = calcSubProjectBalance(p);
+      const settled = balanceIsSettled(bal);
+      return `
+        <div class="entity-row" style="padding:12px 4px;" onclick="openLedger('subs','${CURRENT_SUB_ID}','${p.id}')">
+          <div class="entity-info">
+            <div class="nm" style="font-size:13.5px;">${escapeHtml(p.projectName||'(chưa đặt tên)')}</div>
+            ${p.note?`<div class="sub">${escapeHtml(p.note)}</div>`:''}
+          </div>
+          <div class="entity-bal">
+            <div class="amt ${!settled?'positive':'zero'}" style="font-size:14px;">${fmtBalanceMulti(bal)}</div>
+            <div class="lbl">${settled?'đã tất toán':'còn phải trả'}</div>
+          </div>
+          <button class="btn btn-sm btn-outline" onclick="event.stopPropagation(); openSubProjectForm('${CURRENT_SUB_ID}','${p.id}')" style="margin-left:8px;">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); deleteSubProject('${CURRENT_SUB_ID}','${p.id}')" style="margin-left:4px;">🗑️</button>
+        </div>
+      `;
+    }).join('');
+  }
+
+  // Khoản lẻ (không gắn công trình) — chỉ hiện tổng, chi tiết xem trong modalLedger
+  const miscEntries = SUB_ENTRIES.filter(e=>e.entityId===CURRENT_SUB_ID && !e.projectId);
+  const miscBal = { USD:0, VND:0, LAK:0 };
+  miscEntries.forEach(e=>{ const cur=e.currency||'USD'; if(!(cur in miscBal)) miscBal[cur]=0; miscBal[cur]+=(e.incurred||0)-(e.paid||0); });
+  const miscWrap = document.getElementById('subMiscSummaryWrap');
+  if(miscEntries.length===0){
+    miscWrap.innerHTML = `<div class="small-muted" style="padding:10px 4px;">Chưa có khoản lẻ nào.</div>`;
+  } else {
+    miscWrap.innerHTML = `
+      <div class="entity-row" style="padding:12px 4px;" onclick="openLedger('subs','${CURRENT_SUB_ID}', null)">
+        <div class="entity-info">
+          <div class="nm" style="font-size:13.5px;">${miscEntries.length} khoản lẻ</div>
+        </div>
+        <div class="entity-bal">
+          <div class="amt" style="font-size:14px;">${fmtBalanceMulti(miscBal)}</div>
+        </div>
+      </div>
+    `;
+  }
+}
+
+/* ---------------- CÔNG TRÌNH (của Đội khoan/Thầu phụ) ---------------- */
+function openSubProjectForm(subId, projectId){
+  EDITING_SUB_PROJECT_ID = projectId || null;
+  const p = projectId ? SUB_PROJECTS.find(x=>x.id===projectId) : null;
+  document.getElementById('subProjectFormTitle').textContent = p ? 'Sửa công trình' : 'Thêm công trình';
+  document.getElementById('subProjectName').value = p ? (p.projectName||'') : '';
+  document.getElementById('subProjectNote').value = p ? (p.note||'') : '';
+  document.getElementById('modalSubProjectForm').dataset.subId = subId;
+  openModal('modalSubProjectForm');
+}
+
+async function saveSubProject(){
+  const subId = document.getElementById('modalSubProjectForm').dataset.subId;
+  const projectName = document.getElementById('subProjectName').value.trim();
+  if(!projectName){ showToast('Vui lòng nhập tên công trình.', 'error'); return; }
+  const data = {
+    subId,
+    projectName,
+    note: document.getElementById('subProjectNote').value.trim(),
+    updatedAt: new Date().toISOString(), updatedBy: currentUser.email,
+  };
+  try{
+    if(EDITING_SUB_PROJECT_ID){
+      await col.subProjects().doc(EDITING_SUB_PROJECT_ID).set(data, { merge:true });
+    } else {
+      data.createdAt = new Date().toISOString(); data.createdBy = currentUser.email;
+      await col.subProjects().add(data);
+    }
+    showToast('Đã lưu công trình.');
+    closeModal('modalSubProjectForm');
+    openModal('modalSubDetail');
+  }catch(e){ showToast('Lỗi khi lưu: ' + e.message, 'error'); }
+}
+
+async function deleteSubProject(subId, projectId){
+  if(!confirm('Xóa công trình này và TOÀN BỘ sổ cái của nó? Không thể hoàn tác.')) return;
+  try{
+    const entries = SUB_ENTRIES.filter(e=>e.projectId===projectId);
+    const batch = db.batch();
+    entries.forEach(e => batch.delete(col.subEntries().doc(e.id)));
+    batch.delete(col.subProjects().doc(projectId));
+    await batch.commit();
+    showToast('Đã xóa công trình.');
+  }catch(e){ showToast('Lỗi khi xóa: ' + e.message, 'error'); }
+}
+
+function openLedger(type, entityId, projectId){
   CURRENT_TYPE = type;
   CURRENT_ENTITY_ID = entityId;
+  CURRENT_SUB_PROJECT_ID = projectId !== undefined ? projectId : null;
   LEDGER_TYPE = 'incurred';
   document.getElementById('paidLabelWord').textContent = type==='customers' ? 'thu' : 'tạm ứng';
   document.getElementById('ledgerDate').value = todayStr();
@@ -1627,6 +1864,7 @@ function openLedger(type, entityId){
   document.getElementById('dailyNote').value = '';
   setLedgerMode('quick');
   setLedgerType('incurred');
+  closeModal('modalSubDetail');
   renderLedgerModal();
   openModal('modalLedger');
 }
@@ -1678,11 +1916,28 @@ function updateLedgerAmountPreview(){
 function renderLedgerModal(){
   const type = CURRENT_TYPE, id = CURRENT_ENTITY_ID;
   const list = type==='customers' ? CUSTOMERS : SUBS;
-  const entries = (type==='customers' ? CUSTOMER_ENTRIES : SUB_ENTRIES).filter(e=>e.entityId===id);
   const entity = list.find(x=>x.id===id);
   if(!entity) return;
 
-  document.getElementById('ledgerTitle').textContent = entity.name;
+  let entries, balance, titlePrefix = '';
+  if(type==='subs'){
+    const project = CURRENT_SUB_PROJECT_ID ? SUB_PROJECTS.find(p=>p.id===CURRENT_SUB_PROJECT_ID) : null;
+    entries = SUB_ENTRIES.filter(e => project ? e.projectId===project.id : (e.entityId===id && !e.projectId));
+    if(project){
+      balance = calcSubProjectBalance(project);
+    } else {
+      // Khoản lẻ: tính từ chính danh sách entries đã lọc (không gắn công trình)
+      balance = { USD:0, VND:0, LAK:0 };
+      entries.forEach(e=>{ const cur=e.currency||'USD'; if(!(cur in balance)) balance[cur]=0; balance[cur]+= (e.incurred||0)-(e.paid||0); });
+    }
+    titlePrefix = project ? `${entity.name} — ${project.projectName}` : `${entity.name} — Khoản lẻ`;
+  } else {
+    entries = CUSTOMER_ENTRIES.filter(e=>e.entityId===id);
+    balance = calcBalanceMulti(entries, id);
+    titlePrefix = entity.name;
+  }
+
+  document.getElementById('ledgerTitle').textContent = titlePrefix;
 
   const metaEl = document.getElementById('ledgerContractMeta');
   if(type==='subs' && (entity.workType || entity.contractNo || entity.contractValue || entity.liquidationNo || entity.liquidationValue || entity.plannedAdvance)){
@@ -1702,7 +1957,6 @@ function renderLedgerModal(){
     metaEl.classList.add('hidden');
   }
 
-  const balance = calcBalanceMulti(type==='customers'?CUSTOMER_ENTRIES:SUB_ENTRIES, id);
   const balEl = document.getElementById('ledgerBalance');
   balEl.textContent = fmtBalanceMulti(balance);
   const approxUSD = balanceApproxUSD(balance);
@@ -1768,6 +2022,7 @@ async function saveLedgerEntry(){
 
   const data = {
     entityId: id,
+    projectId: type==='subs' ? (CURRENT_SUB_PROJECT_ID || null) : null,
     date,
     note,
     currency,
