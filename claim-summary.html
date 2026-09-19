@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tổng Hợp Khối Lượng Claim | HAIC Lab</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --primary:#1a5276;
+    --primary-dark:#0e3b53;
+    --accent:#1e8449;
+    --gold:#b8860b;
+    --danger:#c0392b;
+    --bg:#f4f6f7;
+    --card:#ffffff;
+    --border:#d5dbdb;
+    --text:#212f3c;
+    --muted:#6b7280;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:Arial,Helvetica,sans-serif; background:var(--bg); color:var(--text);
+    padding-bottom:90px;
+  }
+  header{
+    background:linear-gradient(135deg,var(--primary),var(--primary-dark));
+    color:#fff; padding:14px 16px; position:sticky; top:0; z-index:50;
+    box-shadow:0 2px 6px rgba(0,0,0,.2);
+  }
+  header h1{margin:0; font-size:16px; line-height:1.4; font-weight:700;}
+  header .sub{font-size:11px; opacity:.85; margin-top:2px;}
+  .userbar{
+    display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap;
+    margin-top:8px; font-size:12px; background:rgba(255,255,255,.12); border-radius:8px; padding:6px 10px;
+  }
+  .userbar .who{font-weight:700;}
+  .userbar .actions{display:flex; gap:6px; flex-wrap:wrap;}
+  .userbar button{padding:5px 9px; font-size:11.5px; border-radius:6px;}
+  .wrap{max-width:1100px; margin:0 auto; padding:10px;}
+  .card{
+    background:var(--card); border-radius:10px; padding:14px; margin-bottom:12px;
+    box-shadow:0 1px 3px rgba(0,0,0,.08); border:1px solid var(--border);
+  }
+  .card h2{
+    font-size:13px; color:var(--primary); margin:0 0 10px; padding-bottom:6px;
+    border-bottom:2px solid var(--border); text-transform:uppercase; letter-spacing:.3px;
+  }
+  .card .card-desc{font-size:11.5px; color:var(--muted); margin:-6px 0 12px;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .grid3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;}
+  .grid4{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px;}
+  @media(max-width:640px){.grid2,.grid3,.grid4{grid-template-columns:1fr;}}
+  label{display:block; font-size:11.5px; color:var(--muted); margin-bottom:3px; font-weight:600;}
+  input,textarea,select{
+    width:100%; padding:8px 9px; border:1px solid var(--border); border-radius:6px;
+    font-size:13px; font-family:inherit; background:#fff; color:var(--text);
+  }
+  .field{margin-bottom:10px;}
+  button{
+    cursor:pointer; border:none; border-radius:6px; padding:9px 14px; font-size:13px;
+    font-weight:600; font-family:inherit; transition:opacity .15s;
+  }
+  button:hover{opacity:.88;}
+  button:active{opacity:.7;}
+  .primary-btn{background:var(--primary); color:#fff; width:100%; padding:11px;}
+  .accent{background:var(--accent); color:#fff;}
+  .danger{background:var(--danger); color:#fff;}
+  .ghost{background:#eef2f3; color:var(--text); border:1px solid var(--border);}
+  .gold{background:var(--gold); color:#fff;}
+  .row-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .hint{color:var(--muted); font-size:11px; display:block; margin-top:6px;}
+  small.hint{line-height:1.5;}
+
+  /* ---- LOGIN ---- */
+  #loginScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:16px;
+  }
+  .login-box{
+    background:#fff; border-radius:12px; padding:26px 22px; max-width:380px; width:100%;
+    box-shadow:0 4px 18px rgba(0,0,0,.12); border:1px solid var(--border);
+  }
+  .login-box h2{margin:0 0 4px; font-size:18px; color:var(--primary);}
+  .login-box .sub{font-size:11.5px; color:var(--muted); margin-bottom:18px;}
+  .login-error{color:var(--danger); font-size:12px; min-height:16px; margin-top:8px;}
+  .firstrun-box{
+    margin-top:16px; padding:10px; background:#f4f6f7; border-radius:8px;
+    font-size:11px; color:var(--muted); line-height:1.5;
+  }
+  #appShell{display:none;}
+
+  /* ---- project search ---- */
+  .autocomplete-list{
+    position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid var(--border);
+    border-radius:0 0 8px 8px; max-height:220px; overflow-y:auto; z-index:40; display:none;
+    box-shadow:0 4px 10px rgba(0,0,0,.1);
+  }
+  .autocomplete-list.show{display:block;}
+  .autocomplete-item{padding:8px 10px; font-size:12.5px; cursor:pointer; border-bottom:1px solid #f0f0f0;}
+  .autocomplete-item:hover{background:#f4f6f7;}
+
+  /* ---- claim table ---- */
+  table.claim{width:100%; border-collapse:collapse; font-size:12px; margin-top:6px;}
+  table.claim th, table.claim td{border:1px solid var(--border); padding:6px 7px; text-align:left; vertical-align:middle;}
+  table.claim thead th{background:#eef2f3; font-size:11px; text-transform:uppercase; letter-spacing:.2px; color:var(--muted);}
+  table.claim td.num, table.claim th.num{text-align:right; white-space:nowrap;}
+  table.claim td.center{text-align:center;}
+  tr.section-row td{background:#e8f1f8; font-weight:700; color:var(--primary-dark);}
+  tr.total-row td{background:#fff8e1; font-weight:700;}
+  tr.auto-row{background:#fbfdfe;}
+  tr.manual-row{background:#fffef7;}
+  .src-badge{
+    font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:10px; display:inline-block;
+  }
+  .src-badge.auto{background:#d4efdf; color:#1e8449;}
+  .src-badge.manual{background:#fdebd0; color:#b9770e;}
+  table.claim input{padding:4px 6px; font-size:12px;}
+  .row-del{background:none; border:none; color:var(--danger); font-size:15px; cursor:pointer; padding:2px 6px;}
+  .section-actions{display:flex; gap:6px; align-items:center; margin:10px 0 4px;}
+  .empty-msg{color:var(--muted); font-size:12px; text-align:center; padding:16px;}
+
+  /* ---- price list ---- */
+  table.pricelist{width:100%; border-collapse:collapse; font-size:12.5px;}
+  table.pricelist th, table.pricelist td{border:1px solid var(--border); padding:6px 8px;}
+  table.pricelist th{background:#eef2f3; font-size:11px; color:var(--muted);}
+  table.pricelist input{padding:5px 7px;}
+
+  table.diag{width:100%; border-collapse:collapse; font-size:12px; margin-top:6px;}
+  table.diag th, table.diag td{border:1px solid var(--border); padding:6px 8px; text-align:left;}
+  table.diag td.center{text-align:center;}
+  table.diag th{background:#eef2f3; font-size:11px; color:var(--muted);}
+  table.diag tr.diag-match td{background:#d4efdf;}
+  table.diag tr.diag-nomatch td{background:#fdecea;}
+  .diag-badge{font-size:9.5px; font-weight:700; padding:1px 6px; border-radius:10px;}
+  .diag-badge.yes{background:#1e8449; color:#fff;}
+  .diag-badge.no{background:#c0392b; color:#fff;}
+
+  .toast{
+    position:fixed; bottom:16px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:#212f3c; color:#fff; padding:10px 18px; border-radius:8px; font-size:13px;
+    opacity:0; transition:all .25s; z-index:200; pointer-events:none; max-width:90vw; text-align:center;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.error{background:var(--danger);}
+</style>
+</head>
+<body>
+
+<!-- ======================= LOGIN SCREEN ======================= -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h2>HAIC Lab — Đăng nhập / Login</h2>
+    <div class="sub">Tổng Hợp Khối Lượng Claim Hàng Tháng · Monthly Claim Summary</div>
+    <div class="field">
+      <label>Email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="ten@gmail.com">
+    </div>
+    <div class="field">
+      <label>Mật khẩu / Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password">
+    </div>
+    <button class="primary-btn" onclick="login()">Đăng nhập / Sign In</button>
+    <div class="login-error" id="loginError"></div>
+    <div class="firstrun-box">
+      Dùng chung tài khoản với các app thí nghiệm khác (Sand Cone, Concrete...) — không cần tạo tài khoản riêng. Nếu chưa có tài khoản, liên hệ Admin.
+    </div>
+  </div>
+</div>
+
+<!-- ======================= MAIN APP ======================= -->
+<div id="appShell">
+
+<header>
+  <h1>TỔNG HỢP KHỐI LƯỢNG CLAIM HÀNG THÁNG<br>
+  <span style="font-weight:400">Monthly Testing Quantity Claim Summary</span></h1>
+  <div class="sub">Tự động gom dữ liệu từ Sand Cone &amp; Concrete · nhập tay các hạng mục khác</div>
+  <div class="userbar">
+    <div class="who" id="whoami">—</div>
+    <div class="actions">
+      <button class="danger" onclick="logout()">Đăng xuất</button>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- PROJECT + MONTH SELECTION -->
+  <div class="card">
+    <h2>1. Chọn Dự Án &amp; Tháng Claim</h2>
+    <div class="grid2">
+      <div class="field" style="margin-bottom:0; position:relative;">
+        <label>Dự án / Project</label>
+        <input type="text" id="projectSearchInput" placeholder="Gõ tên dự án để tìm..." autocomplete="off" oninput="onProjectSearchInput()" onfocus="onProjectSearchInput()">
+        <div id="projectSuggestions" class="autocomplete-list"></div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label>Tháng claim / Claim month</label>
+        <input type="month" id="claimMonth">
+      </div>
+    </div>
+    <div class="row-actions">
+      <button class="primary-btn" style="width:auto;" onclick="aggregateClaim()">⟳ Tổng hợp dữ liệu tháng này</button>
+    </div>
+    <small class="hint">Chọn đúng dự án đã lưu trong hệ thống (Sand Cone/Concrete dùng chung danh sách này), chọn tháng cần claim, rồi bấm Tổng hợp — hệ thống tự kéo toàn bộ báo cáo Field Density và Compressive Strength của dự án trong tháng đó.</small>
+  </div>
+
+  <!-- CLAIM HEADER INFO -->
+  <div class="card" id="claimHeaderCard" style="display:none;">
+    <h2>2. Thông Tin Phiếu Claim</h2>
+    <div class="grid3">
+      <div class="field">
+        <label>Số phiếu / Document No.</label>
+        <input id="hDocNo" type="text" placeholder="VD: 2508.26- CBC PGNHS.2026">
+      </div>
+      <div class="field">
+        <label>Đợt claim / Claim round</label>
+        <input id="hClaimRound" type="text" value="Đợt 1/ 1st Claim">
+      </div>
+      <div class="field">
+        <label>Ngày lập phiếu / Report date</label>
+        <input id="hReportDate" type="date">
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="field">
+        <label>Customer</label>
+        <input id="hCustomer" type="text">
+      </div>
+      <div class="field">
+        <label>Address</label>
+        <input id="hAddress" type="text">
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICE LIST -->
+  <div class="card" id="priceListCard" style="display:none;">
+    <h2>3. Bảng Đơn Giá Theo Dự Án</h2>
+    <div class="card-desc">Nhập 1 lần cho dự án này — dùng lại cho mọi tháng claim sau, không cần gõ lại. Sửa và bấm Lưu đơn giá bất kỳ lúc nào.</div>
+    <table class="pricelist">
+      <thead><tr><th style="width:60%;">Hạng mục thí nghiệm</th><th style="width:40%;">Đơn giá (USD)</th></tr></thead>
+      <tbody id="priceListBody"></tbody>
+    </table>
+    <div class="row-actions">
+      <button class="accent" onclick="savePriceList()">💾 Lưu đơn giá</button>
+    </div>
+  </div>
+
+  <!-- CLAIM TABLE -->
+  <div class="card" id="claimTableCard" style="display:none;">
+    <h2>4. Bảng Khối Lượng Claim</h2>
+    <div id="claimSections"></div>
+    <div class="row-actions">
+      <button class="ghost" onclick="openAddSectionModal()">+ Thêm hạng mục (nhập tay)</button>
+      <button class="accent" onclick="saveClaimDraft()">💾 Lưu bản nháp</button>
+      <button class="gold" onclick="exportClaimExcel()">📊 Xuất Excel</button>
+    </div>
+    <table class="claim" style="margin-top:14px;">
+      <tbody>
+        <tr class="total-row"><td colspan="7">TOTAL (Exclude VAT)</td><td class="num" id="totExclVat">$0.00</td></tr>
+        <tr class="total-row"><td colspan="7">VAT 10%</td><td class="num" id="totVat">$0.00</td></tr>
+        <tr class="total-row"><td colspan="7">GRAND TOTAL (Include VAT)</td><td class="num" id="totGrand">$0.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- DIAGNOSTIC: xem toàn bộ báo cáo trong tháng, không lọc dự án -->
+  <div class="card" id="diagCard" style="display:none;">
+    <h2>🔍 Chẩn đoán — Toàn bộ báo cáo trong tháng (mọi dự án)</h2>
+    <div class="card-desc">Dùng khi kết quả tổng hợp thiếu — so sánh trực tiếp tên dự án trong danh sách này với "<span id="diagProjectName"></span>" để tìm chỗ lệch (sai chính tả, thiếu chữ, chưa gắn dự án...).</div>
+    <div id="diagContent"></div>
+  </div>
+
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADD SECTION MODAL -->
+<div id="addSectionModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:100; align-items:center; justify-content:center; padding:16px;">
+  <div style="background:#fff; border-radius:10px; padding:18px; max-width:400px; width:100%;">
+    <h3 style="margin:0 0 12px; color:var(--primary); font-size:15px;">Thêm hạng mục nhập tay</h3>
+    <div class="field">
+      <label>Tên hạng mục (VD: Thép - Thử kéo / Steel - Tension Test)</label>
+      <input id="newSectionName" type="text">
+    </div>
+    <div class="field">
+      <label>Đơn vị tính (VD: Set (03pcs), Point, Sample...)</label>
+      <input id="newSectionUnit" type="text" value="Sample">
+    </div>
+    <div class="row-actions">
+      <button class="accent" onclick="confirmAddSection()">Thêm</button>
+      <button class="ghost" onclick="closeAddSectionModal()">Hủy</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ====================================================================
+   Firebase — dùng CHUNG project haic-lab-system với Sand Cone/Concrete,
+   nên tài khoản đăng nhập, danh sách dự án (projects) đều dùng chung.
+   ==================================================================== */
+const firebaseConfig = {
+  apiKey: "AIzaSyAwl-2_0CDC05FCWuJJurKRQ8CE_JiB6ec",
+  authDomain: "haic-lab-system.firebaseapp.com",
+  projectId: "haic-lab-system",
+  storageBucket: "haic-lab-system.firebasestorage.app",
+  messagingSenderId: "92667513294",
+  appId: "1:92667513294:web:a4e757cc7b20b6a63fc39f"
+};
+const SUPER_ADMIN_EMAIL = "truong.haicambodia@gmail.com";
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+function sandConeReportsCol(){ return db.collection('apps').doc('sandcone-test').collection('reports'); }
+function concreteReportsCol(){ return db.collection('apps').doc('concrete-test').collection('concrete_reports'); }
+function claimPriceListDoc(projectId){ return db.collection('apps').doc('claim-summary').collection('priceLists').doc(projectId); }
+function claimDraftDoc(projectId, monthKey){ return db.collection('apps').doc('claim-summary').collection('claims').doc(`${projectId}_${monthKey}`); }
+
+let currentUserData = null;
+let toastTimer = null;
+function showToast(msg, isError){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (isError ? ' error' : '');
+  if(toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+function showLoginMsg(msg, isError){
+  const el = document.getElementById('loginError');
+  el.textContent = msg;
+  el.style.color = isError ? 'var(--danger)' : 'var(--accent)';
+}
+
+/* ---------------- LOGIN (dùng chung tài khoản với các app khác) ---------------- */
+async function login(){
+  const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+  const password = document.getElementById('loginPassword').value;
+  showLoginMsg('', false);
+  if(!email || !password){ showLoginMsg('Nhập đầy đủ email và mật khẩu', true); return; }
+  try{
+    await auth.signInWithEmailAndPassword(email, password);
+  }catch(e){
+    if(e.code === 'auth/wrong-password' || e.code === 'auth/user-not-found' || e.code === 'auth/invalid-credential'){
+      showLoginMsg('Sai email hoặc mật khẩu, hoặc tài khoản chưa tồn tại ở app khác trong hệ thống', true);
+    } else {
+      showLoginMsg('Lỗi: ' + e.message, true);
+    }
+  }
+}
+function logout(){ auth.signOut(); }
+
+auth.onAuthStateChanged(async (user) => {
+  if(!user){
+    currentUserData = null;
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    return;
+  }
+  const email = (user.email || '').toLowerCase();
+  try{
+    const docSnap = await db.collection('users').doc(user.uid).get();
+    if(!docSnap.exists){
+      showLoginMsg('Tài khoản chưa được cấp quyền sử dụng app. Liên hệ Admin.', true);
+      await auth.signOut();
+      return;
+    }
+    const d = docSnap.data();
+    if(d.active === false){
+      showLoginMsg('Tài khoản đã bị khóa. Liên hệ Admin.', true);
+      await auth.signOut();
+      return;
+    }
+    currentUserData = { email, displayName: d.displayName || d.name || email, role: d.role, uid: user.uid };
+    enterApp();
+  }catch(e){
+    showLoginMsg('Lỗi: ' + e.message, true);
+    await auth.signOut();
+  }
+});
+
+function enterApp(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('appShell').style.display = 'block';
+  const roleLabel = currentUserData.role === 'superadmin' ? 'Super Admin' : (currentUserData.role === 'admin' ? 'Admin' : 'Nhân viên');
+  document.getElementById('whoami').textContent = `${currentUserData.displayName} (${roleLabel})`;
+  loadProjectsDropdown();
+  const now = new Date();
+  document.getElementById('claimMonth').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+}
+
+/* ---------------- PROJECT SEARCH (giống Sand Cone/Concrete) ---------------- */
+let projectsCache = [];
+let currentProjectId = null;
+
+async function loadProjectsDropdown(){
+  const snap = await db.collection('projects').orderBy('name').get();
+  projectsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+function onProjectSearchInput(){
+  const q = document.getElementById('projectSearchInput').value.trim().toLowerCase();
+  const matches = (q ? projectsCache.filter(p => (p.name||'').toLowerCase().includes(q)) : projectsCache).slice(0, 25);
+  const box = document.getElementById('projectSuggestions');
+  if(matches.length === 0){ box.classList.remove('show'); box.innerHTML=''; return; }
+  box.innerHTML = matches.map(p => `<div class="autocomplete-item" onclick="selectProject('${p.id}')">${escapeHtml(p.name||'')}</div>`).join('');
+  box.classList.add('show');
+}
+function selectProject(id){
+  const p = projectsCache.find(x => x.id === id);
+  if(!p) return;
+  currentProjectId = id;
+  document.getElementById('projectSearchInput').value = p.name;
+  document.getElementById('projectSuggestions').classList.remove('show');
+  document.getElementById('hCustomer').value = p.contractor || '';
+  document.getElementById('hAddress').value = p.location || '';
+  claimState = null;
+  document.getElementById('claimHeaderCard').style.display = 'none';
+  document.getElementById('priceListCard').style.display = 'none';
+  document.getElementById('claimTableCard').style.display = 'none';
+  document.getElementById('diagCard').style.display = 'none';
+}
+document.addEventListener('click', (e) => {
+  if(!e.target.closest('#projectSearchInput') && !e.target.closest('#projectSuggestions')){
+    document.getElementById('projectSuggestions').classList.remove('show');
+  }
+});
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+/* ====================================================================
+   TỔNG HỢP KHỐI LƯỢNG — kéo dữ liệu thật từ Sand Cone + Concrete theo
+   đúng projectId + khoảng ngày trong tháng đã chọn.
+   ==================================================================== */
+let claimState = null;
+
+const AUTO_SECTIONS = {
+  fieldDensity: { title: 'FIELD DENSITY TEST', unit: 'Point' },
+  compressiveStrengthCylinder: { title: 'CƯỜNG ĐỘ KHÁNG NÉN BÊ TÔNG XM (MẪU TRỤ)\nCOMPRESSIVE STRENGTH OF CONCRETE (CYLINDER)', unit: 'Set (03pcs)' },
+  compressiveStrengthCube: { title: 'CƯỜNG ĐỘ KHÁNG NÉN BÊ TÔNG XM (MẪU LẬP PHƯƠNG)\nCOMPRESSIVE STRENGTH OF CONCRETE (CUBE)', unit: 'Set (03pcs)' },
+};
+
+// So khớp tên dự án theo kiểu "chứa nhau", không cần y hệt từng chữ —
+// vì trong thực tế mỗi app/mỗi người có thể gõ khác nhau cho CÙNG 1 dự
+// án (VD: Sand Cone ghi "WCFO", Concrete ghi "WCFO Factory"). Nếu 1 chuỗi
+// là tên rút gọn/nằm trong chuỗi kia thì coi là khớp.
+function namesLikelyMatch(nameA, nameB){
+  const a = (nameA||'').trim().toLowerCase();
+  const b = (nameB||'').trim().toLowerCase();
+  if(!a || !b) return false;
+  return a === b || a.includes(b) || b.includes(a);
+}
+
+let diagRows = []; // toàn bộ báo cáo trong tháng (mọi dự án) — nguồn dữ liệu chính để dựng bảng claim
+
+/* ---------------- CHẨN ĐOÁN — quét TOÀN BỘ báo cáo trong tháng, không lọc
+   theo dự án, để so sánh trực tiếp bằng mắt xem tên dự án ghi trong báo
+   cáo có khớp đúng với dự án đang chọn hay không. Đây cũng là nguồn dữ
+   liệu duy nhất để dựng bảng claim — người dùng có thể tick chọn lại tay
+   nếu thuật toán đoán sai (dữ liệu người nhập có thể viết rất khác nhau,
+   không thuật toán nào đoán đúng 100% mọi trường hợp). ---------------- */
+async function runDiagnostic(projectId, projectName, monthKey){
+  const [scSnap, ccSnap] = await Promise.all([
+    sandConeReportsCol().orderBy('updatedAt','desc').limit(1500).get(),
+    concreteReportsCol().orderBy('updatedAt','desc').limit(1500).get(),
+  ]);
+
+  diagRows = [];
+  let rid = 0;
+  scSnap.forEach(doc => {
+    const r = doc.data();
+    const testDate = r.testDate || '';
+    if(!testDate.startsWith(monthKey)) return;
+    const qty = (r.rows || []).length;
+    if(qty === 0) return;
+    const matches = (!!r.projectId && r.projectId === projectId) || namesLikelyMatch(r.project, projectName);
+    diagRows.push({
+      rowId: 'd' + (rid++), source: 'Sand Cone', date: testDate,
+      projectText: r.project || '(để trống)', hasProjectId: !!r.projectId, matches,
+      description: r.testingArea || r.location || r.description || '(Chưa đặt tên khu vực)',
+      castDate: '', testDate, quantity: qty, groupKey: null,
+    });
+  });
+  ccSnap.forEach(doc => {
+    const r = doc.data();
+    const shape = r.specimenShape === 'cylinder' ? 'cylinder' : 'cube'; // mặc định cube nếu chưa chọn
+    (r.groups || []).forEach(g => {
+      const testDate = g.dateTest || '';
+      if(!testDate.startsWith(monthKey)) return;
+      const matches = (!!r.projectId && r.projectId === projectId) || namesLikelyMatch(r.project, projectName);
+      diagRows.push({
+        rowId: 'd' + (rid++), source: 'Concrete', date: testDate,
+        projectText: r.project || '(để trống)', hasProjectId: !!r.projectId, matches,
+        description: g.item || '(Chưa đặt tên hạng mục)',
+        castDate: g.dateCast || '', testDate, quantity: 1, shape,
+        groupKey: `${shape}__${(g.item||'').trim()}__${g.dateCast||''}__${testDate}`,
+      });
+    });
+  });
+  diagRows.sort((a,b) => (a.date||'').localeCompare(b.date||''));
+
+  document.getElementById('diagProjectName').textContent = projectName;
+  renderDiagnosticTable();
+  document.getElementById('diagCard').style.display = 'block';
+}
+
+function renderDiagnosticTable(){
+  const box = document.getElementById('diagContent');
+  if(diagRows.length === 0){
+    box.innerHTML = '<div class="empty-msg">Không có báo cáo nào (thuộc bất kỳ dự án nào) trong tháng này — kiểm tra lại đã chọn đúng tháng chưa.</div>';
+    return;
+  }
+  box.innerHTML = `<table class="diag"><thead><tr>
+    <th style="width:36px;">Chọn</th><th>Nguồn</th><th>Ngày TN</th><th>Tên dự án ghi trong báo cáo</th><th>Hình dạng mẫu</th><th>Đã gắn Project ID?</th><th>Khớp?</th>
+    </tr></thead><tbody>
+    ${diagRows.map(r => `<tr class="${r.matches ? 'diag-match' : 'diag-nomatch'}" id="diagrow_${r.rowId}">
+      <td class="center"><input type="checkbox" ${r.matches ? 'checked' : ''} onchange="toggleDiagRow('${r.rowId}', this.checked)"></td>
+      <td>${r.source}</td><td>${r.date}</td><td>${escapeHtml(r.projectText)}</td>
+      <td>${r.shape ? (r.shape === 'cylinder' ? 'Trụ (Cylinder)' : 'Lập phương (Cube)') : '—'}</td>
+      <td>${r.hasProjectId ? 'Có' : '<b>Chưa gắn</b>'}</td>
+      <td><span class="diag-badge ${r.matches ? 'yes' : 'no'}" id="diagbadge_${r.rowId}">${r.matches ? 'KHỚP' : 'KHÔNG KHỚP'}</span></td>
+    </tr>`).join('')}
+    </tbody></table>
+    <div class="row-actions">
+      <button class="primary-btn" style="width:auto;" onclick="applyDiagnosticSelection()">✓ Tổng hợp lại theo lựa chọn ở trên</button>
+    </div>`;
+}
+
+function toggleDiagRow(rowId, checked){
+  const r = diagRows.find(x => x.rowId === rowId);
+  if(!r) return;
+  r.matches = checked;
+  const tr = document.getElementById('diagrow_' + rowId);
+  const badge = document.getElementById('diagbadge_' + rowId);
+  tr.className = checked ? 'diag-match' : 'diag-nomatch';
+  badge.className = 'diag-badge ' + (checked ? 'yes' : 'no');
+  badge.textContent = checked ? 'KHỚP' : 'KHÔNG KHỚP';
+}
+
+// Dựng lại 3 mục tự động (Field Density, Compressive Strength - Cylinder,
+// Compressive Strength - Cube) từ đúng những dòng đang được TICK CHỌN
+// trong bảng chẩn đoán — không phụ thuộc thuật toán đoán tên nữa, người
+// dùng có toàn quyền quyết định.
+function buildAutoSectionsFromDiag(){
+  const checked = diagRows.filter(r => r.matches);
+  const fdRows = checked.filter(r => r.source === 'Sand Cone').map(r => ({
+    id: 'fd_' + r.rowId, description: r.description, castDate: '', testDate: r.testDate, quantity: r.quantity,
+  })).sort((a,b) => (a.testDate||'').localeCompare(b.testDate||''));
+
+  const groupMapCylinder = new Map();
+  const groupMapCube = new Map();
+  checked.filter(r => r.source === 'Concrete').forEach(r => {
+    const gm = r.shape === 'cylinder' ? groupMapCylinder : groupMapCube;
+    if(!gm.has(r.groupKey)){
+      gm.set(r.groupKey, { id: 'cs_' + r.groupKey, description: r.description, castDate: r.castDate, testDate: r.testDate, quantity: 0 });
+    }
+    gm.get(r.groupKey).quantity += 1;
+  });
+  const csCylinderRows = Array.from(groupMapCylinder.values()).sort((a,b) => (a.testDate||'').localeCompare(b.testDate||''));
+  const csCubeRows = Array.from(groupMapCube.values()).sort((a,b) => (a.testDate||'').localeCompare(b.testDate||''));
+  return { fdRows, csCylinderRows, csCubeRows };
+}
+
+function applyDiagnosticSelection(){
+  if(!claimState) return;
+  const { fdRows, csCylinderRows, csCubeRows } = buildAutoSectionsFromDiag();
+  claimState.sections = claimState.sections.filter(s => s.source === 'manual');
+  if(csCubeRows.length){
+    claimState.sections.unshift({ key:'compressiveStrengthCube', title: AUTO_SECTIONS.compressiveStrengthCube.title, unit: AUTO_SECTIONS.compressiveStrengthCube.unit, source:'auto', rows: csCubeRows });
+  }
+  if(csCylinderRows.length){
+    claimState.sections.unshift({ key:'compressiveStrengthCylinder', title: AUTO_SECTIONS.compressiveStrengthCylinder.title, unit: AUTO_SECTIONS.compressiveStrengthCylinder.unit, source:'auto', rows: csCylinderRows });
+  }
+  if(fdRows.length){
+    claimState.sections.unshift({ key:'fieldDensity', title: AUTO_SECTIONS.fieldDensity.title, unit: AUTO_SECTIONS.fieldDensity.unit, source:'auto', rows: fdRows });
+  }
+  renderPriceList();
+  renderClaimTable();
+  showToast(`Đã áp dụng: ${fdRows.length} dòng Field Density, ${csCylinderRows.length} dòng Cylinder, ${csCubeRows.length} dòng Cube.`);
+}
+
+async function aggregateClaim(){
+  if(!currentProjectId){ showToast('Chọn dự án trước đã.', true); return; }
+  const monthKey = document.getElementById('claimMonth').value;
+  if(!monthKey){ showToast('Chọn tháng claim trước đã.', true); return; }
+  const projectObj = projectsCache.find(p => p.id === currentProjectId);
+  const projectName = projectObj ? projectObj.name : document.getElementById('projectSearchInput').value;
+  showToast('Đang tổng hợp dữ liệu...');
+
+  try{
+    await runDiagnostic(currentProjectId, projectName, monthKey);
+    const { fdRows, csCylinderRows, csCubeRows } = buildAutoSectionsFromDiag();
+
+    const draftSnap = await claimDraftDoc(currentProjectId, monthKey).get();
+    const draft = draftSnap.exists ? draftSnap.data() : null;
+
+    const priceSnap = await claimPriceListDoc(currentProjectId).get();
+    const priceList = priceSnap.exists ? (priceSnap.data().prices || {}) : {};
+
+    const sections = [];
+    if(fdRows.length){
+      sections.push({ key:'fieldDensity', title: AUTO_SECTIONS.fieldDensity.title, unit: AUTO_SECTIONS.fieldDensity.unit, source:'auto', rows: fdRows });
+    }
+    if(csCylinderRows.length){
+      sections.push({ key:'compressiveStrengthCylinder', title: AUTO_SECTIONS.compressiveStrengthCylinder.title, unit: AUTO_SECTIONS.compressiveStrengthCylinder.unit, source:'auto', rows: csCylinderRows });
+    }
+    if(csCubeRows.length){
+      sections.push({ key:'compressiveStrengthCube', title: AUTO_SECTIONS.compressiveStrengthCube.title, unit: AUTO_SECTIONS.compressiveStrengthCube.unit, source:'auto', rows: csCubeRows });
+    }
+    if(draft && draft.manualSections){
+      draft.manualSections.forEach(ms => sections.push({ ...ms, source:'manual' }));
+    }
+
+    claimState = { projectId: currentProjectId, monthKey, sections, priceList };
+
+    document.getElementById('hDocNo').value = (draft && draft.header && draft.header.docNo) || '';
+    document.getElementById('hClaimRound').value = (draft && draft.header && draft.header.claimRound) || 'Đợt 1/ 1st Claim';
+    document.getElementById('hReportDate').value = (draft && draft.header && draft.header.reportDate) || new Date().toISOString().slice(0,10);
+
+    document.getElementById('claimHeaderCard').style.display = 'block';
+    document.getElementById('priceListCard').style.display = 'block';
+    document.getElementById('claimTableCard').style.display = 'block';
+    renderPriceList();
+    renderClaimTable();
+    if(fdRows.length === 0 && csCylinderRows.length === 0 && csCubeRows.length === 0){
+      showToast(`Không tìm thấy báo cáo nào khớp dự án "${projectName}" trong tháng ${monthKey}. Xem bảng Chẩn đoán bên dưới, tick chọn tay nếu cần.`, true);
+    } else {
+      showToast(`Đã tổng hợp: ${fdRows.length} dòng Field Density, ${csCylinderRows.length} dòng Cylinder, ${csCubeRows.length} dòng Cube.`);
+    }
+  }catch(e){
+    console.error(e);
+    showToast('Lỗi khi tổng hợp: ' + e.message, true);
+  }
+}
+
+/* ---------------- PRICE LIST ---------------- */
+function renderPriceList(){
+  if(!claimState) return;
+  const body = document.getElementById('priceListBody');
+  body.innerHTML = claimState.sections.map(s => `
+    <tr>
+      <td>${escapeHtml(s.title.split('\n')[0])}</td>
+      <td><input type="number" step="0.01" min="0" data-price-key="${s.key}" value="${claimState.priceList[s.key] ?? ''}" oninput="onPriceInput('${s.key}', this.value)"></td>
+    </tr>
+  `).join('') || '<tr><td colspan="2" class="empty-msg">Chưa có hạng mục nào.</td></tr>';
+}
+function onPriceInput(key, val){
+  claimState.priceList[key] = parseFloat(val) || 0;
+  renderClaimTable();
+}
+async function savePriceList(){
+  if(!claimState) return;
+  try{
+    await claimPriceListDoc(claimState.projectId).set({ prices: claimState.priceList, updatedAt: firebase.firestore.FieldValue.serverTimestamp() }, { merge:true });
+    showToast('Đã lưu đơn giá cho dự án này.');
+  }catch(e){ showToast('Lỗi lưu đơn giá: ' + e.message, true); }
+}
+
+/* ---------------- MANUAL SECTIONS ---------------- */
+function openAddSectionModal(){
+  document.getElementById('newSectionName').value = '';
+  document.getElementById('newSectionUnit').value = 'Sample';
+  document.getElementById('addSectionModal').style.display = 'flex';
+}
+function closeAddSectionModal(){ document.getElementById('addSectionModal').style.display = 'none'; }
+function confirmAddSection(){
+  const name = document.getElementById('newSectionName').value.trim();
+  const unit = document.getElementById('newSectionUnit').value.trim() || 'Sample';
+  if(!name){ showToast('Nhập tên hạng mục.', true); return; }
+  const key = 'manual_' + name.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'') + '_' + Date.now().toString(36);
+  claimState.sections.push({ key, title: name, unit, source:'manual', rows: [] });
+  closeAddSectionModal();
+  renderPriceList();
+  renderClaimTable();
+}
+function removeSection(key){
+  if(!confirm('Xóa cả hạng mục này?')) return;
+  claimState.sections = claimState.sections.filter(s => s.key !== key);
+  renderPriceList();
+  renderClaimTable();
+}
+function addManualRow(sectionKey){
+  const s = claimState.sections.find(x => x.key === sectionKey);
+  if(!s) return;
+  s.rows.push({ id: 'm_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6), description:'', castDate:'', testDate:'', quantity:1 });
+  renderClaimTable();
+}
+function removeManualRow(sectionKey, rowId){
+  const s = claimState.sections.find(x => x.key === sectionKey);
+  if(!s) return;
+  s.rows = s.rows.filter(r => r.id !== rowId);
+  renderClaimTable();
+}
+function onManualRowInput(sectionKey, rowId, field, value){
+  const s = claimState.sections.find(x => x.key === sectionKey);
+  if(!s) return;
+  const r = s.rows.find(x => x.id === rowId);
+  if(!r) return;
+  r[field] = field === 'quantity' ? (parseFloat(value)||0) : value;
+  updateTotalsOnly();
+}
+
+/* ---------------- RENDER CLAIM TABLE ---------------- */
+function fmtMoney(n){ return '$' + (n||0).toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+
+function renderClaimTable(){
+  if(!claimState) return;
+  const wrap = document.getElementById('claimSections');
+  if(claimState.sections.length === 0){
+    wrap.innerHTML = '<div class="empty-msg">Không có dữ liệu nào trong tháng này. Thêm hạng mục nhập tay nếu cần.</div>';
+    updateTotalsOnly();
+    return;
+  }
+  let html = '';
+  claimState.sections.forEach((s, sIdx) => {
+    const price = claimState.priceList[s.key] || 0;
+    html += `<table class="claim"><thead><tr>
+      <th style="width:32px;">No.</th><th>Description</th><th style="width:90px;">Casting date</th>
+      <th style="width:90px;">Testing date</th><th style="width:80px;">Unit</th><th style="width:60px;" class="num">Qty</th>
+      <th style="width:80px;" class="num">Unit price</th><th style="width:90px;" class="num">Total</th></tr></thead><tbody>`;
+    html += `<tr class="section-row"><td colspan="8">${romanNumeral(sIdx+1)}. ${escapeHtml(s.title.split('\n')[0])}
+      <span class="src-badge ${s.source}">${s.source==='auto' ? 'TỰ ĐỘNG' : 'NHẬP TAY'}</span>
+      ${s.source==='manual' ? `<button class="row-del" style="float:right;" onclick="removeSection('${s.key}')" title="Xóa hạng mục">✕</button>` : ''}
+      </td></tr>`;
+
+    if(s.rows.length === 0){
+      html += `<tr><td colspan="8" class="empty-msg">${s.source==='auto' ? 'Không có báo cáo nào trong tháng này.' : 'Chưa có dòng nào — bấm "+ Thêm dòng" bên dưới.'}</td></tr>`;
+    }
+    s.rows.forEach((r, i) => {
+      const total = (r.quantity||0) * price;
+      if(s.source === 'auto'){
+        html += `<tr class="auto-row">
+          <td class="center">${i+1}</td><td>${escapeHtml(r.description)}</td>
+          <td class="center">${r.castDate||''}</td><td class="center">${r.testDate||''}</td>
+          <td class="center">${escapeHtml(s.unit)}</td><td class="num">${r.quantity}</td>
+          <td class="num">${fmtMoney(price)}</td><td class="num">${fmtMoney(total)}</td>
+        </tr>`;
+      } else {
+        html += `<tr class="manual-row">
+          <td class="center">${i+1}</td>
+          <td><input type="text" value="${escapeHtml(r.description)}" oninput="onManualRowInput('${s.key}','${r.id}','description',this.value)"></td>
+          <td><input type="date" value="${r.castDate}" oninput="onManualRowInput('${s.key}','${r.id}','castDate',this.value)"></td>
+          <td><input type="date" value="${r.testDate}" oninput="onManualRowInput('${s.key}','${r.id}','testDate',this.value)"></td>
+          <td class="center">${escapeHtml(s.unit)}</td>
+          <td><input type="number" min="0" step="1" style="width:100%;" value="${r.quantity}" oninput="onManualRowInput('${s.key}','${r.id}','quantity',this.value); this.closest('tr').querySelector('.rowtotal').textContent = fmtMoney((parseFloat(this.value)||0) * ${price});"></td>
+          <td class="num">${fmtMoney(price)}</td>
+          <td class="num rowtotal">${fmtMoney(total)}</td>
+          <td style="border:none; padding:0;"><button class="row-del" onclick="removeManualRow('${s.key}','${r.id}')" title="Xóa dòng">✕</button></td>
+        </tr>`;
+      }
+    });
+    html += `</tbody></table>`;
+    if(s.source === 'manual'){
+      html += `<div class="section-actions"><button class="ghost" onclick="addManualRow('${s.key}')">+ Thêm dòng</button></div>`;
+    }
+  });
+  wrap.innerHTML = html;
+  updateTotalsOnly();
+}
+
+function romanNumeral(n){
+  const map = ['I','II','III','IV','V','VI','VII','VIII','IX','X'];
+  return map[n-1] || String(n);
+}
+
+function updateTotalsOnly(){
+  if(!claimState) return;
+  let subtotal = 0;
+  claimState.sections.forEach(s => {
+    const price = claimState.priceList[s.key] || 0;
+    s.rows.forEach(r => { subtotal += (r.quantity||0) * price; });
+  });
+  const vat = subtotal * 0.10;
+  document.getElementById('totExclVat').textContent = fmtMoney(subtotal);
+  document.getElementById('totVat').textContent = fmtMoney(vat);
+  document.getElementById('totGrand').textContent = fmtMoney(subtotal + vat);
+}
+
+/* ---------------- SAVE DRAFT ---------------- */
+async function saveClaimDraft(){
+  if(!claimState) return;
+  const manualSections = claimState.sections.filter(s => s.source === 'manual').map(s => ({ key:s.key, title:s.title, unit:s.unit, rows:s.rows }));
+  const header = {
+    docNo: document.getElementById('hDocNo').value.trim(),
+    claimRound: document.getElementById('hClaimRound').value.trim(),
+    reportDate: document.getElementById('hReportDate').value,
+  };
+  try{
+    await claimDraftDoc(claimState.projectId, claimState.monthKey).set({
+      projectId: claimState.projectId, monthKey: claimState.monthKey,
+      manualSections, header,
+      savedByEmail: currentUserData.email,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    }, { merge:true });
+    showToast('Đã lưu bản nháp claim tháng này.');
+  }catch(e){ showToast('Lỗi lưu bản nháp: ' + e.message, true); }
+}
+
+/* ---------------- EXPORT EXCEL — đúng bố cục mẫu Phiếu Xác Nhận Khối Lượng ---------------- */
+/* ---------------- EXPORT EXCEL — dùng ExcelJS để ghi được đầy đủ định
+   dạng (font, cỡ chữ, màu, viền) giống hệt file mẫu gốc. Thư viện xlsx.js
+   (SheetJS bản miễn phí) KHÔNG ghi được style vào file dù có set — đây là
+   giới hạn đã biết của bản miễn phí, nên phải dùng ExcelJS cho việc này. */
+const TNR = 'Times New Roman';
+const THIN = { style: 'thin' };
+const MEDIUM = { style: 'medium' };
+const boxBorder = { top: THIN, bottom: THIN, left: THIN, right: THIN };
+const RED = { argb: 'FFFF0000' };
+const SECTION_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD8E4BC' } }; // xanh lá nhạt — đúng màu tiêu đề mục trong file gốc
+
+async function exportClaimExcel(){
+  if(!claimState){ showToast('Chưa có dữ liệu để xuất.', true); return; }
+  const proj = projectsCache.find(p => p.id === claimState.projectId);
+  const projName = proj ? proj.name : '';
+  const location = document.getElementById('hAddress').value || (proj ? proj.location : '');
+  const customer = document.getElementById('hCustomer').value || (proj ? proj.contractor : '');
+  const docNo = document.getElementById('hDocNo').value;
+  const claimRound = document.getElementById('hClaimRound').value;
+  const reportDate = document.getElementById('hReportDate').value;
+  const reportDateFmt = reportDate ? new Date(reportDate+'T00:00:00').toLocaleDateString('en-GB', {day:'numeric', month:'long', year:'numeric'}) : '';
+
+  const wb = new ExcelJS.Workbook();
+  const sheetName = (projName || 'Claim').slice(0,25).replace(/[\\/?*[\]:]/g,'-') + ' -' + claimState.monthKey.slice(2).replace('-','.');
+  const ws = wb.addWorksheet(sheetName, { views: [{ zoomScale: 85 }] });
+
+  // Độ rộng cột A:O — đúng theo file mẫu gốc
+  ws.columns = [
+    {width:3.6},{width:2},{width:16.9},{width:9.7},{width:6.9},{width:12.3},
+    {width:8.4},{width:6.4},{width:9.4},{width:7.3},{width:16},{width:11.4},
+    {width:13.1},{width:6.1},{width:10.7},
+  ];
+
+  let r = 1;
+  const setRow = (rowNum, text, opts = {}) => {
+    const cell = ws.getCell(rowNum, opts.col || 1);
+    cell.value = text;
+    cell.font = { name: TNR, size: opts.size || 13, bold: !!opts.bold, italic: !!opts.italic, color: opts.color || undefined };
+    cell.alignment = { horizontal: opts.h || 'left', vertical: opts.v || 'center', wrapText: opts.wrap !== false };
+    if(opts.fill) cell.fill = opts.fill;
+    if(opts.border) cell.border = opts.border;
+    if(opts.height) ws.getRow(rowNum).height = opts.height;
+  };
+
+  r = 5;
+  setRow(r, `No: ${docNo}`, { size:13, italic:true, border:{ top:{style:'double'}, left:MEDIUM } });
+  ws.mergeCells(r,1,r,10);
+  const dateCell = ws.getCell(r,11);
+  dateCell.value = `Phnom Penh, ${reportDateFmt}`;
+  dateCell.font = { name:TNR, size:13, italic:true };
+  dateCell.alignment = { horizontal:'center', vertical:'center' };
+  dateCell.border = { top:{style:'double'}, right:MEDIUM };
+  ws.mergeCells(r,11,r,15);
+  ws.getRow(r).height = 24;
+
+  r = 6;
+  setRow(r, `PHIẾU XÁC NHẬN KHỐI LƯỢNG THÍ NGHIỆM\nTHE ACTUAL QUANTITY OF LABORATORY TEST\n${claimRound}`,
+    { size:15, bold:true, italic:true, color:RED, h:'center', border:{ left:MEDIUM, right:MEDIUM }, height:65 });
+  ws.mergeCells(r,1,r,15);
+
+  r = 8;
+  setRow(r, 'I. CÁC THÔNG TIN LIÊN QUAN INFORMATION', { size:12, bold:true, border:{ left:MEDIUM } });
+  ws.mergeCells(r,1,r,15);
+
+  r = 9;
+  setRow(r, ` 1. Customer: ${customer}`, { size:13, border:{ left:MEDIUM, right:MEDIUM } });
+  ws.mergeCells(r,1,r,15);
+
+  r = 10;
+  setRow(r, ` 2. Address:  ${location}`, { size:13, border:{ left:MEDIUM } });
+  ws.mergeCells(r,1,r,15);
+
+  // ── Bảng tiêu đề cột ──
+  r = 12;
+  const headerLabels = [
+    [1,2,'No.'], [3,6,'Description'], [7,8,'Casting date'], [9,10,'Testing date'],
+    [11,11,'Unit'], [12,12,'Quantity'], [13,13,'Unit price\n(USD)'], [14,15,'Total\n(USD)'],
+  ];
+  headerLabels.forEach(([c1,c2,label]) => {
+    const cell = ws.getCell(r, c1);
+    cell.value = label;
+    cell.font = { name:TNR, size:13, italic:true };
+    cell.alignment = { horizontal:'center', vertical:'center', wrapText:true };
+    cell.border = boxBorder;
+    if(c2 > c1) ws.mergeCells(r,c1,r,c2);
+    for(let c = c1; c <= c2; c++) ws.getCell(r,c).border = boxBorder;
+  });
+  ws.getRow(r).height = 36;
+
+  r = 13;
+  setRow(r, `Project: ${projName}\nLocation: ${location}`, { size:13, bold:true, color:RED, h:'center', border:boxBorder, height:26 });
+  ws.mergeCells(r,1,r,15);
+  for(let c=1;c<=15;c++) ws.getCell(r,c).border = boxBorder;
+
+  r = 14;
+  let sectionIdx = 0;
+  let grandSubtotal = 0;
+  const totalRowsStart = r;
+
+  claimState.sections.forEach(s => {
+    if(s.rows.length === 0) return;
+    sectionIdx++;
+    const price = claimState.priceList[s.key] || 0;
+
+    const secCell = ws.getCell(r,1);
+    secCell.value = romanNumeral(sectionIdx);
+    secCell.font = { name:TNR, size:13, bold:true };
+    secCell.alignment = { horizontal:'center', vertical:'center' };
+    secCell.fill = SECTION_FILL;
+    secCell.border = boxBorder;
+    ws.mergeCells(r,1,r,2);
+    ws.getCell(r,2).border = boxBorder; ws.getCell(r,2).fill = SECTION_FILL;
+    const titleCell = ws.getCell(r,3);
+    titleCell.value = s.title.split('\n')[0];
+    titleCell.font = { name:TNR, size:13, bold:true };
+    titleCell.alignment = { horizontal:'left', vertical:'center', wrapText:true };
+    titleCell.fill = SECTION_FILL;
+    ws.mergeCells(r,3,r,15);
+    for(let c=3;c<=15;c++){ ws.getCell(r,c).border = boxBorder; ws.getCell(r,c).fill = SECTION_FILL; }
+    r++;
+
+    s.rows.forEach((row, i) => {
+      const total = (row.quantity||0) * price;
+      grandSubtotal += total;
+      const cells = [
+        [1,2,i+1,'center'], [3,6,row.description,'left'], [7,8,row.castDate||'','center'],
+        [9,10,row.testDate||'','center'], [11,11,s.unit,'center'], [12,12,row.quantity,'center'],
+        [13,13,price,'right'], [14,15,total,'right'],
+      ];
+      cells.forEach(([c1,c2,val,align]) => {
+        const cell = ws.getCell(r,c1);
+        cell.value = val;
+        cell.font = { name:TNR, size:13 };
+        cell.alignment = { horizontal:align, vertical:'center', wrapText:true };
+        if(c2 > c1) ws.mergeCells(r,c1,r,c2);
+        for(let c=c1;c<=c2;c++) ws.getCell(r,c).border = boxBorder;
+      });
+      if(typeof cells[6][2] === 'number') ws.getCell(r,13).numFmt = '#,##0.00';
+      if(typeof cells[7][2] === 'number') ws.getCell(r,14).numFmt = '#,##0.00';
+      r++;
+    });
+  });
+
+  const dataRowsEnd = r - 1;
+  const vat = grandSubtotal * 0.10;
+
+  const totalRow = (label, value, bold) => {
+    const c1 = ws.getCell(r,1);
+    c1.value = label;
+    c1.font = { name:TNR, size:13, bold:true };
+    c1.alignment = { horizontal:'center', vertical:'center' };
+    ws.mergeCells(r,1,r,12);
+    const c2 = ws.getCell(r,13);
+    c2.value = value;
+    c2.numFmt = '#,##0.00';
+    c2.font = { name:TNR, size:13, bold:true };
+    c2.alignment = { horizontal:'right', vertical:'center' };
+    ws.mergeCells(r,13,r,15);
+    r++;
+  };
+  totalRow('TOTAL (Exclude VAT)', grandSubtotal);
+  totalRow('VAT 10%', vat);
+  totalRow('GRAND TOTAL (Include VAT)', grandSubtotal + vat);
+
+  r++;
+  const prepCell = ws.getCell(r,1);
+  prepCell.value = 'Prepared by\nHAI (Cambodia) \nSurvey & Construction Co., Ltd';
+  prepCell.font = { name:TNR, size:12, bold:true };
+  prepCell.alignment = { horizontal:'center', vertical:'center', wrapText:true };
+  ws.mergeCells(r,1,r,9);
+  const apprCell = ws.getCell(r,10);
+  apprCell.value = 'Approved by';
+  apprCell.font = { name:TNR, size:12, bold:true };
+  apprCell.alignment = { horizontal:'center', vertical:'center' };
+  ws.mergeCells(r,10,r,15);
+  ws.getRow(r).height = 40;
+
+  const buffer = await wb.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/octet-stream' });
+  const fname = `Claim_${(projName||'project').replace(/[^a-z0-9]+/gi,'_')}_${claimState.monthKey}.xlsx`;
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = fname;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast('Đã xuất file Excel: ' + fname);
+}
+</script>
+</body>
+</html>
