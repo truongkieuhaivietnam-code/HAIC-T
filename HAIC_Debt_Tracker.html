@@ -138,8 +138,18 @@
     <button data-page="dashboard" onclick="goPage('dashboard')">📊 Tổng quan</button>
     <button data-page="customers" onclick="goPage('customers')">👥 Công nợ khách hàng</button>
     <button data-page="subs" onclick="goPage('subs')">⛏️ Đội khoan / Thầu phụ</button>
+    <button data-page="access" onclick="goPage('access')">🔑 Quyền truy cập</button>
   </nav>
   <main>
+    <!-- PAGE: NO ACCESS -->
+    <section id="page-noaccess" class="page hidden">
+      <div class="empty-state" style="padding:80px 20px;">
+        <div class="ico">🔒</div>
+        <h2 style="color:var(--navy);">Chưa được cấp quyền truy cập</h2>
+        <p>Tài khoản <strong id="noAccessEmail"></strong> chưa được cấp quyền xem mục nào trong hệ thống này.<br>Vui lòng liên hệ quản trị viên để được cấp quyền.</p>
+      </div>
+    </section>
+
     <!-- PAGE: DASHBOARD -->
     <section id="page-dashboard" class="page">
       <div class="page-head">
@@ -171,12 +181,12 @@
         <button class="btn btn-sm btn-outline" style="align-self:flex-end;" onclick="clearDashboardDateFilter()">Xóa lọc ngày</button>
       </div>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;">
-        <div class="hero-card">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;" id="dashTotalsWrap">
+        <div class="hero-card" id="dashCustCard">
           <div class="lbl">Tổng công nợ khách hàng (phải thu)</div>
           <div class="amt" id="dashCustTotal" style="font-size:22px;">$0</div>
         </div>
-        <div class="hero-card" style="background:linear-gradient(135deg,#7a5a1e,var(--gold));">
+        <div class="hero-card" id="dashSubCard" style="background:linear-gradient(135deg,#7a5a1e,var(--gold));">
           <div class="lbl">Tổng công nợ đội khoan / thầu phụ (phải trả)</div>
           <div class="amt" id="dashSubTotal" style="font-size:22px;">$0</div>
         </div>
@@ -232,6 +242,17 @@
         <div class="amt" id="subTotalOwed">$0</div>
       </div>
       <div class="card" id="subsListWrap"></div>
+    </section>
+
+    <!-- PAGE: ACCESS MANAGEMENT -->
+    <section id="page-access" class="page hidden">
+      <div class="page-head">
+        <div>
+          <h2>🔑 Quyền truy cập</h2>
+          <p>Chỉ người có quyền "Quản trị quyền" mới thấy và sửa được mục này. Cấp quyền theo từng người, riêng cho Công nợ khách hàng và Đội khoan/Thầu phụ.</p>
+        </div>
+      </div>
+      <div class="card" id="accessListWrap"></div>
     </section>
   </main>
 </div>
@@ -649,9 +670,12 @@ const col = {
   subs:             () => db.collection('debt_subcontractors'),
   subProjects:      () => db.collection('debt_subcontractor_projects'),// mỗi công trình mà đội khoan/thầu phụ này đang làm
   subEntries:       () => db.collection('debt_subcontractor_entries'), // sổ cái, mỗi dòng gắn với 1 công trình cụ thể (projectId)
+  access:           () => db.collection('debt_access'),                // ai được xem Công nợ KH / Đội khoan — 1 document/người, keyed theo UID
 };
 
 let currentUser = null;
+let MY_ACCESS = null;    // {customerCountries:[], subCountries:[], isAccessAdmin} của CHÍNH người đang đăng nhập
+let ALL_ACCESS = [];     // toàn bộ danh sách quyền — chỉ isAccessAdmin mới đọc được (Rules chặn người khác)
 let CUSTOMERS = [], CUSTOMER_ENTRIES = [], CUSTOMER_CONTRACTS = [], CUSTOMER_INVOICES = [], CUSTOMER_INVOICE_PAYMENTS = [];
 let SUBS = [], SUB_PROJECTS = [], SUB_ENTRIES = [];
 let CURRENT_PAGE = 'customers';
@@ -753,91 +777,271 @@ async function doLogin(){
 }
 function doLogout(){ auth.signOut(); }
 
-auth.onAuthStateChanged(user => {
+auth.onAuthStateChanged(async user => {
   if(user){
     currentUser = user;
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'block';
     document.getElementById('whoName').textContent = user.email || '';
+
+    // Tự đăng ký hồ sơ quyền (nếu chưa có) — MẶC ĐỊNH KHÔNG có quyền gì
+    // cả (mảng quốc gia rỗng), chỉ để người quản trị quyền (isAccessAdmin)
+    // nhìn thấy và cấp quyền sau. Người mới tự đăng ký KHÔNG thể tự cấp
+    // quyền cho chính mình (Rules chặn create nếu mảng không rỗng hoặc
+    // isAccessAdmin=true).
+    try{
+      const accessRef = col.access().doc(user.uid);
+      const snap = await accessRef.get();
+      if(!snap.exists){
+        await accessRef.set({
+          email: user.email, name: user.email,
+          customerCountries: [], subCountries: [], isAccessAdmin: false,
+          createdAt: new Date().toISOString(),
+        });
+        MY_ACCESS = { customerCountries:[], subCountries:[], isAccessAdmin:false };
+      } else {
+        MY_ACCESS = snap.data();
+        // An toàn cho dữ liệu cũ (nếu còn hồ sơ dạng boolean từ trước khi
+        // có phân quyền theo quốc gia) — không để undefined gây lỗi.
+        if(!Array.isArray(MY_ACCESS.customerCountries)) MY_ACCESS.customerCountries = [];
+        if(!Array.isArray(MY_ACCESS.subCountries)) MY_ACCESS.subCountries = [];
+      }
+    }catch(e){
+      console.error('Lỗi đọc/tạo hồ sơ quyền:', e);
+      MY_ACCESS = { customerCountries:[], subCountries:[], isAccessAdmin:false };
+    }
+
+    applyAccessToUI();
     attachListeners();
-    goPage('dashboard');
+
+    if(MY_ACCESS.customerCountries.length || MY_ACCESS.isAccessAdmin) goPage('dashboard');
+    else if(MY_ACCESS.subCountries.length) goPage('subs');
+    else goPage('noaccess');
   } else {
     currentUser = null;
+    MY_ACCESS = null;
     detachListeners();
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('app').style.display = 'none';
   }
 });
 
+const ALL_COUNTRIES = ['Cambodia','Laos','Vietnam'];
+// Danh sách quốc gia người này được xem — isAccessAdmin thấy CẢ 3, người
+// thường chỉ thấy đúng quốc gia đã được tick trong mảng của họ.
+function myCustomerCountries(){ return MY_ACCESS?.isAccessAdmin ? ALL_COUNTRIES : (MY_ACCESS?.customerCountries||[]); }
+function mySubCountries(){ return MY_ACCESS?.isAccessAdmin ? ALL_COUNTRIES : (MY_ACCESS?.subCountries||[]); }
+
+// Ẩn/hiện đúng các mục theo quyền của người đang đăng nhập — Công nợ
+// khách hàng CHỈ người có ít nhất 1 quốc gia trong customerCountries (hoặc
+// isAccessAdmin) mới thấy; Đội khoan tương tự; Quyền truy cập CHỈ
+// isAccessAdmin mới thấy.
+function applyAccessToUI(){
+  const canCustomer = myCustomerCountries().length > 0;
+  const canSub = mySubCountries().length > 0;
+  const canAdmin = !!MY_ACCESS.isAccessAdmin;
+  document.querySelector('[data-page="dashboard"]').classList.toggle('hidden', !(canCustomer||canSub));
+  document.querySelector('[data-page="customers"]').classList.toggle('hidden', !canCustomer);
+  document.querySelector('[data-page="subs"]').classList.toggle('hidden', !canSub);
+  document.querySelector('[data-page="access"]').classList.toggle('hidden', !canAdmin);
+}
+
+/* ---------------- QUẢN LÝ QUYỀN TRUY CẬP (chỉ isAccessAdmin) ---------------- */
+async function loadAndRenderAccessList(){
+  const wrap = document.getElementById('accessListWrap');
+  wrap.innerHTML = `<div class="small-muted" style="padding:12px;">Đang tải...</div>`;
+  try{
+    const snap = await col.access().get();
+    ALL_ACCESS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    renderAccessList();
+  }catch(e){
+    wrap.innerHTML = `<div class="empty-state"><p>Lỗi tải danh sách quyền: ${escapeHtml(e.message)}</p></div>`;
+  }
+}
+
+function renderAccessList(){
+  const wrap = document.getElementById('accessListWrap');
+  const sorted = ALL_ACCESS.slice().sort((a,b)=>(a.email||'').localeCompare(b.email||''));
+  if(sorted.length===0){
+    wrap.innerHTML = `<div class="empty-state"><p>Chưa có ai đăng nhập vào app này.</p></div>`;
+    return;
+  }
+  const countryLabel = { Cambodia:'🇰🇭 Cam', Laos:'🇱🇦 Lào', Vietnam:'🇻🇳 Việt' };
+  wrap.innerHTML = `
+    <p class="small-muted" style="margin-bottom:10px;">Danh sách tự động xuất hiện khi 1 người đăng nhập lần đầu (chưa có quyền gì). Tick vào ô để cấp quyền theo TỪNG QUỐC GIA cho từng người — VD chỉ tick "Cam" ở mục Công nợ KH thì người đó chỉ thấy khách hàng Campuchia.</p>
+    <div class="table-wrap">
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr style="text-align:center;border-bottom:2px solid var(--line);">
+            <th style="padding:8px;text-align:left;" rowspan="2">Email</th>
+            <th style="padding:6px;" colspan="3">👥 Công nợ khách hàng</th>
+            <th style="padding:6px;" colspan="3">⛏️ Đội khoan / Thầu phụ</th>
+            <th style="padding:8px;" rowspan="2">🔑 Quản trị<br>quyền</th>
+          </tr>
+          <tr style="text-align:center;border-bottom:2px solid var(--line);font-size:11.5px;color:var(--muted);">
+            <th style="padding:4px;">🇰🇭 Cam</th><th style="padding:4px;">🇱🇦 Lào</th><th style="padding:4px;">🇻🇳 Việt</th>
+            <th style="padding:4px;">🇰🇭 Cam</th><th style="padding:4px;">🇱🇦 Lào</th><th style="padding:4px;">🇻🇳 Việt</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sorted.map(a => {
+            const cc = a.customerCountries||[]; const sc = a.subCountries||[];
+            return `
+            <tr style="border-bottom:1px solid var(--line);">
+              <td style="padding:8px;">${escapeHtml(a.email||a.id)}${a.id===currentUser.uid?' <span class="small-muted">(bạn)</span>':''}</td>
+              ${ALL_COUNTRIES.map(c=>`<td style="padding:6px;text-align:center;"><input type="checkbox" ${cc.includes(c)?'checked':''} onchange="toggleCountryAccess('${a.id}','customerCountries','${c}',this.checked)"></td>`).join('')}
+              ${ALL_COUNTRIES.map(c=>`<td style="padding:6px;text-align:center;"><input type="checkbox" ${sc.includes(c)?'checked':''} onchange="toggleCountryAccess('${a.id}','subCountries','${c}',this.checked)"></td>`).join('')}
+              <td style="padding:8px;text-align:center;"><input type="checkbox" ${a.isAccessAdmin?'checked':''} onchange="toggleAdminAccess('${a.id}',this.checked)"></td>
+            </tr>
+          `;}).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// Tick/bỏ tick 1 quốc gia trong mảng customerCountries hoặc subCountries
+// của 1 người — dùng arrayUnion/arrayRemove để không đụng các quốc gia
+// khác đã cấp trước đó của cùng người này.
+async function toggleCountryAccess(uid, field, country, checked){
+  try{
+    await col.access().doc(uid).update({
+      [field]: checked
+        ? firebase.firestore.FieldValue.arrayUnion(country)
+        : firebase.firestore.FieldValue.arrayRemove(country)
+    });
+    showToast('Đã cập nhật quyền.');
+    if(uid === currentUser.uid){
+      const arr = new Set(MY_ACCESS[field] || []);
+      checked ? arr.add(country) : arr.delete(country);
+      MY_ACCESS[field] = Array.from(arr);
+      applyAccessToUI();
+      attachListeners(); // đổi lại danh sách quốc gia đang lắng nghe cho khớp quyền mới
+    }
+    loadAndRenderAccessList();
+  }catch(e){
+    showToast('Lỗi khi cập nhật: ' + e.message, 'error');
+    loadAndRenderAccessList();
+  }
+}
+
+async function toggleAdminAccess(uid, value){
+  try{
+    await col.access().doc(uid).update({ isAccessAdmin: value });
+    showToast('Đã cập nhật quyền.');
+    if(uid === currentUser.uid){
+      MY_ACCESS.isAccessAdmin = value;
+      applyAccessToUI();
+      attachListeners();
+    }
+    loadAndRenderAccessList();
+  }catch(e){
+    showToast('Lỗi khi cập nhật: ' + e.message, 'error');
+    loadAndRenderAccessList();
+  }
+}
+
 function detachListeners(){ unsubs.forEach(u=>u()); unsubs = []; }
 function attachListeners(){
   detachListeners();
-  unsubs.push(col.customers().onSnapshot(snap=>{
-    CUSTOMERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='customers') renderCustomerList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
-  }));
-  unsubs.push(col.customerEntries().onSnapshot(snap=>{
-    CUSTOMER_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='customers') renderCustomerList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
-  }));
-  unsubs.push(col.customerContracts().onSnapshot(snap=>{
-    CUSTOMER_CONTRACTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='customers') renderCustomerList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
-    if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
-  }));
-  unsubs.push(col.customerInvoices().onSnapshot(snap=>{
-    CUSTOMER_INVOICES = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='customers') renderCustomerList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
-    if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
-    if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
-  }));
-  unsubs.push(col.customerInvoicePayments().onSnapshot(snap=>{
-    CUSTOMER_INVOICE_PAYMENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='customers') renderCustomerList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
-    if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
-    if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
-  }));
-  unsubs.push(col.subs().onSnapshot(snap=>{
-    SUBS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='subs') renderSubList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
-  }));
-  unsubs.push(col.subProjects().onSnapshot(snap=>{
-    SUB_PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='subs') renderSubList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
-  }));
-  unsubs.push(col.subEntries().onSnapshot(snap=>{
-    SUB_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(CURRENT_PAGE==='subs') renderSubList();
-    if(CURRENT_PAGE==='dashboard') renderDashboard();
-    if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
-    if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
-  }));
+  const canCustomer = myCustomerCountries().length > 0;
+  const canSub = mySubCountries().length > 0;
+  const custCountries = myCustomerCountries();
+  const subCountries = mySubCountries();
+
+  // CHỈ đăng ký lắng nghe (onSnapshot) đúng loại dữ liệu người này có
+  // quyền — nếu đăng ký cả 2 mà chỉ có quyền 1 loại, Firestore Rules sẽ
+  // từ chối phía không có quyền và gây lỗi permission-denied không cần
+  // thiết trong Console (dù không ảnh hưởng bảo mật, vẫn nên tránh).
+  //
+  // QUAN TRỌNG: mỗi câu truy vấn đều PHẢI có .where('country','in',...)
+  // khớp đúng quyền — Firestore yêu cầu bản thân CÂU TRUY VẤN phải tự
+  // giới hạn đúng phạm vi Rules cho phép, nếu không cả câu truy vấn sẽ bị
+  // từ chối hoàn toàn (không phải chỉ lọc bớt kết quả).
+  if(canCustomer){
+    unsubs.push(col.customers().where('country','in',custCountries).onSnapshot(snap=>{
+      CUSTOMERS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='customers') renderCustomerList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
+    }));
+    unsubs.push(col.customerEntries().where('country','in',custCountries).onSnapshot(snap=>{
+      CUSTOMER_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='customers') renderCustomerList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='customers') renderLedgerModal();
+    }));
+    unsubs.push(col.customerContracts().where('country','in',custCountries).onSnapshot(snap=>{
+      CUSTOMER_CONTRACTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='customers') renderCustomerList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
+      if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
+    }));
+    unsubs.push(col.customerInvoices().where('country','in',custCountries).onSnapshot(snap=>{
+      CUSTOMER_INVOICES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='customers') renderCustomerList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
+      if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
+      if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
+    }));
+    unsubs.push(col.customerInvoicePayments().where('country','in',custCountries).onSnapshot(snap=>{
+      CUSTOMER_INVOICE_PAYMENTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='customers') renderCustomerList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalCustomerDetail').classList.contains('active')) renderCustomerDetailModal();
+      if(document.getElementById('modalContractDetail').classList.contains('active')) renderContractDetailModal();
+      if(document.getElementById('modalInvoiceDetail').classList.contains('active')) renderInvoiceDetailModal();
+    }));
+  }
+
+  if(canSub){
+    unsubs.push(col.subs().where('country','in',subCountries).onSnapshot(snap=>{
+      SUBS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='subs') renderSubList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
+    }));
+    unsubs.push(col.subProjects().where('country','in',subCountries).onSnapshot(snap=>{
+      SUB_PROJECTS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='subs') renderSubList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
+    }));
+    unsubs.push(col.subEntries().where('country','in',subCountries).onSnapshot(snap=>{
+      SUB_ENTRIES = snap.docs.map(d=>({id:d.id, ...d.data()}));
+      if(CURRENT_PAGE==='subs') renderSubList();
+      if(CURRENT_PAGE==='dashboard') renderDashboard();
+      if(document.getElementById('modalSubDetail').classList.contains('active')) renderSubDetailModal();
+      if(document.getElementById('modalLedger').classList.contains('active') && CURRENT_TYPE==='subs') renderLedgerModal();
+    }));
+  }
 }
 
 /* ---------------- NAV ---------------- */
 function goPage(page){
+  // An toàn 2 lớp: dù ai đó cố tình gọi goPage() trực tiếp qua console,
+  // vẫn không vào được trang mình không có quyền (UI chỉ là lớp 1 — lớp
+  // thật sự chặn dữ liệu là Firestore Rules, đọc sẽ bị từ chối dù có vào
+  // được giao diện).
+  if(page==='customers' && myCustomerCountries().length===0) page='noaccess';
+  if(page==='subs' && mySubCountries().length===0) page='noaccess';
+  if(page==='access' && !MY_ACCESS?.isAccessAdmin) page='noaccess';
+  if(page==='dashboard' && myCustomerCountries().length===0 && mySubCountries().length===0) page='noaccess';
+
   CURRENT_PAGE = page;
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.page===page));
+  document.getElementById('page-noaccess').classList.toggle('hidden', page!=='noaccess');
   document.getElementById('page-dashboard').classList.toggle('hidden', page!=='dashboard');
   document.getElementById('page-customers').classList.toggle('hidden', page!=='customers');
   document.getElementById('page-subs').classList.toggle('hidden', page!=='subs');
-  if(page==='dashboard') renderDashboard();
+  document.getElementById('page-access').classList.toggle('hidden', page!=='access');
+  if(page==='noaccess') document.getElementById('noAccessEmail').textContent = currentUser?.email || '';
+  else if(page==='dashboard') renderDashboard();
   else if(page==='customers') renderCustomerList();
-  else renderSubList();
+  else if(page==='subs') renderSubList();
+  else if(page==='access') loadAndRenderAccessList();
 }
 
 /* ---------------- CURRENCY HELPERS ---------------- */
@@ -970,6 +1174,11 @@ function periodKey(dateStr, granularity){
 }
 
 function renderDashboard(){
+  const canCustomer = myCustomerCountries().length > 0;
+  const canSub = mySubCountries().length > 0;
+  document.getElementById('dashCustCard').classList.toggle('hidden', !canCustomer);
+  document.getElementById('dashSubCard').classList.toggle('hidden', !canSub);
+
   const from = document.getElementById('dashFrom').value;
   const to = document.getElementById('dashTo').value;
   const granularity = document.getElementById('dashGranularity').value;
@@ -979,9 +1188,9 @@ function renderDashboard(){
   // Tổng công nợ hiện tại (KHÔNG áp dụng lọc ngày — luôn là số dư THẬT tại
   // thời điểm hiện tại, lọc ngày chỉ ảnh hưởng biểu đồ xu hướng bên dưới).
   const custTotal = { USD:0, VND:0, LAK:0 };
-  CUSTOMERS.forEach(c => { const b = calcCustomerTotalBalanceMulti(c.id); Object.keys(b).forEach(cur => custTotal[cur]=(custTotal[cur]||0)+b[cur]); });
+  if(canCustomer) CUSTOMERS.forEach(c => { const b = calcCustomerTotalBalanceMulti(c.id); Object.keys(b).forEach(cur => custTotal[cur]=(custTotal[cur]||0)+b[cur]); });
   const subTotal = { USD:0, VND:0, LAK:0 };
-  SUBS.forEach(s => { const b = calcBalanceMulti(SUB_ENTRIES, s.id); Object.keys(b).forEach(cur => subTotal[cur]=(subTotal[cur]||0)+b[cur]); });
+  if(canSub) SUBS.forEach(s => { const b = calcBalanceMulti(SUB_ENTRIES, s.id); Object.keys(b).forEach(cur => subTotal[cur]=(subTotal[cur]||0)+b[cur]); });
   document.getElementById('dashCustTotal').textContent = fmtBalanceMulti(custTotal);
   document.getElementById('dashSubTotal').textContent = fmtBalanceMulti(subTotal);
 
@@ -1446,9 +1655,11 @@ async function saveMiscEntry(){
   const amount = parseFloat(document.getElementById('miscAmount').value);
   const note = document.getElementById('miscNote').value.trim();
   if(!date || !amount || amount<=0){ showToast('Vui lòng nhập đúng ngày và số tiền.', 'error'); return; }
+  const customer = CUSTOMERS.find(c=>c.id===CURRENT_ENTITY_ID);
   try{
     await col.customerEntries().add({
       entityId: CURRENT_ENTITY_ID, date, note,
+      country: customer ? (customer.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ khách hàng — dùng để lọc Rules/Query theo quốc gia
       currency: document.getElementById('miscCurrency').value || 'USD',
       incurred: MISC_TYPE==='incurred' ? amount : 0,
       paid: MISC_TYPE==='paid' ? amount : 0,
@@ -1488,10 +1699,12 @@ async function saveContract(){
   // theo từng đợt/tháng.
   if(!projectName){ showToast('Vui lòng nhập tên hợp đồng / dự án.', 'error'); return; }
   const contractValueRaw = document.getElementById('contractValue').value;
+  const customer = CUSTOMERS.find(c=>c.id===customerId);
 
   const data = {
     customerId,
     projectName,
+    country: customer ? (customer.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ khách hàng
     date: document.getElementById('contractDate').value,
     currency: document.getElementById('contractCurrency').value || 'USD',
     contractValue: contractValueRaw ? parseFloat(contractValueRaw) : null,
@@ -1601,6 +1814,7 @@ async function saveInvoice(){
     await col.customerInvoices().add({
       contractId: CURRENT_CONTRACT_ID,
       customerId: c ? c.customerId : null,
+      country: c ? (c.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ hợp đồng
       date,
       type: document.getElementById('invType').value,
       customType: document.getElementById('invCustomType').value.trim(),
@@ -1696,6 +1910,7 @@ async function savePayment(){
       invoiceId: CURRENT_INVOICE_ID,
       contractId: i ? i.contractId : null,
       customerId: i ? i.customerId : null,
+      country: i ? (i.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ hóa đơn
       date,
       amount,
       note: document.getElementById('paymentNote').value.trim(),
@@ -1809,9 +2024,11 @@ async function saveSubProject(){
   const subId = document.getElementById('modalSubProjectForm').dataset.subId;
   const projectName = document.getElementById('subProjectName').value.trim();
   if(!projectName){ showToast('Vui lòng nhập tên công trình.', 'error'); return; }
+  const sub = SUBS.find(s=>s.id===subId);
   const data = {
     subId,
     projectName,
+    country: sub ? (sub.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ đội khoan/thầu phụ
     note: document.getElementById('subProjectNote').value.trim(),
     updatedAt: new Date().toISOString(), updatedBy: currentUser.email,
   };
@@ -2020,9 +2237,11 @@ async function saveLedgerEntry(){
     if(!amount || amount <= 0){ showToast('Vui lòng nhập số tiền lớn hơn 0.', 'error'); return; }
   }
 
+  const parentEntity = type==='customers' ? CUSTOMERS.find(x=>x.id===id) : SUBS.find(x=>x.id===id);
   const data = {
     entityId: id,
     projectId: type==='subs' ? (CURRENT_SUB_PROJECT_ID || null) : null,
+    country: parentEntity ? (parentEntity.country||'Cambodia') : 'Cambodia', // sao chép quốc gia từ khách hàng/đội
     date,
     note,
     currency,
