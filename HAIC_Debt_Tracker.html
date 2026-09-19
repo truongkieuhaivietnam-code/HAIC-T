@@ -1392,7 +1392,7 @@ function renderCustomerList(){
   list.sort((a,b)=> balanceApproxUSD(b.balance) - balanceApproxUSD(a.balance));
 
   const total = { USD: 0, VND: 0, LAK: 0 };
-  CUSTOMERS.forEach(c => { const b = calcCustomerTotalBalanceMulti(c.id); Object.keys(b).forEach(cur => total[cur] = (total[cur]||0) + b[cur]); });
+  list.forEach(c => { const b = c.balance || {}; Object.keys(b).forEach(cur => total[cur] = (total[cur]||0) + b[cur]); });
   document.getElementById('custTotalOwed').textContent = fmtBalanceMulti(total);
 
   const wrap = document.getElementById('customersListWrap');
@@ -1431,7 +1431,7 @@ function renderSubList(){
   list.sort((a,b)=> balanceApproxUSD(b.balance) - balanceApproxUSD(a.balance));
 
   const total = { USD: 0, VND: 0, LAK: 0 };
-  SUBS.forEach(x => { const b = calcBalanceMulti(SUB_ENTRIES, x.id); Object.keys(b).forEach(cur => total[cur] = (total[cur]||0) + b[cur]); });
+  list.forEach(s => { const b = s.balance || {}; Object.keys(b).forEach(cur => total[cur] = (total[cur]||0) + b[cur]); });
   document.getElementById('subTotalOwed').textContent = fmtBalanceMulti(total);
 
   const wrap = document.getElementById('subsListWrap');
